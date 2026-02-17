@@ -16,6 +16,11 @@ const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 
+// Render (and many other hosts) terminate TLS at a reverse proxy.
+// Trusting the proxy makes req.protocol respect X-Forwarded-Proto,
+// which is important for building correct https OAuth redirect URLs.
+app.set("trust proxy", 1);
+
 const frontendOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
 app.use(
