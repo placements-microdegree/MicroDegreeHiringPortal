@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Tailwind v4 theme tokens */
+@theme {
+  --color-primary: #2563eb;
+  --color-primaryDark: #1e40af;
+  --color-bgLight: #f8fafc;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-bgLight text-slate-900 antialiased;
+}
