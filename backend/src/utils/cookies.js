@@ -3,10 +3,16 @@ const REFRESH_COOKIE = "mdpp_refresh_token";
 
 function getCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
+  // Treat as "secure deployment" when backend is configured with an https origin.
+  // This makes cross-site auth work on Render even if NODE_ENV wasn't set.
+  const isHttpsDeployment = (process.env.BACKEND_ORIGIN || "").startsWith(
+    "https://",
+  );
+  const shouldUseSecureCookies = isProd || isHttpsDeployment;
   return {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+    secure: shouldUseSecureCookies,
+    sameSite: shouldUseSecureCookies ? "none" : "lax",
     path: "/",
   };
 }

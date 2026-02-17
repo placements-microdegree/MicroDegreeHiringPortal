@@ -21,10 +21,14 @@ function sha256(input) {
 
 function cookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
+  const isHttpsDeployment = (process.env.BACKEND_ORIGIN || "").startsWith(
+    "https://",
+  );
+  const shouldUseSecureCookies = isProd || isHttpsDeployment;
   return {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+    secure: shouldUseSecureCookies,
+    sameSite: shouldUseSecureCookies ? "none" : "lax",
     path: "/",
     maxAge: 10 * 60 * 1000,
   };
@@ -229,9 +233,9 @@ async function signup(req, res, next) {
         user: data.user,
         role: role || ROLES.STUDENT,
       });
-    } catch (profileErr) {
+    } catch (error_) {
       // Do not block sign-up if profile insert fails; surface best-effort error.
-      devLog("[signup] profile insert failed", profileErr);
+      devLog("[signup] profile insert failed", error_);
     }
 
     return res.status(201).json({
