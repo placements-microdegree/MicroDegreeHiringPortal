@@ -1,5 +1,4 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 async function request(path, { method = "GET", body, headers } = {}) {
   const isForm = body instanceof FormData;
@@ -33,4 +32,3 @@ export async function uploadProfilePhoto(file) {
   });
   return { url: data.url, profile: data.profile };
 }
-
