@@ -16,9 +16,34 @@ const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 
-const frontendOrigin = process.env.FRONTEND_ORIGIN;
+// Render (and many hosts) terminate TLS at a reverse proxy.
+// Trusting the proxy makes req.protocol respect X-Forwarded-Proto.
+app.set("trust proxy", 1);
 
-app.use(cors());
+function parseAllowedOrigins() {
+  const raw =
+    process.env.FRONTEND_ORIGINS ||
+    process.env.FRONTEND_ORIGIN ||
+    "http://localhost:5173";
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = parseAllowedOrigins();
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Non-browser clients (curl, server-to-server) may send no Origin.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
