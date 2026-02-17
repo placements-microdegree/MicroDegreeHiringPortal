@@ -18,12 +18,7 @@ const app = express();
 
 const frontendOrigin = process.env.FRONTEND_ORIGIN;
 
-app.use(
-  cors({
-    origin: frontendOrigin,
-    credentials: true,
-  }),
-);
+app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
