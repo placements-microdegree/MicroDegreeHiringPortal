@@ -33,7 +33,7 @@ export default function ApplicationStatus() {
               rows.map((r) => (
                 <tr key={r.id} className="border-t border-slate-200">
                   <td className="px-4 py-3 font-medium text-slate-900">
-                    {r.jobs?.title || r.jobTitle}
+                    {r.jobs?.title || r.jobTitle || "Job"}
                   </td>
                   <td className="px-4 py-3 text-slate-700">
                     {r.jobs?.company || r.company}

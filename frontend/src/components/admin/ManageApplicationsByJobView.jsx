@@ -1,0 +1,168 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import ApplicationsTable from "./ApplicationsTable";
+import {
+  listAllApplications,
+  updateApplicationStatus,
+} from "../../services/applicationService";
+import { listJobs } from "../../services/jobService";
+
+function getJobId(application) {
+  return (
+    application.job_id || application.jobId || application.jobs?.id || null
+  );
+}
+
+function getJobTitle(application) {
+  return application.jobs?.title || application.jobTitle || "Untitled Job";
+}
+
+function mapApplicationRow(row, jobsById) {
+  const resume =
+    row.profiles?.resumes?.[0] ||
+    row.resumes?.[0] ||
+    (Array.isArray(row.profiles?.resumes) ? row.profiles.resumes[0] : null);
+
+  const jobId = getJobId(row);
+  const jobFromLookup = jobId ? jobsById.get(String(jobId)) : null;
+  const jobTitle =
+    row.jobs?.title || row.jobTitle || jobFromLookup?.title || "Untitled Job";
+  const jobCompany =
+    row.jobs?.company || row.company || jobFromLookup?.company || "-";
+
+  return {
+    ...row,
+    job_id: row.job_id || row.jobId || jobId,
+    jobs:
+      row.jobs ||
+      (jobId ? { id: jobId, title: jobTitle, company: jobCompany } : null),
+    studentName: row.profiles?.full_name || row.studentName,
+    studentPhone: row.profiles?.phone,
+    studentEmail: row.profiles?.email,
+    resumeUrl:
+      resume?.signed_url ||
+      resume?.file_url ||
+      resume?.url ||
+      resume?.public_url ||
+      row.resumeUrl,
+    jobTitle,
+  };
+}
+
+export default function ManageApplicationsByJobView({
+  basePath,
+  selectedJobId,
+}) {
+  const [rows, setRows] = useState([]);
+  const [jobs, setJobs] = useState([]);
+
+  const refresh = async () => {
+    const [all, allJobs] = await Promise.all([
+      listAllApplications(),
+      listJobs(),
+    ]);
+    setRows(all);
+    setJobs(allJobs);
+  };
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const onStatusChange = async (id, status) => {
+    await updateApplicationStatus(id, status);
+    await refresh();
+  };
+
+  const jobsById = useMemo(
+    () => new Map((jobs || []).map((job) => [String(job.id), job])),
+    [jobs],
+  );
+
+  const normalizedRows = useMemo(
+    () => rows.map((row) => mapApplicationRow(row, jobsById)),
+    [rows, jobsById],
+  );
+
+  const jobCards = useMemo(() => {
+    const jobsMap = new Map();
+
+    for (const row of normalizedRows) {
+      const jobId = getJobId(row);
+      if (!jobId) continue;
+
+      const existing = jobsMap.get(jobId);
+      if (!existing) {
+        jobsMap.set(jobId, {
+          id: jobId,
+          title: getJobTitle(row),
+          company: row.jobs?.company || row.company || "-",
+          applicationsCount: 1,
+        });
+        continue;
+      }
+
+      existing.applicationsCount += 1;
+    }
+
+    return Array.from(jobsMap.values()).sort((a, b) =>
+      a.title.localeCompare(b.title),
+    );
+  }, [normalizedRows]);
+
+  if (!selectedJobId) {
+    return (
+      <div className="space-y-4">
+        <div className="text-base font-semibold text-slate-900">
+          Posted Jobs
+        </div>
+        {jobCards.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            No posted jobs with applications yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {jobCards.map((job) => (
+              <Link
+                key={job.id}
+                to={`${basePath}/${job.id}`}
+                className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary"
+              >
+                <div className="text-base font-semibold text-slate-900">
+                  {job.title}
+                </div>
+                <div className="mt-1 text-sm text-slate-600">{job.company}</div>
+                <div className="mt-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                  {job.applicationsCount} Applied
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const filteredRows = normalizedRows.filter(
+    (row) => String(getJobId(row)) === String(selectedJobId),
+  );
+
+  const selectedJobTitle = filteredRows[0]?.jobTitle || "Job";
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Link
+          to={basePath}
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Back to jobs
+        </Link>
+      </div>
+      <div className="text-base font-semibold text-slate-900">
+        Applied Candidates: {selectedJobTitle}
+      </div>
+      <ApplicationsTable rows={filteredRows} onStatusChange={onStatusChange} />
+    </div>
+  );
+}

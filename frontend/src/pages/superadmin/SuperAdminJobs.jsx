@@ -1,19 +1,39 @@
 import { useEffect, useState } from "react";
-import JobCard from "../../components/student/JobCard";
-import { listJobs } from "../../services/jobService";
+import JobListWithDelete from "../../components/admin/JobListWithDelete";
+import { deleteJob, listJobs } from "../../services/jobService";
 
 export default function SuperAdminJobs() {
   const [jobs, setJobs] = useState([]);
+  const [message, setMessage] = useState("");
+
+  const refreshJobs = async () => {
+    const all = await listJobs();
+    setJobs(all);
+  };
 
   useEffect(() => {
-    listJobs().then(setJobs);
+    refreshJobs();
   }, []);
 
+  const onDeleteJob = async (job) => {
+    await deleteJob(job.id);
+    setMessage("JD deleted successfully.");
+    await refreshJobs();
+    setTimeout(() => setMessage(""), 2000);
+  };
+
   return (
-    <div className="grid grid-cols-2 gap-6">
-      {jobs.map((job) => (
-        <JobCard key={job.id} job={job} applied />
-      ))}
+    <div className="space-y-4">
+      {message ? (
+        <div className="rounded-xl bg-green-50 p-3 text-sm text-green-700">
+          {message}
+        </div>
+      ) : null}
+      <JobListWithDelete
+        jobs={jobs}
+        onDelete={onDeleteJob}
+        emptyMessage="No posted JDs yet."
+      />
     </div>
   );
 }

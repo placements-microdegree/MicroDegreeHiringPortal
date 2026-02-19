@@ -91,6 +91,10 @@ export default function AppRoutes() {
             path="/admin/manage-applications"
             element={<ManageApplications />}
           />
+          <Route
+            path="/admin/manage-applications/:jobId"
+            element={<ManageApplications />}
+          />
         </Route>
       </Route>
 
@@ -102,6 +106,10 @@ export default function AppRoutes() {
           <Route path="/superadmin/jobs" element={<SuperAdminJobs />} />
           <Route
             path="/superadmin/applications"
+            element={<SuperAdminApplications />}
+          />
+          <Route
+            path="/superadmin/applications/:jobId"
             element={<SuperAdminApplications />}
           />
         </Route>

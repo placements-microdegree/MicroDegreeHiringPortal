@@ -1,7 +1,6 @@
 import { APPLICATION_STATUSES } from "../../utils/constants";
 
 export default function ApplicationsTable({ rows, onStatusChange }) {
-  console.log(rows);
   return (
     <div className="rounded-xl bg-white p-5">
       <div className="text-base font-semibold text-slate-900">Applications</div>
@@ -20,7 +19,7 @@ export default function ApplicationsTable({ rows, onStatusChange }) {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-slate-600" colSpan={3}>
+                <td className="px-4 py-4 text-slate-600" colSpan={6}>
                   No applications yet.
                 </td>
               </tr>
