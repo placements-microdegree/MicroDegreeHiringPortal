@@ -33,6 +33,6 @@ export default function ManageApplications() {
       r.resumeUrl,
     jobTitle: r.jobs?.title || r.jobTitle,
   }));
-
+  console.log(rows);
   return <ApplicationsTable rows={mapped} onStatusChange={onStatusChange} />;
 }
