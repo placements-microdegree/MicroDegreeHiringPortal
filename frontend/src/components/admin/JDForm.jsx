@@ -45,11 +45,13 @@ export default function JDForm({ onSubmit }) {
           label="Title"
           value={form.title}
           onChange={(e) => update({ title: e.target.value })}
+          required
         />
         <Input
           label="Company"
           value={form.company}
           onChange={(e) => update({ company: e.target.value })}
+          required
         />
         <label className="col-span-2 block">
           <div className="mb-1 text-sm font-medium text-slate-700">
@@ -59,6 +61,7 @@ export default function JDForm({ onSubmit }) {
             className="min-h-28 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
             value={form.description}
             onChange={(e) => update({ description: e.target.value })}
+            required
           />
         </label>
 
@@ -74,11 +77,13 @@ export default function JDForm({ onSubmit }) {
           label="Location"
           value={form.location}
           onChange={(e) => update({ location: e.target.value })}
+          required
         />
         <Input
           label="CTC"
           value={form.ctc}
           onChange={(e) => update({ ctc: e.target.value })}
+          required
         />
       </div>
 
