@@ -152,7 +152,7 @@ export default function Login() {
               type="email"
               placeholder={
                 loginType === "microdegree"
-                  ? "team@microdegree.com"
+                  ? "student@example.com"
                   : "student@example.com"
               }
             />
