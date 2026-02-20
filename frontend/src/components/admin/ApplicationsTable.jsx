@@ -1,7 +1,7 @@
 import { APPLICATION_STATUSES } from "../../utils/constants";
 
 export default function ApplicationsTable({ rows, onStatusChange }) {
-  console.log(rows);
+  // console.log(rows);
   return (
     <div className="rounded-xl bg-white p-5">
       <div className="text-base font-semibold text-slate-900">Applications</div>

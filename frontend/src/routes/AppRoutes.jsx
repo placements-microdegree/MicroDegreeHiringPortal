@@ -21,10 +21,11 @@ import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
 import Students from "../pages/superadmin/Students";
 import SuperAdminJobs from "../pages/superadmin/SuperAdminJobs";
 import SuperAdminApplications from "../pages/superadmin/SuperAdminApplications";
+import PageOpeningShimmer from "../components/common/PageOpeningShimmer";
 
 function HomeRedirect() {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <PageOpeningShimmer />;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === ROLES.SUPER_ADMIN) {
     return <Navigate to="/superadmin/dashboard" replace />;
@@ -37,7 +38,7 @@ function HomeRedirect() {
 
 function AuthRedirect() {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <PageOpeningShimmer />;
   if (!user) return <Login />;
   if (user.role === ROLES.SUPER_ADMIN) {
     return <Navigate to="/superadmin/dashboard" replace />;
@@ -50,7 +51,7 @@ function AuthRedirect() {
 
 function SignupRedirect() {
   const { user, loading } = useAuth();
-  if (loading) return null;
+  if (loading) return <PageOpeningShimmer />;
   if (!user) return <Signup />;
   if (user.role === ROLES.SUPER_ADMIN) {
     return <Navigate to="/superadmin/dashboard" replace />;
@@ -62,6 +63,10 @@ function SignupRedirect() {
 }
 
 export default function AppRoutes() {
+  const { loading } = useAuth();
+
+  if (loading) return <PageOpeningShimmer />;
+
   return (
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
@@ -100,7 +105,10 @@ export default function AppRoutes() {
 
       <Route element={<ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />}>
         <Route element={<DashboardLayout role={ROLES.SUPER_ADMIN} />}>
-          <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
+          <Route
+            path="/superadmin/dashboard"
+            element={<SuperAdminDashboard />}
+          />
           <Route path="/superadmin/manage-hr" element={<ManageHRAdmins />} />
           <Route path="/superadmin/students" element={<Students />} />
           <Route path="/superadmin/jobs" element={<SuperAdminJobs />} />
