@@ -6,6 +6,62 @@ function getClient(jwt) {
   return admin || getSupabaseUser(jwt);
 }
 
+const APPLICATIONS_ADMIN_SELECT = `
+  id,
+  status,
+  created_at,
+  updated_at,
+  job_id,
+  student_id,
+  jobs!inner(
+    id,
+    title,
+    company,
+    ctc,
+    skills,
+    location,
+    status,
+    posted_by
+  ),
+  profiles:student_id!inner(
+    full_name,
+    email,
+    phone,
+    location,
+    resumes(*)
+  )
+`;
+
+function normalizeApplicationForAdminView(row) {
+  return {
+    id: row.id,
+    status: row.status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    job: row.jobs
+      ? {
+          id: row.jobs.id,
+          title: row.jobs.title,
+          company: row.jobs.company,
+          ctc: row.jobs.ctc,
+          skills: row.jobs.skills,
+          location: row.jobs.location,
+          status: row.jobs.status,
+        }
+      : null,
+    student: row.profiles
+      ? {
+          id: row.student_id,
+          full_name: row.profiles.full_name,
+          email: row.profiles.email,
+          phone: row.profiles.phone,
+          location: row.profiles.location,
+          resumes: Array.isArray(row.profiles.resumes) ? row.profiles.resumes : [],
+        }
+      : null,
+  };
+}
+
 async function createApplication({ payload, jwt }) {
   const supabase = getClient(jwt);
 
@@ -54,9 +110,7 @@ async function listAllApplications({ actor, jwt }) {
 
   let query = supabase
     .from("applications")
-    .select(
-      "*, jobs(*), profiles:student_id(full_name,email,phone,location,experience_level,experience_years,profile_photo_url,resumes(*))",
-    )
+    .select(APPLICATIONS_ADMIN_SELECT)
     .order("created_at", { ascending: false });
 
   if (actor?.role === ROLES.ADMIN) {
@@ -65,7 +119,7 @@ async function listAllApplications({ actor, jwt }) {
 
   const { data, error } = await query;
   if (error) throw error;
-  return data;
+  return (data || []).map(normalizeApplicationForAdminView);
 }
 
 async function updateApplicationStatus({ applicationId, status, actor, jwt }) {
@@ -100,4 +154,5 @@ module.exports = {
   listApplicationsByStudent,
   listAllApplications,
   updateApplicationStatus,
+  normalizeApplicationForAdminView,
 };

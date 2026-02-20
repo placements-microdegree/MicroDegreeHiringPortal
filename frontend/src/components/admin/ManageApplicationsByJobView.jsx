@@ -9,36 +9,47 @@ import { listJobs } from "../../services/jobService";
 
 function getJobId(application) {
   return (
-    application.job_id || application.jobId || application.jobs?.id || null
+    application.job_id ||
+    application.jobId ||
+    application.job?.id ||
+    application.jobs?.id ||
+    null
   );
 }
 
 function getJobTitle(application) {
-  return application.jobs?.title || application.jobTitle || "Untitled Job";
+  return application.job?.title || application.jobs?.title || application.jobTitle || "Untitled Job";
 }
 
 function mapApplicationRow(row, jobsById) {
   const resume =
+    row.student?.resumes?.[0] ||
     row.profiles?.resumes?.[0] ||
     row.resumes?.[0] ||
     (Array.isArray(row.profiles?.resumes) ? row.profiles.resumes[0] : null);
 
   const jobId = getJobId(row);
   const jobFromLookup = jobId ? jobsById.get(String(jobId)) : null;
+  const mergedJob = row.job
+    ? { ...row.job, ...(jobFromLookup || {}) }
+    : row.jobs
+      ? { ...row.jobs, ...(jobFromLookup || {}) }
+      : jobFromLookup || null;
   const jobTitle =
-    row.jobs?.title || row.jobTitle || jobFromLookup?.title || "Untitled Job";
-  const jobCompany =
-    row.jobs?.company || row.company || jobFromLookup?.company || "-";
+    mergedJob?.title || row.jobTitle || jobFromLookup?.title || "Untitled Job";
+  const jobCompany = mergedJob?.company || row.company || "-";
+  const student = row.student || row.profiles || null;
 
   return {
     ...row,
     job_id: row.job_id || row.jobId || jobId,
+    job: mergedJob || null,
     jobs:
-      row.jobs ||
+      mergedJob ||
       (jobId ? { id: jobId, title: jobTitle, company: jobCompany } : null),
-    studentName: row.profiles?.full_name || row.studentName,
-    studentPhone: row.profiles?.phone,
-    studentEmail: row.profiles?.email,
+    studentName: student?.full_name || row.studentName,
+    studentPhone: student?.phone,
+    studentEmail: student?.email,
     resumeUrl:
       resume?.signed_url ||
       resume?.file_url ||
