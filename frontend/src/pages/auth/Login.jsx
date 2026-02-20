@@ -79,21 +79,20 @@ export default function Login() {
               </div>
               <div className="mt-2 text-3xl font-semibold">MicroDegree</div>
               <p className="mt-3 text-sm text-white/85">
-                Seamless access for students and MicroDegree team members to
-                manage hiring pipelines, job posts, and applications.
+                Seamless access for students of MicroDegree for job posts
               </p>
             </div>
-            <div className="rounded-xl bg-white/10 p-4 backdrop-blur">
+            {/* <div className="rounded-xl bg-white/10 p-4 backdrop-blur">
               <div className="text-sm font-semibold">Why you'll like this:</div>
               <ul className="mt-2 space-y-2 text-sm text-white/80">
                 <li>- Google SSO with one click</li>
                 <li>- Clean dashboards for students & admins</li>
                 <li>- Responsive layout that feels at home on mobile</li>
               </ul>
-            </div>
-            <div className="mt-auto text-xs text-white/70">
+            </div> */}
+            {/* <div className="mt-auto text-xs text-white/70">
               Need an account? Choose Student Login and tap Sign up.
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -112,7 +111,7 @@ export default function Login() {
             </div>
 
             <div className="w-48">
-              <select
+              {/* <select
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm"
                 value={loginType}
                 onChange={(e) => setLoginType(e.target.value)}
@@ -122,7 +121,7 @@ export default function Login() {
               </select>
               <div className="mt-1 text-[11px] font-medium text-slate-500">
                 Switch if you're a student vs. MicroDegree team.
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -178,7 +177,7 @@ export default function Login() {
             <span>
               {loginType === "student"
                 ? "Don't have an account?"
-                : "Student and need access?"}
+                : "Need Placement access?"}
             </span>
             <Link to="/signup" className="font-semibold text-primary">
               {loginType === "student" ? "Sign up" : "Go to student sign up"}

@@ -38,7 +38,7 @@ export default function Signup() {
             Create your account
           </div>
           <div className="mt-1 text-sm text-slate-600">
-            Role defaults to STUDENT.
+            student sign up for placement access
           </div>
 
           <form onSubmit={onSubmit} className="mt-5 grid grid-cols-2 gap-4">
