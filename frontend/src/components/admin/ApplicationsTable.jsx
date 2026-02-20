@@ -1,10 +1,75 @@
 import { APPLICATION_STATUSES } from "../../utils/constants";
 
 export default function ApplicationsTable({ rows, onStatusChange }) {
-  // console.log(rows);
+  const escapeCsv = (value) => {
+    const text = value == null ? "" : String(value);
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const slugify = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const handleExport = () => {
+    if (!rows?.length) return;
+
+    const firstRow = rows[0] || {};
+    const jobName = firstRow.jobTitle || firstRow.jobs?.title || "job";
+    const companyName = firstRow.jobs?.company || firstRow.company || "company";
+    const fileName = `${slugify(jobName)}-${slugify(companyName)}.csv`;
+
+    const headers = [
+      "Student Name",
+      "Phone",
+      "Email",
+      "Resume URL",
+      "Job",
+      "Company",
+    ];
+
+    const csvRows = rows.map((r) =>
+      [
+        r.studentName || "Student",
+        r.studentPhone || "",
+        r.studentEmail || "",
+        r.resumeUrl || "",
+        r.jobTitle || "",
+        r.jobs?.company || r.company || "",
+      ]
+        .map(escapeCsv)
+        .join(","),
+    );
+
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="rounded-xl bg-white p-5">
-      <div className="text-base font-semibold text-slate-900">Applications</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-base font-semibold text-slate-900">
+          Applications
+        </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={!rows?.length}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Export
+        </button>
+      </div>
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
         <table className="w-full text-left text-sm">
           <thead className="bg-bgLight text-xs uppercase text-slate-600">
