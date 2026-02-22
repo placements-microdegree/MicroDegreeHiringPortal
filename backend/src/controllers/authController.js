@@ -145,24 +145,16 @@ async function enforceStudentEligibility({ user }) {
   }
 
   const markIneligible = async (message) => {
-    try {
-      const { error: updateError } = await supabase.from("profiles").upsert({
-        id: user.id,
-        email,
-        phone: phone || null,
-        role: ROLES.STUDENT,
-        is_eligible: false,
-        eligible_until: null,
-        updated_at: new Date().toISOString(),
-      });
-      if (updateError) throw updateError;
-    } catch (err) {
-      devLog("[eligibility] markIneligible failed", {
-        userId: user.id,
-        reason: message,
-        error: err?.message,
-      });
-    }
+    const { error: updateError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      email,
+      phone: phone || null,
+      role: ROLES.STUDENT,
+      is_eligible: false,
+      eligible_until: null,
+      updated_at: new Date().toISOString(),
+    });
+    if (updateError) throw updateError;
     return { ok: false, message };
   };
 
@@ -283,21 +275,12 @@ async function login(req, res, next) {
     await ensureProfileRow({ user: data.user, role });
 
     if (role === ROLES.STUDENT) {
-      try {
-        const eligibility = await enforceStudentEligibility({
-          user: data.user,
-        });
-        if (!eligibility.ok) {
-          devLog("[login] student eligibility", {
-            userId: data.user.id,
-            ok: false,
-            reason: eligibility.message,
-          });
-        }
-      } catch (eligibilityErr) {
-        devLog("[login] student eligibility sync failed", {
+      const eligibility = await enforceStudentEligibility({ user: data.user });
+      if (!eligibility.ok) {
+        devLog("[login] student eligibility", {
           userId: data.user.id,
-          error: eligibilityErr?.message,
+          ok: false,
+          reason: eligibility.message,
         });
       }
     }
