@@ -1,4 +1,5 @@
 const resumeService = require("../services/resumeService");
+const profileService = require("../services/profileService");
 
 async function upload(req, res, next) {
   try {
@@ -8,6 +9,13 @@ async function upload(req, res, next) {
         .status(400)
         .json({ success: false, message: "No files uploaded" });
     }
+
+    await profileService.ensureProfileRow({
+      userId: req.user.id,
+      jwt: req.user.jwt,
+      email: req.user.email,
+      role: req.user.role,
+    });
 
     const uploaded = [];
     for (const f of files) {

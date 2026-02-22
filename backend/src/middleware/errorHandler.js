@@ -1,8 +1,15 @@
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, next) {
-  const status = err.status || 500;
+  let status = err.status || 500;
   const message = err.message || "Internal Server Error";
   const isProd = process.env.NODE_ENV === "production";
+
+  if (!err.status && err.code === "23505") {
+    status = 409;
+  }
+  if (!err.status && err.code === "23503") {
+    status = 409;
+  }
 
   if (!isProd) {
     // Helpful in dev

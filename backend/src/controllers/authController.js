@@ -6,6 +6,7 @@ const {
 const { getSupabaseAdmin } = require("../config/db");
 const { setAuthCookies, clearAuthCookies } = require("../utils/cookies");
 const { ROLES } = require("../utils/constants");
+const { normalizePhone } = require("../utils/phone");
 
 function base64Url(buffer) {
   return buffer
@@ -41,6 +42,12 @@ function devLog(...args) {
   }
 }
 
+function normalizeEmail(email) {
+  return String(email || "")
+    .trim()
+    .toLowerCase();
+}
+
 function getAdminClient() {
   const admin = getSupabaseAdmin();
   if (admin) return admin;
@@ -48,22 +55,67 @@ function getAdminClient() {
   return getSupabaseAdminClient();
 }
 
-async function ensureProfileRow({ user, role }) {
+async function listUsersPage(adminApi, page, perPage) {
+  let result;
+  try {
+    result = await adminApi.listUsers({ page, perPage });
+  } catch {
+    result = await adminApi.listUsers(page, perPage);
+  }
+
+  return {
+    users: result?.data?.users || [],
+    error: result?.error || null,
+  };
+}
+
+async function findUserByEmail(supabase, email) {
+  const adminApi = supabase.auth?.admin;
+  if (!adminApi) return null;
+
+  if (typeof adminApi.getUserByEmail === "function") {
+    const { data, error } = await adminApi.getUserByEmail(email);
+    if (error) throw error;
+    return data?.user || null;
+  }
+
+  const target = normalizeEmail(email);
+  const perPage = 200;
+  for (let page = 1; page <= 50; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const { users, error } = await listUsersPage(adminApi, page, perPage);
+    if (error) throw error;
+    if (!users.length) break;
+
+    const found = users.find((u) => normalizeEmail(u?.email) === target);
+    if (found) return found;
+    if (users.length < perPage) break;
+  }
+
+  return null;
+}
+
+async function ensureProfileRow({ user, role, fullName, phone, email }) {
   const supabase = getAdminClient();
-  const phone =
-    user.user_metadata?.phone ||
-    user.app_metadata?.phone ||
-    user.user_metadata?.phone_number ||
-    undefined;
+  const normalizedPhone =
+    normalizePhone(
+      phone ||
+        user.user_metadata?.phone ||
+        user.app_metadata?.phone ||
+        user.user_metadata?.phone_number,
+    ) || undefined;
 
   const toSave = {
     id: user.id,
-    email: user.email,
-    full_name: user.user_metadata?.full_name || user.email,
+    email:
+      String(email || user.email || "")
+        .trim()
+        .toLowerCase() || null,
+    full_name: fullName || user.user_metadata?.full_name || user.email,
     role,
     updated_at: new Date().toISOString(),
   };
-  if (phone) toSave.phone = phone;
+  if (normalizedPhone) toSave.phone = normalizedPhone;
 
   const { data, error } = await supabase
     .from("profiles")
@@ -77,11 +129,11 @@ async function ensureProfileRow({ user, role }) {
 async function enforceStudentEligibility({ user }) {
   const supabase = getAdminClient();
   const email = user.email?.toLowerCase();
-  let phone =
+  let phone = normalizePhone(
     user.user_metadata?.phone ||
-    user.app_metadata?.phone ||
-    user.user_metadata?.phone_number ||
-    null;
+      user.app_metadata?.phone ||
+      user.user_metadata?.phone_number,
+  );
 
   if (!phone) {
     const { data: profileRow } = await supabase
@@ -89,11 +141,33 @@ async function enforceStudentEligibility({ user }) {
       .select("phone")
       .eq("id", user.id)
       .maybeSingle();
-    phone = profileRow?.phone || phone;
+    phone = normalizePhone(profileRow?.phone) || phone;
   }
 
+  const markIneligible = async (message) => {
+    try {
+      const { error: updateError } = await supabase.from("profiles").upsert({
+        id: user.id,
+        email,
+        phone: phone || null,
+        role: ROLES.STUDENT,
+        is_eligible: false,
+        eligible_until: null,
+        updated_at: new Date().toISOString(),
+      });
+      if (updateError) throw updateError;
+    } catch (err) {
+      devLog("[eligibility] markIneligible failed", {
+        userId: user.id,
+        reason: message,
+        error: err?.message,
+      });
+    }
+    return { ok: false, message };
+  };
+
   if (!phone) {
-    return { ok: false, message: "Phone number missing in profile" };
+    return markIneligible("Phone number missing in profile");
   }
 
   const { data: enrolled, error: enrollError } = await supabase
@@ -102,12 +176,12 @@ async function enforceStudentEligibility({ user }) {
     .eq("phone", phone)
     .maybeSingle();
   if (enrollError) throw enrollError;
-  if (!enrolled) return { ok: false, message: "Not enrolled" };
+  if (!enrolled) return markIneligible("Not enrolled");
   if (enrolled.email && enrolled.email.toLowerCase() !== email) {
-    return { ok: false, message: "Email mismatch with enrolled data" };
+    return markIneligible("Email mismatch with enrolled data");
   }
   if (!enrolled.course_fee || Number(enrolled.course_fee) <= 3000) {
-    return { ok: false, message: "Not eligible for placements" };
+    return markIneligible("Not eligible for placements");
   }
 
   const baseDate = enrolled.date
@@ -117,10 +191,10 @@ async function enforceStudentEligibility({ user }) {
   expiry.setFullYear(expiry.getFullYear() + 2);
 
   if (Number.isNaN(expiry.getTime())) {
-    return { ok: false, message: "Invalid enrollment date" };
+    return markIneligible("Invalid enrollment date");
   }
   if (new Date() > expiry) {
-    return { ok: false, message: "Eligibility expired" };
+    return markIneligible("Eligibility expired");
   }
 
   const { error: updateError } = await supabase.from("profiles").upsert({
@@ -158,12 +232,43 @@ async function login(req, res, next) {
     }
 
     const supabase = getSupabaseAnonClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
+    let { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) {
-      return res.status(401).json({ success: false, message: error.message });
+      const msg = String(error.message || "").toLowerCase();
+      if (msg.includes("email not confirmed")) {
+        const adminClient = getAdminClient();
+        const existingUser = await findUserByEmail(adminClient, email);
+        if (!existingUser?.id) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "Email verification is pending for this account. Please contact support.",
+          });
+        }
+
+        const { error: confirmError } =
+          await adminClient.auth.admin.updateUserById(existingUser.id, {
+            email_confirm: true,
+          });
+        if (confirmError) throw confirmError;
+
+        const retried = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        data = retried.data;
+        error = retried.error;
+        if (error) {
+          return res
+            .status(401)
+            .json({ success: false, message: error.message });
+        }
+      } else {
+        return res.status(401).json({ success: false, message: error.message });
+      }
     }
 
     if (data.session) {
@@ -178,12 +283,21 @@ async function login(req, res, next) {
     await ensureProfileRow({ user: data.user, role });
 
     if (role === ROLES.STUDENT) {
-      const eligibility = await enforceStudentEligibility({ user: data.user });
-      if (!eligibility.ok) {
-        clearAuthCookies(res);
-        return res.status(403).json({
-          success: false,
-          message: eligibility.message,
+      try {
+        const eligibility = await enforceStudentEligibility({
+          user: data.user,
+        });
+        if (!eligibility.ok) {
+          devLog("[login] student eligibility", {
+            userId: data.user.id,
+            ok: false,
+            reason: eligibility.message,
+          });
+        }
+      } catch (eligibilityErr) {
+        devLog("[login] student eligibility sync failed", {
+          userId: data.user.id,
+          error: eligibilityErr?.message,
         });
       }
     }
@@ -207,14 +321,63 @@ async function signup(req, res, next) {
       });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Phone number is required",
+      });
+    }
+    const adminClient = getAdminClient();
+
+    const [emailLookup, phoneLookup] = await Promise.all([
+      adminClient
+        .from("profiles")
+        .select("id")
+        .eq("email", normalizedEmail)
+        .limit(1)
+        .maybeSingle(),
+      normalizedPhone
+        ? adminClient
+            .from("profiles")
+            .select("id")
+            .eq("phone", normalizedPhone)
+            .limit(1)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+    if (emailLookup.error) throw emailLookup.error;
+    if (phoneLookup.error) throw phoneLookup.error;
+
+    if (emailLookup.data && phoneLookup.data) {
+      return res.status(409).json({
+        success: false,
+        message: "Email id and mobile number already in use",
+      });
+    }
+    if (emailLookup.data) {
+      return res.status(409).json({
+        success: false,
+        message: "Email id already in use",
+      });
+    }
+    if (phoneLookup.data) {
+      return res.status(409).json({
+        success: false,
+        message: "Mobile number already in use",
+      });
+    }
+
     const supabase = getSupabaseAnonClient();
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         data: {
           full_name: fullName,
-          phone: phone || "",
+          phone: normalizedPhone,
           role: role || ROLES.STUDENT,
         },
       },
@@ -224,28 +387,82 @@ async function signup(req, res, next) {
       return res.status(400).json({ success: false, message: error.message });
     }
 
-    if (data.session) {
-      setAuthCookies(res, data.session);
+    if (!data?.user?.id) {
+      return res.status(409).json({
+        success: false,
+        message: "Account already exists. Please login.",
+      });
+    }
+
+    let session = data.session || null;
+    let userForProfile = data.user;
+
+    // If email confirmation is enabled in Supabase, signUp may return no session.
+    // Auto-confirm and sign in so users can continue immediately after signup.
+    if (!session) {
+      const { error: confirmError } =
+        await adminClient.auth.admin.updateUserById(data.user.id, {
+          email_confirm: true,
+        });
+
+      if (confirmError) {
+        const text = String(confirmError.message || "").toLowerCase();
+        if (text.includes("not found")) {
+          return res.status(409).json({
+            success: false,
+            message: "Account already exists. Please login.",
+          });
+        }
+        throw confirmError;
+      }
+
+      const { data: loginData, error: loginError } =
+        await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+
+      if (loginError) {
+        return res
+          .status(401)
+          .json({ success: false, message: loginError.message });
+      }
+
+      session = loginData?.session || null;
+      userForProfile = loginData?.user || userForProfile;
+    }
+
+    if (session) {
+      setAuthCookies(res, session);
     }
 
     try {
       await ensureProfileRow({
-        user: data.user,
+        user: userForProfile,
         role: role || ROLES.STUDENT,
+        fullName,
+        phone: normalizedPhone,
+        email: normalizedEmail,
       });
-    } catch (error_) {
-      // Do not block sign-up if profile insert fails; surface best-effort error.
-      devLog("[signup] profile insert failed", error_);
+    } catch (profileErr) {
+      if (profileErr?.code === "23503") {
+        return res.status(409).json({
+          success: false,
+          message: "Account already exists. Please login.",
+        });
+      }
+      throw profileErr;
     }
 
     return res.status(201).json({
       success: true,
       user: {
-        id: data.user?.id,
-        email,
+        id: userForProfile?.id,
+        email: normalizedEmail,
         role: role || ROLES.STUDENT,
       },
-      needsEmailConfirmation: !data.session,
+      hasSession: Boolean(session),
+      needsEmailConfirmation: !session,
     });
   } catch (err) {
     next(err);
