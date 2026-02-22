@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import { listAdmins, promoteAdmin } from "../../services/adminService";
+import { showError, showSuccess } from "../../utils/alerts";
 
 export default function ManageHRAdmins() {
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -23,12 +23,11 @@ export default function ManageHRAdmins() {
     setLoading(true);
     try {
       await promoteAdmin(email);
-      setMessage(`Promoted ${email} to ADMIN.`);
+      await showSuccess(`Promoted ${email} to ADMIN.`);
       setEmail("");
-      refresh();
-      setTimeout(() => setMessage(""), 2500);
+      await refresh();
     } catch (err) {
-      setMessage(err.message || "Failed to promote");
+      await showError(err?.message || "Failed to promote", "Promotion Failed");
     } finally {
       setLoading(false);
     }
@@ -36,12 +35,6 @@ export default function ManageHRAdmins() {
 
   return (
     <div className="space-y-4">
-      {message ? (
-        <div className="rounded-xl bg-bgLight p-3 text-sm text-slate-800">
-          {message}
-        </div>
-      ) : null}
-
       <form
         onSubmit={submit}
         className="rounded-xl border border-slate-200 bg-white p-4"

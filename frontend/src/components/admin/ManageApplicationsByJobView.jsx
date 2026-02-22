@@ -38,6 +38,17 @@ function getJobStatusChipClasses(status) {
   return "bg-slate-100 text-slate-700";
 }
 
+function formatPostedDate(value) {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function mapApplicationRow(row, jobsById) {
   const resume =
     row.student?.resumes?.[0] ||
@@ -126,12 +137,16 @@ export default function ManageApplicationsByJobView({
           id: jobId,
           title: getJobTitle(row),
           company: row.jobs?.company || row.company || "-",
+          createdAt: row.jobs?.created_at || row.job?.created_at || null,
           status: jobStatus,
           applicationsCount: 1,
         });
         continue;
       }
 
+      if (!existing.createdAt) {
+        existing.createdAt = row.jobs?.created_at || row.job?.created_at || null;
+      }
       if (existing.status === "unknown") {
         existing.status = normalizeJobStatus(row.jobs?.status || row.job?.status);
       }
@@ -172,6 +187,9 @@ export default function ManageApplicationsByJobView({
                   </span>
                 </div>
                 <div className="mt-1 text-sm text-slate-600">{job.company}</div>
+                <div className="mt-1 text-xs font-medium text-slate-500">
+                  Posted: {formatPostedDate(job.createdAt)}
+                </div>
                 <div className="mt-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                   {job.applicationsCount} Applied
                 </div>

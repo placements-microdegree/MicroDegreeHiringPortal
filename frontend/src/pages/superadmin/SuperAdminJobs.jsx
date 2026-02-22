@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import JobListWithDelete from "../../components/admin/JobListWithDelete";
 import { deleteJob, listJobs } from "../../services/jobService";
+import { showError, showSuccess } from "../../utils/alerts";
 
 export default function SuperAdminJobs() {
   const [jobs, setJobs] = useState([]);
-  const [message, setMessage] = useState("");
 
   const refreshJobs = async () => {
     const all = await listJobs();
@@ -16,19 +16,17 @@ export default function SuperAdminJobs() {
   }, []);
 
   const onDeleteJob = async (job) => {
-    await deleteJob(job.id);
-    setMessage("JD deleted successfully.");
-    await refreshJobs();
-    setTimeout(() => setMessage(""), 2000);
+    try {
+      await deleteJob(job.id);
+      await refreshJobs();
+      await showSuccess("JD deleted successfully.");
+    } catch (err) {
+      await showError(err?.message || "Failed to delete JD", "Delete Failed");
+    }
   };
 
   return (
     <div className="space-y-4">
-      {message ? (
-        <div className="rounded-xl bg-green-50 p-3 text-sm text-green-700">
-          {message}
-        </div>
-      ) : null}
       <JobListWithDelete
         jobs={jobs}
         onDelete={onDeleteJob}

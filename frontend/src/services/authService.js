@@ -59,7 +59,11 @@ export async function signupWithPassword({
     method: "POST",
     body: { fullName, email, password, phone, role },
   });
-  return data.user;
+  return {
+    user: data.user || null,
+    hasSession: Boolean(data.hasSession),
+    needsEmailConfirmation: Boolean(data.needsEmailConfirmation),
+  };
 }
 
 export async function loginWithGoogle() {

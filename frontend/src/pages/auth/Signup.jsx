@@ -4,6 +4,7 @@ import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import { useAuth } from "../../context/authStore";
 import { ROLES } from "../../utils/constants";
+import { showError, showInfo } from "../../utils/alerts";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -11,12 +12,12 @@ export default function Signup() {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const EyeIcon = ({ off = false }) => (
     <svg
       viewBox="0 0 24 24"
@@ -37,16 +38,29 @@ export default function Signup() {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setError("Password and Confirm Password do not match");
+      await showError(
+        "Password and Confirm Password do not match",
+        "Validation Error",
+      );
       return;
     }
     setSubmitting(true);
-    setError("");
     try {
-      await signup({ fullName, email, password, role: ROLES.STUDENT });
-      navigate("/complete-profile");
+      const result = await signup({
+        fullName,
+        email,
+        phone,
+        password,
+        role: ROLES.STUDENT,
+      });
+      if (result?.hasSession) {
+        navigate("/complete-profile");
+        return;
+      }
+      await showInfo("Signup successful. Please login to continue.", "Success");
+      navigate("/login");
     } catch (err) {
-      setError(err?.message || "Signup failed");
+      await showError(err?.message || "Signup failed", "Signup Failed");
     } finally {
       setSubmitting(false);
     }
@@ -75,6 +89,13 @@ export default function Signup() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
+            />
+            <Input
+              label="Phone"
+              className="col-span-1"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              type="tel"
             />
             <label className="col-span-2 block">
               <div className="mb-1 text-sm font-medium text-slate-700">
@@ -122,12 +143,6 @@ export default function Signup() {
                 </button>
               </div>
             </label>
-
-            {error ? (
-              <div className="col-span-2 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </div>
-            ) : null}
 
             <div className="col-span-2">
               <Button type="submit" className="w-full" disabled={submitting}>

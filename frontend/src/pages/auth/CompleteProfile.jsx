@@ -13,6 +13,7 @@ import {
 } from "../../services/resumeService";
 import { isStudentProfileComplete } from "../../utils/profileChecks";
 import { uploadProfilePhoto } from "../../services/profileService";
+import { showError } from "../../utils/alerts";
 
 export default function CompleteProfile() {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ export default function CompleteProfile() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     setForm(initial);
@@ -60,7 +61,13 @@ export default function CompleteProfile() {
     }
   };
 
-  const update = (patch) => setForm((p) => ({ ...p, ...patch }));
+  const update = (patch) => {
+    setForm((p) => ({ ...p, ...patch }));
+    const key = Object.keys(patch || {})[0];
+    if (key) {
+      setFieldErrors((prev) => ({ ...prev, [key]: "" }));
+    }
+  };
 
   const onPickPhoto = (file) => {
     if (!file) return;
@@ -83,7 +90,7 @@ export default function CompleteProfile() {
       update({ resumes: uploaded });
       await refreshResumes();
     } catch (err) {
-      setError(err?.message || "Failed to upload resumes");
+      await showError(err?.message || "Failed to upload resumes", "Upload Failed");
     } finally {
       setUploading(false);
     }
@@ -97,7 +104,7 @@ export default function CompleteProfile() {
       const rows = await listMyResumes();
       update({ resumes: rows });
     } catch (err) {
-      setError(err?.message || "Failed to delete resume");
+      await showError(err?.message || "Failed to delete resume", "Delete Failed");
     } finally {
       setUploading(false);
     }
@@ -105,17 +112,18 @@ export default function CompleteProfile() {
 
   const save = async (e) => {
     e.preventDefault();
-    setError("");
+    setFieldErrors({});
 
-    // Client-side validation for required student fields.
-    const missing = [];
-    if (!form.fullName?.trim()) missing.push("Full Name");
-    if (!form.phone?.trim()) missing.push("Phone");
-    if (!form.skills?.length) missing.push("Skills");
-    if (!form.resumes?.length) missing.push("At least one resume");
+    const nextErrors = {};
+    if (!form.fullName?.trim()) nextErrors.fullName = "Full name is required";
+    if (!form.phone?.trim()) nextErrors.phone = "Phone number is required";
+    if (!form.skills?.length) nextErrors.skills = "Select at least one skill";
+    if (!form.resumes?.length) {
+      nextErrors.resumes = "Upload at least one resume";
+    }
 
-    if (missing.length) {
-      setError(`Please add: ${missing.join(", ")}`);
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors);
       return;
     }
 
@@ -131,7 +139,7 @@ export default function CompleteProfile() {
           : "/complete-profile",
       );
     } catch (err) {
-      setError(err?.message || "Failed to save profile");
+      await showError(err?.message || "Failed to save profile", "Save Failed");
     } finally {
       setSaving(false);
     }
@@ -154,12 +162,6 @@ export default function CompleteProfile() {
               {form.role}
             </div>
           </div>
-
-          {error ? (
-            <div className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
 
           <form onSubmit={save} className="mt-6 grid grid-cols-2 gap-5">
             <div className="col-span-2 rounded-xl border border-slate-200 bg-bgLight p-4">
@@ -188,6 +190,7 @@ export default function CompleteProfile() {
             <Input
               label="Full Name"
               value={form.fullName}
+              error={fieldErrors.fullName}
               onChange={(e) => update({ fullName: e.target.value })}
             />
             <Input
@@ -204,6 +207,7 @@ export default function CompleteProfile() {
             <Input
               label="Phone"
               value={form.phone}
+              error={fieldErrors.phone}
               onChange={(e) => update({ phone: e.target.value })}
             />
 
@@ -215,6 +219,11 @@ export default function CompleteProfile() {
                 selected={form.skills}
                 onChange={(skills) => update({ skills })}
               />
+              {fieldErrors.skills ? (
+                <div className="mt-1 text-xs text-red-600">
+                  {fieldErrors.skills}
+                </div>
+              ) : null}
             </div>
 
             <div className="col-span-2 rounded-xl border border-slate-200 p-4">
@@ -281,6 +290,11 @@ export default function CompleteProfile() {
                 onUpload={onUploadResumes}
                 onDelete={onDeleteResume}
               />
+              {fieldErrors.resumes ? (
+                <div className="mt-1 text-xs text-red-600">
+                  {fieldErrors.resumes}
+                </div>
+              ) : null}
             </div>
 
             <div className="col-span-2">

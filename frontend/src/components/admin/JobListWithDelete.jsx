@@ -1,46 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Button from "../common/Button";
-
-function JobDeleteConfirmModal({ job, onCancel, onConfirm, deleting }) {
-  if (!job) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
-        <div className="text-base font-semibold text-slate-900">Delete JD</div>
-        <div className="mt-2 text-sm text-slate-700">
-          Are you sure you want to delete this JD?
-        </div>
-        <div className="mt-3 rounded-xl bg-slate-50 p-3">
-          <div className="text-sm font-semibold text-slate-900">{job.title}</div>
-          <div className="text-xs text-slate-600">{job.company}</div>
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel} disabled={deleting}>
-            Cancel
-          </Button>
-          <Button
-            className="bg-red-600 from-red-600 to-red-700 hover:opacity-100"
-            onClick={onConfirm}
-            disabled={deleting}
-          >
-            {deleting ? "Deleting..." : "Yes, Delete"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { confirmDanger, showError } from "../../utils/alerts";
 
 export default function JobListWithDelete({
   jobs,
   onDelete,
   emptyMessage = "No jobs found.",
 }) {
-  const [jobToDelete, setJobToDelete] = useState(null);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState("");
-
   const sortedJobs = useMemo(
     () =>
       [...(jobs || [])].sort(
@@ -49,26 +15,23 @@ export default function JobListWithDelete({
     [jobs],
   );
 
-  const confirmDelete = async () => {
-    if (!jobToDelete) return;
-    setDeleting(true);
-    setError("");
+  const handleDelete = async (job) => {
+    const confirmed = await confirmDanger({
+      title: "Delete JD",
+      text: `Are you sure you want to delete ${job.title} at ${job.company}?`,
+      confirmButtonText: "Yes, delete",
+    });
+    if (!confirmed) return;
+
     try {
-      await onDelete?.(jobToDelete);
-      setJobToDelete(null);
+      await onDelete?.(job);
     } catch (err) {
-      setError(err?.message || "Failed to delete JD");
-    } finally {
-      setDeleting(false);
+      await showError(err?.message || "Failed to delete JD", "Delete Failed");
     }
   };
 
   return (
     <div className="space-y-4">
-      {error ? (
-        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>
-      ) : null}
-
       {sortedJobs.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
           {emptyMessage}
@@ -85,7 +48,7 @@ export default function JobListWithDelete({
                 <Button
                   variant="outline"
                   className="border-red-200 text-red-600 hover:bg-red-50"
-                  onClick={() => setJobToDelete(job)}
+                  onClick={() => handleDelete(job)}
                 >
                   Delete
                 </Button>
@@ -98,13 +61,6 @@ export default function JobListWithDelete({
           ))}
         </div>
       )}
-
-      <JobDeleteConfirmModal
-        job={jobToDelete}
-        deleting={deleting}
-        onCancel={() => (deleting ? null : setJobToDelete(null))}
-        onConfirm={confirmDelete}
-      />
     </div>
   );
 }

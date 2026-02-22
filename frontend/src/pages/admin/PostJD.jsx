@@ -3,10 +3,10 @@ import JDForm from "../../components/admin/JDForm";
 import JobListWithDelete from "../../components/admin/JobListWithDelete";
 import { useAuth } from "../../context/authStore";
 import { createJob, deleteJob, listJobs } from "../../services/jobService";
+import { showError, showSuccess } from "../../utils/alerts";
 
 export default function PostJD() {
   const { user } = useAuth();
-  const [message, setMessage] = useState("");
   const [jobs, setJobs] = useState([]);
 
   const refreshJobs = async () => {
@@ -19,17 +19,19 @@ export default function PostJD() {
   }, []);
 
   const onSubmit = async (job) => {
-    await createJob(job);
-    setMessage("JD posted successfully.");
-    await refreshJobs();
-    setTimeout(() => setMessage(""), 2000);
+    try {
+      await createJob(job);
+      await refreshJobs();
+      await showSuccess("JD posted successfully.");
+    } catch (err) {
+      await showError(err?.message || "Failed to post JD", "Post Failed");
+    }
   };
 
   const onDeleteJob = async (job) => {
     await deleteJob(job.id);
-    setMessage("JD deleted successfully.");
     await refreshJobs();
-    setTimeout(() => setMessage(""), 2000);
+    await showSuccess("JD deleted successfully.");
   };
 
   const adminJobs = useMemo(() => {
@@ -39,11 +41,6 @@ export default function PostJD() {
 
   return (
     <div className="space-y-4">
-      {message ? (
-        <div className="rounded-xl bg-green-50 p-3 text-sm text-green-700">
-          {message}
-        </div>
-      ) : null}
       <JDForm onSubmit={onSubmit} />
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="text-base font-semibold text-slate-900">

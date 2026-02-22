@@ -5,6 +5,7 @@ import Input from "../../components/common/Input";
 import { useAuth } from "../../context/authStore";
 import { ROLES } from "../../utils/constants";
 import { isStudentProfileComplete } from "../../utils/profileChecks";
+import { showError } from "../../utils/alerts";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,7 +16,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
   const [loginType, setLoginType] = useState("microdegree");
 
   useEffect(() => {
@@ -36,7 +36,6 @@ export default function Login() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError("");
     try {
       const { session, profile: freshProfile } = await login({
         email,
@@ -57,7 +56,7 @@ export default function Login() {
         navigate("/student/dashboard");
       }
     } catch (err) {
-      setError(err?.message || "Login failed");
+      await showError(err?.message || "Login failed", "Login Failed");
     } finally {
       setSubmitting(false);
     }
@@ -82,17 +81,17 @@ export default function Login() {
                 Seamless access for students of MicroDegree for job posts
               </p>
             </div>
-            {/* <div className="rounded-xl bg-white/10 p-4 backdrop-blur">
+            <div className="rounded-xl bg-white/10 p-4 backdrop-blur">
               <div className="text-sm font-semibold">Why you'll like this:</div>
               <ul className="mt-2 space-y-2 text-sm text-white/80">
                 <li>- Google SSO with one click</li>
                 <li>- Clean dashboards for students & admins</li>
                 <li>- Responsive layout that feels at home on mobile</li>
               </ul>
-            </div> */}
-            {/* <div className="mt-auto text-xs text-white/70">
+            </div>
+            <div className="mt-auto text-xs text-white/70">
               Need an account? Choose Student Login and tap Sign up.
-            </div> */}
+            </div>
           </div>
         </div>
 
@@ -112,7 +111,7 @@ export default function Login() {
               </div>
             </div>
 
-            {/* <div className="w-48">
+            <div className="w-48">
               <select
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm"
                 value={loginType}
@@ -124,7 +123,7 @@ export default function Login() {
               <div className="mt-1 text-[11px] font-medium text-slate-500">
                 Switch if you're a student vs. MicroDegree team.
               </div>
-            </div> */}
+            </div>
           </div>
 
           <div className="mt-6">
@@ -163,12 +162,6 @@ export default function Login() {
               type="password"
               placeholder="Enter your password"
             />
-
-            {error ? (
-              <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-                {error}
-              </div>
-            ) : null}
 
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Logging in..." : "Login"}

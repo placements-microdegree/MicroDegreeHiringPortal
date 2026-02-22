@@ -45,17 +45,23 @@ export function AuthProvider({ children }) {
 
   const signup = useCallback(
     async ({ fullName, email, password, phone, role }) => {
-      const session = await signupWithPassword({
+      const result = await signupWithPassword({
         fullName,
         email,
         password,
         phone,
         role,
       });
-      setUser(session);
+      if (!result.hasSession || !result.user) {
+        setUser(null);
+        setProfile(null);
+        return result;
+      }
+
+      setUser(result.user);
       const p = await getProfile();
       setProfile(p);
-      return session;
+      return { ...result, profile: p };
     },
     [],
   );

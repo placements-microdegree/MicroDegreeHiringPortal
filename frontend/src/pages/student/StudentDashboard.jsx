@@ -8,12 +8,12 @@ import {
   createApplication,
   listApplicationsByStudent,
 } from "../../services/applicationService";
+import { showInfo } from "../../utils/alerts";
 
 export default function StudentDashboard() {
   const { profile } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [apps, setApps] = useState([]);
-  const [message, setMessage] = useState("");
 
   const completion = useMemo(
     () => calculateProfileCompletion(profile),
@@ -32,7 +32,13 @@ export default function StudentDashboard() {
 
   const apply = async (job) => {
     if (!profile?.isEligible) {
-      setMessage("You are not eligible to apply. Please contact support.");
+      const suffix = profile?.eligibleUntil
+        ? ` (Valid until ${new Date(profile.eligibleUntil).toLocaleDateString()})`
+        : "";
+      await showInfo(
+        `You are not eligible to apply. Please contact support.${suffix}`,
+        "Not Eligible",
+      );
       return;
     }
     const already = apps.some((a) => a.job_id === job.id || a.jobId === job.id);
@@ -43,14 +49,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
-      {message ? (
-        <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-          {message}{" "}
-          {profile?.eligibleUntil
-            ? `(Valid until ${new Date(profile.eligibleUntil).toLocaleDateString()})`
-            : ""}
-        </div>
-      ) : null}
       <ProfileCompletion percent={completion} />
 
       <div className="grid grid-cols-2 gap-6">
