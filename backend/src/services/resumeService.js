@@ -7,6 +7,7 @@ const {
 } = require("../config/db");
 
 const BUCKET = "resumes";
+const MAX_RESUMES_PER_STUDENT = 3;
 
 function buildObjectPath(userId, originalName) {
   const ext = path.extname(originalName || "");
@@ -15,6 +16,13 @@ function buildObjectPath(userId, originalName) {
 }
 
 async function uploadResume({ userId, jwt, file }) {
+  const existing = await listResumesByUser(userId);
+  if ((existing || []).length >= MAX_RESUMES_PER_STUDENT) {
+    const err = new Error("Maximum 3 resumes are allowed");
+    err.status = 400;
+    throw err;
+  }
+
   const objectPath = buildObjectPath(userId, file.originalname);
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -148,6 +156,7 @@ async function deleteResume({ resumeId }) {
 }
 
 module.exports = {
+  MAX_RESUMES_PER_STUDENT,
   uploadResume,
   listResumesByUser,
   listResumesByUserWithSignedUrls,

@@ -6,6 +6,7 @@ async function apply(req, res, next) {
       jwt: req.user.jwt,
       payload: {
         studentId: req.user.id,
+        ...req.body,
         jobId: req.body.jobId,
         status: "Applied",
       },
@@ -23,6 +24,18 @@ async function myApplications(req, res, next) {
       jwt: req.user.jwt,
     });
     res.json({ success: true, applications });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function myAnalytics(req, res, next) {
+  try {
+    const analytics = await applicationService.getStudentAnalytics({
+      studentId: req.user.id,
+      jwt: req.user.jwt,
+    });
+    res.json({ success: true, analytics });
   } catch (err) {
     next(err);
   }
@@ -57,6 +70,7 @@ async function updateStatus(req, res, next) {
 module.exports = {
   apply,
   myApplications,
+  myAnalytics,
   allApplications,
   updateStatus,
 };

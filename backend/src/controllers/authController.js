@@ -97,6 +97,13 @@ async function findUserByEmail(supabase, email) {
 
 async function ensureProfileRow({ user, role, fullName, phone, email }) {
   const supabase = getAdminClient();
+  const { data: existing, error: existingError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (existingError) throw existingError;
+
   const normalizedPhone =
     normalizePhone(
       phone ||
@@ -123,7 +130,7 @@ async function ensureProfileRow({ user, role, fullName, phone, email }) {
     .select("*")
     .single();
   if (error) throw error;
-  return data;
+  return { profile: data, isNew: !existing };
 }
 
 async function enforceStudentEligibility({ user }) {
@@ -152,27 +159,42 @@ async function enforceStudentEligibility({ user }) {
       role: ROLES.STUDENT,
       is_eligible: false,
       eligible_until: null,
+      application_quota: 3,
       updated_at: new Date().toISOString(),
     });
     if (updateError) throw updateError;
     return { ok: false, message };
   };
 
-  if (!phone) {
-    return markIneligible("Phone number missing in profile");
+  let enrolledByPhone = null;
+  let enrolledByEmail = null;
+
+  if (phone) {
+    const { data, error } = await supabase
+      .from("students_enrolled_all")
+      .select("*")
+      .eq("phone", phone)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    enrolledByPhone = data;
   }
 
-  const { data: enrolled, error: enrollError } = await supabase
-    .from("students_enrolled_all")
-    .select("*")
-    .eq("phone", phone)
-    .maybeSingle();
-  if (enrollError) throw enrollError;
-  if (!enrolled) return markIneligible("Not enrolled");
-  if (enrolled.email && enrolled.email.toLowerCase() !== email) {
-    return markIneligible("Email mismatch with enrolled data");
+  if (email) {
+    const { data, error } = await supabase
+      .from("students_enrolled_all")
+      .select("*")
+      .eq("email", email)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    enrolledByEmail = data;
   }
-  if (!enrolled.course_fee || Number(enrolled.course_fee) <= 3000) {
+
+  const enrolled = enrolledByPhone || enrolledByEmail;
+  if (!enrolled) return markIneligible("Not enrolled");
+
+  if (!enrolled.course_fee || Number(enrolled.course_fee) <= 7000) {
     return markIneligible("Not eligible for placements");
   }
 
@@ -192,10 +214,11 @@ async function enforceStudentEligibility({ user }) {
   const { error: updateError } = await supabase.from("profiles").upsert({
     id: user.id,
     email,
-    phone,
+    phone: phone || null,
     role: ROLES.STUDENT,
     is_eligible: true,
     eligible_until: expiry.toISOString(),
+    application_quota: null,
     updated_at: new Date().toISOString(),
   });
   if (updateError) throw updateError;
@@ -272,9 +295,9 @@ async function login(req, res, next) {
       data.user?.app_metadata?.role ||
       ROLES.STUDENT;
 
-    await ensureProfileRow({ user: data.user, role });
+    const profileUpsert = await ensureProfileRow({ user: data.user, role });
 
-    if (role === ROLES.STUDENT) {
+    if (role === ROLES.STUDENT && profileUpsert.isNew) {
       const eligibility = await enforceStudentEligibility({ user: data.user });
       if (!eligibility.ok) {
         devLog("[login] student eligibility", {
@@ -420,13 +443,17 @@ async function signup(req, res, next) {
     }
 
     try {
-      await ensureProfileRow({
+      const profileUpsert = await ensureProfileRow({
         user: userForProfile,
         role: role || ROLES.STUDENT,
         fullName,
         phone: normalizedPhone,
         email: normalizedEmail,
       });
+
+      if ((role || ROLES.STUDENT) === ROLES.STUDENT && profileUpsert.isNew) {
+        await enforceStudentEligibility({ user: userForProfile });
+      }
     } catch (profileErr) {
       if (profileErr?.code === "23503") {
         return res.status(409).json({

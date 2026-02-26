@@ -14,6 +14,8 @@ function mapProfileRow(row, resumes = []) {
     skills: row.skills || [],
     experienceLevel: row.experience_level,
     experienceYears: row.experience_years,
+    isCurrentlyWorking: row.is_currently_working,
+    totalExperience: row.total_experience,
     currentCTC: row.current_ctc,
     expectedCTC: row.expected_ctc,
     profilePhotoUrl: row.profile_photo_url,
@@ -21,6 +23,7 @@ function mapProfileRow(row, resumes = []) {
     createdAt: row.created_at,
     isEligible: row.is_eligible,
     eligibleUntil: row.eligible_until,
+    applicationQuota: row.application_quota,
     resumes,
   };
 }

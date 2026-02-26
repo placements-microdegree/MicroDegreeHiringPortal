@@ -2,15 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
-import ResumeUpload from "../../components/student/ResumeUpload";
-import SkillSelector from "../../components/student/SkillSelector";
 import { useAuth } from "../../context/authStore";
 import { ROLES } from "../../utils/constants";
-import {
-  listMyResumes,
-  uploadResumes,
-  deleteResume,
-} from "../../services/resumeService";
 import { isStudentProfileComplete } from "../../utils/profileChecks";
 import { uploadProfilePhoto } from "../../services/profileService";
 import { showError } from "../../utils/alerts";
@@ -33,33 +26,17 @@ export default function CompleteProfile() {
       currentCTC: p.currentCTC || "",
       expectedCTC: p.expectedCTC || "",
       profilePhotoUrl: p.profilePhotoUrl || "",
-      resumes: p.resumes || [],
     };
   }, [profile, user]);
 
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     setForm(initial);
   }, [initial]);
-
-  useEffect(() => {
-    // Pull existing resumes when the page loads so validation reflects reality.
-    refreshResumes();
-  }, []);
-
-  const refreshResumes = async () => {
-    try {
-      const rows = await listMyResumes();
-      update({ resumes: rows });
-    } catch {
-      // ignore
-    }
-  };
 
   const update = (patch) => {
     setForm((p) => ({ ...p, ...patch }));
@@ -82,34 +59,6 @@ export default function CompleteProfile() {
       .finally(() => setPhotoUploading(false));
   };
 
-  const onUploadResumes = async (files) => {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      const uploaded = await uploadResumes(files);
-      update({ resumes: uploaded });
-      await refreshResumes();
-    } catch (err) {
-      await showError(err?.message || "Failed to upload resumes", "Upload Failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const onDeleteResume = async (resume) => {
-    if (!resume?.id) return;
-    setUploading(true);
-    try {
-      await deleteResume(resume.id);
-      const rows = await listMyResumes();
-      update({ resumes: rows });
-    } catch (err) {
-      await showError(err?.message || "Failed to delete resume", "Delete Failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const save = async (e) => {
     e.preventDefault();
     setFieldErrors({});
@@ -117,10 +66,6 @@ export default function CompleteProfile() {
     const nextErrors = {};
     if (!form.fullName?.trim()) nextErrors.fullName = "Full name is required";
     if (!form.phone?.trim()) nextErrors.phone = "Phone number is required";
-    if (!form.skills?.length) nextErrors.skills = "Select at least one skill";
-    if (!form.resumes?.length) {
-      nextErrors.resumes = "Upload at least one resume";
-    }
 
     if (Object.keys(nextErrors).length) {
       setFieldErrors(nextErrors);
@@ -211,21 +156,6 @@ export default function CompleteProfile() {
               onChange={(e) => update({ phone: e.target.value })}
             />
 
-            <div className="col-span-2">
-              <div className="mb-2 text-sm font-medium text-slate-700">
-                Skills
-              </div>
-              <SkillSelector
-                selected={form.skills}
-                onChange={(skills) => update({ skills })}
-              />
-              {fieldErrors.skills ? (
-                <div className="mt-1 text-xs text-red-600">
-                  {fieldErrors.skills}
-                </div>
-              ) : null}
-            </div>
-
             <div className="col-span-2 rounded-xl border border-slate-200 p-4">
               <div className="text-sm font-semibold text-slate-900">
                 Experience
@@ -285,31 +215,16 @@ export default function CompleteProfile() {
             </div>
 
             <div className="col-span-2">
-              <ResumeUpload
-                resumes={form.resumes}
-                onUpload={onUploadResumes}
-                onDelete={onDeleteResume}
-              />
-              {fieldErrors.resumes ? (
-                <div className="mt-1 text-xs text-red-600">
-                  {fieldErrors.resumes}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="col-span-2">
               <Button
                 type="submit"
                 className="w-full"
-                disabled={saving || uploading || photoUploading}
+                disabled={saving || photoUploading}
               >
                 {saving
                   ? "Saving..."
-                  : uploading
-                    ? "Uploading resumes..."
-                    : photoUploading
-                      ? "Uploading photo..."
-                      : "Save & Continue"}
+                  : photoUploading
+                    ? "Uploading photo..."
+                    : "Save & Continue"}
               </Button>
             </div>
           </form>

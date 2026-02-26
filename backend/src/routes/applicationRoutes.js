@@ -12,7 +12,11 @@ router.post(
   "/apply",
   verifyToken,
   authorizeRole([ROLES.STUDENT]),
-  invalidateApiCache(["/api/applications", "/api/admin/analytics"]),
+  invalidateApiCache([
+    "/api/applications",
+    "/api/admin/analytics",
+    "/api/applications/analytics/me",
+  ]),
   applicationController.apply,
 );
 router.get(
@@ -21,6 +25,13 @@ router.get(
   authorizeRole([ROLES.STUDENT]),
   cacheResponse({ ttlSeconds: 30 }),
   applicationController.myApplications,
+);
+router.get(
+  "/analytics/me",
+  verifyToken,
+  authorizeRole([ROLES.STUDENT]),
+  cacheResponse({ ttlSeconds: 30 }),
+  applicationController.myAnalytics,
 );
 
 // Admin
@@ -35,7 +46,11 @@ router.patch(
   "/:id/status",
   verifyToken,
   authorizeRole([ROLES.ADMIN, ROLES.SUPER_ADMIN]),
-  invalidateApiCache(["/api/applications", "/api/admin/analytics"]),
+  invalidateApiCache([
+    "/api/applications",
+    "/api/admin/analytics",
+    "/api/applications/analytics/me",
+  ]),
   applicationController.updateStatus,
 );
 

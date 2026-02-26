@@ -18,11 +18,18 @@ function getJobId(application) {
 }
 
 function getJobTitle(application) {
-  return application.job?.title || application.jobs?.title || application.jobTitle || "Untitled Job";
+  return (
+    application.job?.title ||
+    application.jobs?.title ||
+    application.jobTitle ||
+    "Untitled Job"
+  );
 }
 
 function normalizeJobStatus(status) {
-  const value = String(status || "").trim().toLowerCase();
+  const value = String(status || "")
+    .trim()
+    .toLowerCase();
   if (value === "active") return "active";
   if (value === "deleted") return "deleted";
   return "unknown";
@@ -132,7 +139,9 @@ export default function ManageApplicationsByJobView({
 
       const existing = jobsMap.get(jobId);
       if (!existing) {
-        const jobStatus = normalizeJobStatus(row.jobs?.status || row.job?.status);
+        const jobStatus = normalizeJobStatus(
+          row.jobs?.status || row.job?.status,
+        );
         jobsMap.set(jobId, {
           id: jobId,
           title: getJobTitle(row),
@@ -145,10 +154,13 @@ export default function ManageApplicationsByJobView({
       }
 
       if (!existing.createdAt) {
-        existing.createdAt = row.jobs?.created_at || row.job?.created_at || null;
+        existing.createdAt =
+          row.jobs?.created_at || row.job?.created_at || null;
       }
       if (existing.status === "unknown") {
-        existing.status = normalizeJobStatus(row.jobs?.status || row.job?.status);
+        existing.status = normalizeJobStatus(
+          row.jobs?.status || row.job?.status,
+        );
       }
       existing.applicationsCount += 1;
     }

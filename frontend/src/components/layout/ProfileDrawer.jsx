@@ -2,13 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "../common/Button";
 import Input from "../common/Input";
 import SkillSelector from "../student/SkillSelector";
-import ResumeUpload from "../student/ResumeUpload";
-import {
-  listMyResumes,
-  uploadResumes,
-} from "../../services/resumeService";
 import { uploadProfilePhoto } from "../../services/profileService";
-import { deleteResume } from "../../services/resumeService";
 
 export default function ProfileDrawer({ open, onClose, profile, onSave }) {
   const initial = useMemo(
@@ -25,32 +19,17 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
         currentCTC: "",
         expectedCTC: "",
         profilePhotoUrl: "",
-        resumes: [],
       },
     [profile],
   );
 
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   useEffect(() => {
     setForm(initial);
   }, [initial]);
-
-  useEffect(() => {
-    const loadResumes = async () => {
-      if (!open) return;
-      try {
-        const rows = await listMyResumes();
-        setForm((p) => ({ ...p, resumes: rows }));
-      } catch {
-        // ignore
-      }
-    };
-    loadResumes();
-  }, [open]);
 
   if (!open) return null;
 
@@ -60,11 +39,10 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
     if (!file) return;
     setPhotoUploading(true);
     try {
-      const { url, profile: saved } = await uploadProfilePhoto(file);
+      const { url } = await uploadProfilePhoto(file);
       const next = {
         ...form,
         profilePhotoUrl: url,
-        resumes: saved?.resumes || form.resumes,
       };
       update(next);
       if (onSave) {
@@ -74,30 +52,6 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
       update({ profilePhotoUrl: URL.createObjectURL(file) });
     } finally {
       setPhotoUploading(false);
-    }
-  };
-
-  const onUploadResumes = async (files) => {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      await uploadResumes(files);
-      const rows = await listMyResumes();
-      setForm((p) => ({ ...p, resumes: rows }));
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const onDeleteResume = async (resume) => {
-    if (!resume?.id) return;
-    setUploading(true);
-    try {
-      await deleteResume(resume.id);
-      const rows = await listMyResumes();
-      setForm((p) => ({ ...p, resumes: rows }));
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -219,23 +173,16 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
         </div>
 
         <div className="border-t border-slate-200 px-5 py-4 space-y-3">
-          <ResumeUpload
-            resumes={form.resumes || []}
-            onUpload={onUploadResumes}
-            onDelete={onDeleteResume}
-          />
           <Button
             className="w-full"
             onClick={save}
-            disabled={saving || uploading || photoUploading}
+            disabled={saving || photoUploading}
           >
             {saving
               ? "Saving..."
-              : uploading
-                ? "Uploading..."
-                : photoUploading
-                  ? "Uploading photo..."
-                  : "Save"}
+              : photoUploading
+                ? "Uploading photo..."
+                : "Save"}
           </Button>
         </div>
       </div>

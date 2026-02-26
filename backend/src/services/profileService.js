@@ -55,6 +55,11 @@ async function upsertProfile({ userId, jwt, payload }) {
     experience_years: payload.experienceYears,
     current_ctc: payload.currentCTC,
     expected_ctc: payload.expectedCTC,
+    is_currently_working:
+      typeof payload.isCurrentlyWorking === "boolean"
+        ? payload.isCurrentlyWorking
+        : null,
+    total_experience: payload.totalExperience,
     profile_photo_url: payload.profilePhotoUrl,
     updated_at: new Date().toISOString(),
   };

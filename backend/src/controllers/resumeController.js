@@ -17,6 +17,17 @@ async function upload(req, res, next) {
       role: req.user.role,
     });
 
+    const existing = await resumeService.listResumesByUser(req.user.id);
+    if (
+      (existing.length || 0) + files.length >
+      resumeService.MAX_RESUMES_PER_STUDENT
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Maximum ${resumeService.MAX_RESUMES_PER_STUDENT} resumes are allowed`,
+      });
+    }
+
     const uploaded = [];
     for (const f of files) {
       // eslint-disable-next-line no-await-in-loop

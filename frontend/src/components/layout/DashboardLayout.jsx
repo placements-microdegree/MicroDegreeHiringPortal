@@ -5,6 +5,7 @@ import Navbar from "./Navbar";
 import ProfileDrawer from "./ProfileDrawer";
 import Sidebar from "./Sidebar";
 import { ROLES } from "../../utils/constants";
+import { calculateProfileCompletion } from "../../utils/calculateProfileCompletion";
 
 export default function DashboardLayout({ role }) {
   const { profile, updateProfile } = useAuth();
@@ -33,6 +34,10 @@ export default function DashboardLayout({ role }) {
   }, [location.pathname, role]);
 
   const showProfile = role === ROLES.STUDENT;
+  const completionPercent = useMemo(() => {
+    if (!showProfile) return null;
+    return calculateProfileCompletion(profile);
+  }, [profile, showProfile]);
 
   return (
     <div className="min-h-screen bg-bgLight">
@@ -44,6 +49,7 @@ export default function DashboardLayout({ role }) {
             profilePhotoUrl={profile?.profilePhotoUrl || ""}
             onProfileClick={() => setDrawerOpen(true)}
             showProfile={showProfile}
+            completionPercent={completionPercent}
           />
           <main className="flex-1 p-6">
             <Outlet />

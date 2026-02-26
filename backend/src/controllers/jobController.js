@@ -2,7 +2,7 @@ const jobService = require("../services/jobService");
 
 async function list(req, res, next) {
   try {
-    const jobs = await jobService.listJobs();
+    const jobs = await jobService.listJobs({ actor: req.user });
     res.json({ success: true, jobs });
   } catch (err) {
     next(err);

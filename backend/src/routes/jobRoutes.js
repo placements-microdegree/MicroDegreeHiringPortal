@@ -1,5 +1,6 @@
 const express = require("express");
 const verifyToken = require("../middleware/verifyToken");
+const optionalVerifyToken = require("../middleware/optionalVerifyToken");
 const authorizeRole = require("../middleware/authorizeRole");
 const { cacheResponse, invalidateApiCache } = require("../middleware/apiCache");
 const jobController = require("../controllers/jobController");
@@ -8,7 +9,12 @@ const { ROLES } = require("../utils/constants");
 const router = express.Router();
 
 // Everyone can read
-router.get("/", cacheResponse({ ttlSeconds: 60 }), jobController.list);
+router.get(
+  "/",
+  optionalVerifyToken,
+  cacheResponse({ ttlSeconds: 60 }),
+  jobController.list,
+);
 
 // Admin only
 router.post(
@@ -19,6 +25,7 @@ router.post(
     "/api/jobs",
     "/api/applications",
     "/api/admin/analytics",
+    "/api/applications/analytics/me",
   ]),
   jobController.create,
 );
@@ -30,6 +37,7 @@ router.put(
     "/api/jobs",
     "/api/applications",
     "/api/admin/analytics",
+    "/api/applications/analytics/me",
   ]),
   jobController.update,
 );
@@ -41,6 +49,7 @@ router.delete(
     "/api/jobs",
     "/api/applications",
     "/api/admin/analytics",
+    "/api/applications/analytics/me",
   ]),
   jobController.remove,
 );

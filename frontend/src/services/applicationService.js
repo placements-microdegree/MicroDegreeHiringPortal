@@ -12,10 +12,10 @@ async function request(path, { method = "GET", body } = {}) {
   return data;
 }
 
-export async function createApplication({ jobId }) {
+export async function createApplication(payload) {
   const data = await request("/api/applications/apply", {
     method: "POST",
-    body: { jobId },
+    body: payload,
   });
   return data.application;
 }
@@ -36,4 +36,9 @@ export async function updateApplicationStatus(applicationId, status) {
     body: { status },
   });
   return data.application;
+}
+
+export async function getStudentAnalytics() {
+  const data = await request("/api/applications/analytics/me");
+  return data.analytics || {};
 }

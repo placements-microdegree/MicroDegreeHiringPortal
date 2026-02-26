@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import JDForm from "../../components/admin/JDForm";
 import JobListWithDelete from "../../components/admin/JobListWithDelete";
 import { useAuth } from "../../context/authStore";
@@ -34,15 +34,14 @@ export default function PostJD() {
     await showSuccess("JD deleted successfully.");
   };
 
-  const adminJobs = useMemo(() => {
-    if (!user?.id) return jobs;
-    return jobs.filter((job) => !job.posted_by || job.posted_by === user.id);
-  }, [jobs, user?.id]);
+  const adminJobs = !user?.id
+    ? jobs
+    : jobs.filter((job) => !job.posted_by || job.posted_by === user.id);
 
   return (
     <div className="space-y-4">
       <JDForm onSubmit={onSubmit} />
-      <div className="rounded-xl border border-slate-200 bg-white p-4">
+      {/* <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="text-base font-semibold text-slate-900">
           Your Posted JDs
         </div>
@@ -53,7 +52,7 @@ export default function PostJD() {
             emptyMessage="No posted JDs yet."
           />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -17,7 +17,7 @@ router.post(
   "/upload",
   verifyToken,
   authorizeRole([ROLES.STUDENT]),
-  upload.array("files", 5),
+  upload.array("files", 3),
   invalidateApiCache(["/api/resumes/me", "/api/profile/me"]),
   resumeController.upload,
 );

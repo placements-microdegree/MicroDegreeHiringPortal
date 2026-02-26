@@ -20,6 +20,7 @@ router.put(
     "/api/profile/me",
     "/api/admin/students",
     "/api/admin/analytics",
+    "/api/applications/analytics/me",
   ]),
   profileController.upsertMyProfile,
 );
