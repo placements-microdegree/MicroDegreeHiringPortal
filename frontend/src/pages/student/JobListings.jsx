@@ -38,9 +38,13 @@ export default function JobListings() {
   }, []);
 
   const apply = async (job) => {
-    if (!profile?.isEligible) {
+    const hasEligibilityWindow = profile?.isEligible === true;
+    const remainingQuota = Number(profile?.applicationQuota ?? 0);
+    const hasQuotaAccess = !hasEligibilityWindow && remainingQuota > 0;
+
+    if (!hasEligibilityWindow && !hasQuotaAccess) {
       await showInfo(
-        "You are not eligible to apply. Please contact support.",
+        "You are not eligible to apply and your application quota is exhausted.",
         "Not Eligible",
       );
       return;
@@ -57,31 +61,40 @@ export default function JobListings() {
 
   const safeJobs = Array.isArray(jobs) ? jobs : [];
   const safeApps = Array.isArray(apps) ? apps : [];
+  let jobsContent = null;
+
+  if (isLoading) {
+    jobsContent = (
+      <div className="rounded-xl bg-white p-5">
+        <Loader label="Loading jobs..." />
+      </div>
+    );
+  } else if (safeJobs.length === 0) {
+    jobsContent = (
+      <div className="rounded-xl bg-white p-8 text-center text-slate-600">
+        No jobs posted at the moment
+      </div>
+    );
+  } else {
+    jobsContent = (
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {safeJobs.map((job) => (
+          <JobCard
+            key={job.id}
+            job={job}
+            onApply={apply}
+            applied={safeApps.some(
+              (a) => a.job_id === job.id || a.jobId === job.id,
+            )}
+          />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {isLoading ? (
-        <div className="rounded-xl bg-white p-5">
-          <Loader label="Loading jobs..." />
-        </div>
-      ) : safeJobs.length === 0 ? (
-        <div className="rounded-xl bg-white p-8 text-center text-slate-600">
-          No jobs posted at the moment
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {safeJobs.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onApply={apply}
-              applied={safeApps.some(
-                (a) => a.job_id === job.id || a.jobId === job.id,
-              )}
-            />
-          ))}
-        </div>
-      )}
+      {jobsContent}
 
       <ApplyJobModal
         open={applyOpen}
