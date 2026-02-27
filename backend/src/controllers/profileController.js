@@ -24,6 +24,7 @@ function mapProfileRow(row, resumes = []) {
     isEligible: row.is_eligible,
     eligibleUntil: row.eligible_until,
     applicationQuota: row.application_quota,
+    courseFee: row.course_fee,
     resumes,
   };
 }

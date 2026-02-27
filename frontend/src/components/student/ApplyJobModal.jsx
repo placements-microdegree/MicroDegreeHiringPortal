@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Button from "../common/Button";
 import Input from "../common/Input";
 import Modal from "../common/Modal";
-import { createApplication } from "../../services/applicationService";
+import {
+  createApplication,
+  listApplicationsByStudent,
+} from "../../services/applicationService";
 import {
   deleteResume,
   listMyResumes,
@@ -11,6 +14,20 @@ import {
 import { showError, showInfo, showSuccess } from "../../utils/alerts";
 
 const MAX_RESUMES = 3;
+
+function getMostRecentApplication(applications = [], currentJobId) {
+  const rows = Array.isArray(applications) ? applications : [];
+  const filtered = rows.filter((row) => {
+    const rowJobId = row?.job_id || row?.jobId;
+    return currentJobId ? String(rowJobId) !== String(currentJobId) : true;
+  });
+  if (filtered.length === 0) return null;
+  return [...filtered].sort(
+    (a, b) =>
+      new Date(b?.updated_at || b?.created_at || 0).getTime() -
+      new Date(a?.updated_at || a?.created_at || 0).getTime(),
+  )[0];
+}
 
 function YesNoButtons({ value, onChange }) {
   return (
@@ -58,38 +75,106 @@ export default function ApplyJobModal({
     saveForFuture: false,
   });
 
-  const resetWithProfile = () => {
-    setForm({
-      isCurrentlyWorking:
-        typeof profile?.isCurrentlyWorking === "boolean"
-          ? profile.isCurrentlyWorking
-          : null,
-      noticePeriod: "",
-      totalExperience:
-        profile?.totalExperience || profile?.experienceYears || "",
-      relevantExperience: "",
-      handsOnPrimarySkills: null,
-      workModeMatch: null,
-      interviewModeAvailable: null,
-      currentCTC: profile?.currentCTC || "",
-      expectedCTC: profile?.expectedCTC || "",
-      selectedResumeUrl: "",
-      jdConfirmed: false,
-      saveForFuture: false,
-    });
-  };
+  const buildFormFromSources = useCallback(
+    ({ previousApplication, resumeRows }) => {
+      const safeResumes = Array.isArray(resumeRows) ? resumeRows : [];
+      const previousResumeUrl =
+        previousApplication?.selected_resume_url ||
+        previousApplication?.selectedResumeUrl ||
+        "";
+      const hasPreviousResume = safeResumes.some(
+        (resume) => resume?.file_url === previousResumeUrl,
+      );
+
+      return {
+        isCurrentlyWorking:
+          typeof previousApplication?.is_currently_working === "boolean"
+            ? previousApplication.is_currently_working
+            : typeof previousApplication?.isCurrentlyWorking === "boolean"
+              ? previousApplication.isCurrentlyWorking
+              : typeof profile?.isCurrentlyWorking === "boolean"
+                ? profile.isCurrentlyWorking
+                : null,
+        noticePeriod:
+          previousApplication?.notice_period ||
+          previousApplication?.noticePeriod ||
+          "",
+        totalExperience:
+          previousApplication?.total_experience ||
+          previousApplication?.totalExperience ||
+          profile?.totalExperience ||
+          profile?.experienceYears ||
+          "",
+        relevantExperience:
+          previousApplication?.relevant_experience ||
+          previousApplication?.relevantExperience ||
+          "",
+        handsOnPrimarySkills:
+          typeof previousApplication?.hands_on_primary_skills === "boolean"
+            ? previousApplication.hands_on_primary_skills
+            : typeof previousApplication?.handsOnPrimarySkills === "boolean"
+              ? previousApplication.handsOnPrimarySkills
+              : null,
+        workModeMatch:
+          typeof previousApplication?.work_mode_match === "boolean"
+            ? previousApplication.work_mode_match
+            : typeof previousApplication?.workModeMatch === "boolean"
+              ? previousApplication.workModeMatch
+              : null,
+        interviewModeAvailable:
+          typeof previousApplication?.interview_mode_available === "boolean"
+            ? previousApplication.interview_mode_available
+            : typeof previousApplication?.interviewModeAvailable === "boolean"
+              ? previousApplication.interviewModeAvailable
+              : null,
+        currentCTC:
+          previousApplication?.current_ctc ||
+          previousApplication?.currentCTC ||
+          profile?.currentCTC ||
+          "",
+        expectedCTC:
+          previousApplication?.expected_ctc ||
+          previousApplication?.expectedCTC ||
+          profile?.expectedCTC ||
+          "",
+        selectedResumeUrl: hasPreviousResume ? previousResumeUrl : "",
+        jdConfirmed: false,
+        saveForFuture: false,
+      };
+    },
+    [profile],
+  );
 
   useEffect(() => {
     if (!open) return;
-    resetWithProfile();
-    listMyResumes()
-      .then((rows) => {
-        setResumes(rows || []);
-      })
-      .catch(() => {
-        setResumes([]);
-      });
-  }, [open, profile]);
+
+    const init = async () => {
+      const [resumeRows, applicationRows] = await Promise.all([
+        listMyResumes(),
+        listApplicationsByStudent(),
+      ]);
+      const safeResumes = Array.isArray(resumeRows) ? resumeRows : [];
+      const previousApplication = getMostRecentApplication(
+        applicationRows,
+        job?.id,
+      );
+
+      setResumes(safeResumes);
+      setForm(
+        buildFormFromSources({
+          previousApplication,
+          resumeRows: safeResumes,
+        }),
+      );
+    };
+
+    init().catch(() => {
+      setResumes([]);
+      setForm(
+        buildFormFromSources({ previousApplication: null, resumeRows: [] }),
+      );
+    });
+  }, [open, job?.id, buildFormFromSources]);
 
   const selectedSkills = useMemo(() => {
     if (!Array.isArray(job?.skills)) return "";
@@ -226,6 +311,8 @@ export default function ApplyJobModal({
       title={`Apply for ${job?.title || "Job"}`}
       open={open}
       onClose={onClose}
+      maxWidthClass="max-w-[1100px]"
+      scrollable
       footer={
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onClose}>

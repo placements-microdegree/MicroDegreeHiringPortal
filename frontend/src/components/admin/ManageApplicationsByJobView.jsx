@@ -101,14 +101,26 @@ export default function ManageApplicationsByJobView({
 }) {
   const [rows, setRows] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const refresh = async () => {
-    const [all, allJobs] = await Promise.all([
-      listAllApplications(),
-      listJobs(),
-    ]);
-    setRows(all);
-    setJobs(allJobs);
+    setIsLoading(true);
+    setLoadError("");
+    try {
+      const [all, allJobs] = await Promise.all([
+        listAllApplications(),
+        listJobs(),
+      ]);
+      setRows(Array.isArray(all) ? all : []);
+      setJobs(Array.isArray(allJobs) ? allJobs : []);
+    } catch (error) {
+      setRows([]);
+      setJobs([]);
+      setLoadError(error?.message || "Failed to load applications");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -169,6 +181,32 @@ export default function ManageApplicationsByJobView({
       a.title.localeCompare(b.title),
     );
   }, [normalizedRows]);
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+        Loading applications...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+        <div className="text-sm font-semibold text-rose-700">
+          Could not load manage applications.
+        </div>
+        <div className="text-sm text-rose-700">{loadError}</div>
+        <button
+          type="button"
+          onClick={refresh}
+          className="rounded-lg border border-rose-300 px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (!selectedJobId) {
     return (

@@ -136,6 +136,9 @@ async function ensureProfileRow({ user, role, fullName, phone, email }) {
 async function enforceStudentEligibility({ user }) {
   const supabase = getAdminClient();
   const email = user.email?.toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
+  let profileCreatedAt = null;
+  let profileCourseFee = null;
   let phone = normalizePhone(
     user.user_metadata?.phone ||
       user.app_metadata?.phone ||
@@ -145,18 +148,35 @@ async function enforceStudentEligibility({ user }) {
   if (!phone) {
     const { data: profileRow } = await supabase
       .from("profiles")
-      .select("phone")
+      .select("phone, created_at, course_fee")
       .eq("id", user.id)
       .maybeSingle();
     phone = normalizePhone(profileRow?.phone) || phone;
+    profileCreatedAt = profileRow?.created_at || null;
+    const parsedProfileFee = Number(profileRow?.course_fee);
+    profileCourseFee = Number.isFinite(parsedProfileFee)
+      ? parsedProfileFee
+      : null;
+  } else {
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("created_at, course_fee")
+      .eq("id", user.id)
+      .maybeSingle();
+    profileCreatedAt = profileRow?.created_at || null;
+    const parsedProfileFee = Number(profileRow?.course_fee);
+    profileCourseFee = Number.isFinite(parsedProfileFee)
+      ? parsedProfileFee
+      : null;
   }
 
-  const markIneligible = async (message) => {
+  const markIneligible = async (message, courseFee = null) => {
     const { error: updateError } = await supabase.from("profiles").upsert({
       id: user.id,
       email,
       phone: phone || null,
       role: ROLES.STUDENT,
+      course_fee: Number.isFinite(Number(courseFee)) ? Number(courseFee) : null,
       is_eligible: false,
       eligible_until: null,
       application_quota: 3,
@@ -173,42 +193,54 @@ async function enforceStudentEligibility({ user }) {
     const { data, error } = await supabase
       .from("students_enrolled_all")
       .select("*")
-      .eq("phone", phone)
-      .limit(1)
-      .maybeSingle();
+      .ilike("phone", `%${phone.slice(-10)}%`)
+      .limit(50);
     if (error) throw error;
-    enrolledByPhone = data;
+    const phoneRows = Array.isArray(data) ? data : [];
+    const lastTen = phone.slice(-10);
+    enrolledByPhone =
+      phoneRows.find((row) => normalizePhone(row?.phone) === phone) ||
+      phoneRows.find((row) => {
+        const rowPhone = normalizePhone(row?.phone);
+        return rowPhone.length >= 10 && rowPhone.slice(-10) === lastTen;
+      }) ||
+      null;
   }
 
-  if (email) {
+  if (normalizedEmail) {
     const { data, error } = await supabase
       .from("students_enrolled_all")
       .select("*")
-      .eq("email", email)
+      .ilike("email", normalizedEmail)
       .limit(1)
       .maybeSingle();
     if (error) throw error;
     enrolledByEmail = data;
   }
 
-  const enrolled = enrolledByPhone || enrolledByEmail;
-  if (!enrolled) return markIneligible("Not enrolled");
+  const enrolled = enrolledByEmail || enrolledByPhone;
+  const matchedCourseFee = Number(enrolled?.course_fee);
+  const effectiveCourseFee = Number.isFinite(matchedCourseFee)
+    ? matchedCourseFee
+    : profileCourseFee;
 
-  if (!enrolled.course_fee || Number(enrolled.course_fee) <= 7000) {
-    return markIneligible("Not eligible for placements");
+  if (!Number.isFinite(effectiveCourseFee)) {
+    return markIneligible("Not enrolled");
   }
 
-  const baseDate = enrolled.date
-    ? new Date(enrolled.date)
-    : new Date(enrolled.created_at || Date.now());
+  if (effectiveCourseFee < 7000) {
+    return markIneligible("Not eligible for placements", effectiveCourseFee);
+  }
+
+  const baseDate = profileCreatedAt ? new Date(profileCreatedAt) : new Date();
   const expiry = new Date(baseDate);
   expiry.setFullYear(expiry.getFullYear() + 2);
 
   if (Number.isNaN(expiry.getTime())) {
-    return markIneligible("Invalid enrollment date");
+    return markIneligible("Invalid eligibility window", effectiveCourseFee);
   }
   if (new Date() > expiry) {
-    return markIneligible("Eligibility expired");
+    return markIneligible("Eligibility expired", effectiveCourseFee);
   }
 
   const { error: updateError } = await supabase.from("profiles").upsert({
@@ -216,9 +248,10 @@ async function enforceStudentEligibility({ user }) {
     email,
     phone: phone || null,
     role: ROLES.STUDENT,
+    course_fee: effectiveCourseFee,
     is_eligible: true,
     eligible_until: expiry.toISOString(),
-    application_quota: null,
+    application_quota: 3,
     updated_at: new Date().toISOString(),
   });
   if (updateError) throw updateError;
@@ -295,9 +328,9 @@ async function login(req, res, next) {
       data.user?.app_metadata?.role ||
       ROLES.STUDENT;
 
-    const profileUpsert = await ensureProfileRow({ user: data.user, role });
+    await ensureProfileRow({ user: data.user, role });
 
-    if (role === ROLES.STUDENT && profileUpsert.isNew) {
+    if (role === ROLES.STUDENT) {
       const eligibility = await enforceStudentEligibility({ user: data.user });
       if (!eligibility.ok) {
         devLog("[login] student eligibility", {
@@ -443,7 +476,7 @@ async function signup(req, res, next) {
     }
 
     try {
-      const profileUpsert = await ensureProfileRow({
+      await ensureProfileRow({
         user: userForProfile,
         role: role || ROLES.STUDENT,
         fullName,
@@ -451,17 +484,17 @@ async function signup(req, res, next) {
         email: normalizedEmail,
       });
 
-      if ((role || ROLES.STUDENT) === ROLES.STUDENT && profileUpsert.isNew) {
+      if ((role || ROLES.STUDENT) === ROLES.STUDENT) {
         await enforceStudentEligibility({ user: userForProfile });
       }
-    } catch (profileErr) {
-      if (profileErr?.code === "23503") {
+    } catch (error_) {
+      if (error_?.code === "23503") {
         return res.status(409).json({
           success: false,
           message: "Account already exists. Please login.",
         });
       }
-      throw profileErr;
+      throw error_;
     }
 
     return res.status(201).json({
