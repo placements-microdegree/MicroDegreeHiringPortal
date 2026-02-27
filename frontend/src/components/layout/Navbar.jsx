@@ -1,9 +1,11 @@
 import Button from "../common/Button";
+import { FiMenu } from "react-icons/fi";
 
 export default function Navbar({
   title,
   profilePhotoUrl,
   onProfileClick,
+  onMenuClick,
   showProfile = true,
   completionPercent = null,
 }) {
@@ -20,10 +22,26 @@ export default function Navbar({
     : undefined;
 
   return (
-    <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-      <div className="text-base font-semibold text-slate-900">{title}</div>
+    <header className="flex items-center justify-between border-b border-slate-200 bg-white px-3 py-3 md:px-6 md:py-4">
+      <div className="flex min-w-0 items-center gap-2 md:gap-3">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="Open menu"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 md:hidden"
+        >
+          <FiMenu className="h-5 w-5" />
+        </button>
+        <div className="truncate text-sm font-semibold text-slate-900 md:text-base">
+          {title}
+        </div>
+      </div>
       {showProfile ? (
-        <Button variant="subtle" onClick={onProfileClick} className="gap-3">
+        <Button
+          variant="subtle"
+          onClick={onProfileClick}
+          className="gap-2 px-2 py-1.5 md:gap-3 md:px-4 md:py-2"
+        >
           <div
             className={`flex h-9 w-9 items-center justify-center rounded-full ${showCompletion ? "p-[2px]" : "overflow-hidden bg-slate-200"}`}
             style={ringStyle}
@@ -40,7 +58,7 @@ export default function Navbar({
               </div>
             </div>
           </div>
-          <div className="text-sm">
+          <div className="hidden text-sm sm:block">
             {/* Profile{showCompletion ? ` (${safePercent}%)` : ""} */} Profile
           </div>
         </Button>

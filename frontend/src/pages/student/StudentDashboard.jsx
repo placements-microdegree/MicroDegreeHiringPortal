@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { FiArrowUpRight } from "react-icons/fi";
 import Loader from "../../components/common/Loader";
 import { getStudentAnalytics } from "../../services/applicationService";
 
@@ -72,8 +74,18 @@ export default function StudentDashboard() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className={cardClass}>
-          <div className="text-xs uppercase text-slate-500">
-            Total Jobs Available
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-xs uppercase text-slate-500">
+              Total Jobs Available
+            </div>
+            <Link
+              to="/student/jobs"
+              aria-label="Go to JD section"
+              title="Go to JD"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:border-primary hover:text-primary"
+            >
+              <FiArrowUpRight className="h-4 w-4" />
+            </Link>
           </div>
           <div className="mt-2 text-3xl font-bold text-slate-900">
             {analytics.totalJobs}
@@ -81,8 +93,18 @@ export default function StudentDashboard() {
         </div>
 
         <div className={cardClass}>
-          <div className="text-xs uppercase text-slate-500">
-            Total Applications Submitted
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-xs uppercase text-slate-500">
+              Total Applications Submitted
+            </div>
+            <Link
+              to="/student/applications"
+              aria-label="Go to Application Status section"
+              title="Go to Application Status"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:border-primary hover:text-primary"
+            >
+              <FiArrowUpRight className="h-4 w-4" />
+            </Link>
           </div>
           <div className="mt-2 text-3xl font-bold text-slate-900">
             {analytics.totalApplications}

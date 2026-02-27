@@ -2,6 +2,24 @@ import { useMemo } from "react";
 import Button from "../common/Button";
 import { confirmDanger, showError } from "../../utils/alerts";
 
+function normalizeStatus(status) {
+  const value = String(status || "")
+    .trim()
+    .toLowerCase();
+  if (value === "active") return "Active";
+  if (value === "deleted") return "Deleted";
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Unknown";
+}
+
+function getStatusChipClasses(status) {
+  const value = String(status || "")
+    .trim()
+    .toLowerCase();
+  if (value === "active") return "bg-emerald-100 text-emerald-700";
+  if (value === "deleted") return "bg-rose-100 text-rose-700";
+  return "bg-slate-100 text-slate-700";
+}
+
 export default function JobListWithDelete({
   jobs,
   onDelete,
@@ -50,6 +68,11 @@ export default function JobListWithDelete({
                     {job.title}
                   </h3>
                   <p className="mt-0.5 text-sm text-slate-600">{job.company}</p>
+                  <span
+                    className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${getStatusChipClasses(job.status)}`}
+                  >
+                    {normalizeStatus(job.status)}
+                  </span>
                 </div>
 
                 <Button

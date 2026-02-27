@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/authStore";
 import Navbar from "./Navbar";
@@ -10,7 +10,12 @@ import { calculateProfileCompletion } from "../../utils/calculateProfileCompleti
 export default function DashboardLayout({ role }) {
   const { profile, updateProfile } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const title = useMemo(() => {
     if (role === ROLES.SUPER_ADMIN) {
@@ -42,12 +47,17 @@ export default function DashboardLayout({ role }) {
   return (
     <div className="min-h-screen bg-bgLight">
       <div className="flex">
-        <Sidebar role={role} />
+        <Sidebar
+          role={role}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
         <div className="flex min-h-screen flex-1 flex-col">
           <Navbar
             title={title}
             profilePhotoUrl={profile?.profilePhotoUrl || ""}
             onProfileClick={() => setDrawerOpen(true)}
+            onMenuClick={() => setSidebarOpen((prev) => !prev)}
             showProfile={showProfile}
             completionPercent={completionPercent}
           />
