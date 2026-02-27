@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { FiRefreshCw } from "react-icons/fi";
 import ApplicationsTable from "./ApplicationsTable";
 import {
   listAllApplications,
@@ -233,8 +234,22 @@ export default function ManageApplicationsByJobView({
   if (!selectedJobId) {
     return (
       <div className="space-y-4">
-        <div className="text-base font-semibold text-slate-900">
-          Posted Jobs
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-base font-semibold text-slate-900">
+            Posted Jobs
+          </div>
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={isLoading}
+            aria-label="Refresh manage applications"
+            title="Refresh"
+            className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FiRefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
+          </button>
         </div>
         {jobCards.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
@@ -289,8 +304,22 @@ export default function ManageApplicationsByJobView({
           Back to jobs
         </Link>
       </div>
-      <div className="text-base font-semibold text-slate-900">
-        Applied Candidates: {selectedJobTitle}
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-base font-semibold text-slate-900">
+          Applied Candidates: {selectedJobTitle}
+        </div>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={isLoading}
+          aria-label="Refresh applied candidates"
+          title="Refresh"
+          className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <FiRefreshCw
+            className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+          />
+        </button>
       </div>
       <ApplicationsTable rows={filteredRows} onStatusChange={onStatusChange} />
     </div>
