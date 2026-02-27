@@ -74,7 +74,10 @@ export default function ApplicationsTable({ rows, onStatusChange }) {
         r.studentName || "",
         r.studentPhone || "",
         r.studentLocation || "",
-        r.totalExperience || "",
+        r.relevantExperience ||
+          r.relevant_experience ||
+          r.totalExperience ||
+          "",
         r.currentCTC || "",
         r.expectedCTC || "",
         r.noticePeriod || "Not working / Immediately available",
