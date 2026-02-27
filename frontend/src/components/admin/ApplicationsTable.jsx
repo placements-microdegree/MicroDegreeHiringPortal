@@ -13,6 +13,39 @@ export default function ApplicationsTable({ rows, onStatusChange }) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
+  const formatAppliedDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
+  };
+
+  const cleanResumeName = (value) => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    return raw.replace(/\.[^/.]+$/, "");
+  };
+
+  const getResumeExportValue = (row) => {
+    const resumeLink =
+      row?.resumeUrl ||
+      row?.selected_resume_url ||
+      row?.selectedResumeUrl ||
+      "";
+    if (resumeLink) return resumeLink;
+
+    const byName = cleanResumeName(row?.resumeName);
+    if (byName) return byName;
+
+    const fromSelectedUrl = String(row?.selected_resume_url || "")
+      .split("/")
+      .pop();
+    return cleanResumeName(fromSelectedUrl);
+  };
+
   const handleExport = () => {
     if (!rows?.length) return;
 
@@ -22,22 +55,30 @@ export default function ApplicationsTable({ rows, onStatusChange }) {
     const fileName = `${slugify(jobName)}-${slugify(companyName)}.csv`;
 
     const headers = [
-      "Student Name",
-      "Phone",
-      "Email",
-      "Resume URL",
-      "Job",
-      "Company",
+      "Date",
+      "Email ID",
+      "Full Name",
+      "Contact Number",
+      "Current Location",
+      "Total No. of experience",
+      "Current CTC",
+      "Expected CTC",
+      "Notice Period",
+      "Resume",
     ];
 
     const csvRows = rows.map((r) =>
       [
-        r.studentName || "Student",
-        r.studentPhone || "",
+        formatAppliedDate(r.appliedAt),
         r.studentEmail || "",
-        r.resumeUrl || "",
-        r.jobTitle || "",
-        r.jobs?.company || r.company || "",
+        r.studentName || "",
+        r.studentPhone || "",
+        r.studentLocation || "",
+        r.totalExperience || "",
+        r.currentCTC || "",
+        r.expectedCTC || "",
+        r.noticePeriod || "Not working / Immediately available",
+        getResumeExportValue(r),
       ]
         .map(escapeCsv)
         .join(","),

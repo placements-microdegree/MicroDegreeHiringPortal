@@ -37,6 +37,9 @@ const APPLICATIONS_ADMIN_SELECT = `
     email,
     phone,
     location,
+    total_experience,
+    current_ctc,
+    expected_ctc,
     resumes(*)
   )
 `;
@@ -73,6 +76,9 @@ function normalizeApplicationForAdminView(row) {
           email: row.profiles.email,
           phone: row.profiles.phone,
           location: row.profiles.location,
+          total_experience: row.profiles.total_experience,
+          current_ctc: row.profiles.current_ctc,
+          expected_ctc: row.profiles.expected_ctc,
           resumes: Array.isArray(row.profiles.resumes)
             ? row.profiles.resumes
             : [],

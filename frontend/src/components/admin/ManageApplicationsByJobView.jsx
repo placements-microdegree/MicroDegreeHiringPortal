@@ -57,11 +57,17 @@ function formatPostedDate(value) {
 }
 
 function mapApplicationRow(row, jobsById) {
-  const resume =
-    row.student?.resumes?.[0] ||
-    row.profiles?.resumes?.[0] ||
-    row.resumes?.[0] ||
-    (Array.isArray(row.profiles?.resumes) ? row.profiles.resumes[0] : null);
+  const resumes =
+    row.student?.resumes ||
+    row.profiles?.resumes ||
+    row.resumes ||
+    (Array.isArray(row.profiles?.resumes) ? row.profiles.resumes : []);
+
+  const selectedResume = (Array.isArray(resumes) ? resumes : []).find(
+    (item) => item?.file_url === row.selected_resume_url,
+  );
+  const fallbackResume = Array.isArray(resumes) ? resumes[0] : null;
+  const resume = selectedResume || fallbackResume || null;
 
   const jobId = getJobId(row);
   const jobFromLookup = jobId ? jobsById.get(String(jobId)) : null;
@@ -85,6 +91,22 @@ function mapApplicationRow(row, jobsById) {
     studentName: student?.full_name || row.studentName,
     studentPhone: student?.phone,
     studentEmail: student?.email,
+    studentLocation: student?.location || "",
+    totalExperience:
+      student?.total_experience ||
+      row.total_experience ||
+      row.totalExperience ||
+      "",
+    currentCTC: student?.current_ctc || row.current_ctc || row.currentCTC || "",
+    expectedCTC:
+      student?.expected_ctc || row.expected_ctc || row.expectedCTC || "",
+    noticePeriod: row.notice_period || row.noticePeriod || "",
+    appliedAt: row.created_at || row.createdAt || null,
+    resumeName:
+      resume?.file_name ||
+      (row.selected_resume_url
+        ? String(row.selected_resume_url).split("/").pop()
+        : ""),
     resumeUrl:
       resume?.signed_url ||
       resume?.file_url ||
