@@ -34,5 +34,10 @@ router.get(
   cacheResponse({ ttlSeconds: 20 }),
   adminController.analytics,
 );
+router.get(
+  "/checker",
+  cacheResponse({ ttlSeconds: 15 }),
+  adminController.checker,
+);
 
 module.exports = router;

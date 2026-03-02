@@ -41,9 +41,23 @@ async function analytics(req, res, next) {
   }
 }
 
+async function checker(req, res, next) {
+  try {
+    const { type, query } = req.query || {};
+    const result = await adminService.findStudentWithApplications({
+      type,
+      query,
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listStudents,
   listAdmins,
   promote,
   analytics,
+  checker,
 };

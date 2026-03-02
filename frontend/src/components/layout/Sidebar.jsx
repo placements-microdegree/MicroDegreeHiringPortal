@@ -17,6 +17,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
           { to: "/superadmin/students", label: "View Students" },
           { to: "/superadmin/jobs", label: "View Jobs" },
           { to: "/superadmin/applications", label: "Applications" },
+          { to: "/superadmin/checker", label: "Checker" },
         ]
       : role === ROLES.ADMIN
         ? [

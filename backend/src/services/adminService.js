@@ -218,8 +218,111 @@ async function analytics() {
   return { jobCount, appCount, studentCount, eligibleCount, adminCount };
 }
 
+function normalizePhoneForSearch(value) {
+  return String(value || "")
+    .replaceAll(/\D/g, "")
+    .trim();
+}
+
+async function findStudentWithApplications({ type, query }) {
+  const supabase = requireAdminClient();
+  const normalizedType = String(type || "")
+    .trim()
+    .toLowerCase();
+  const normalizedQuery = String(query || "").trim();
+
+  if (!["email", "phone"].includes(normalizedType)) {
+    const err = new Error("Type must be either email or phone");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!normalizedQuery) {
+    const err = new Error("Search value is required");
+    err.status = 400;
+    throw err;
+  }
+
+  let profileQuery = supabase
+    .from("profiles")
+    .select(
+      "id, full_name, email, phone, role, location, is_eligible, eligible_until, updated_at",
+    )
+    .eq("role", ROLES.STUDENT)
+    .limit(1);
+
+  if (normalizedType === "email") {
+    profileQuery = profileQuery.eq("email", normalizeEmail(normalizedQuery));
+  } else {
+    const phoneDigits = normalizePhoneForSearch(normalizedQuery);
+    if (!phoneDigits) {
+      const err = new Error("Valid phone number is required");
+      err.status = 400;
+      throw err;
+    }
+    profileQuery = profileQuery.ilike("phone", `%${phoneDigits}%`);
+  }
+
+  const { data: student, error: studentError } =
+    await profileQuery.maybeSingle();
+  if (studentError) throw studentError;
+
+  if (!student?.id) {
+    return { student: null, applications: [] };
+  }
+
+  const { data: applications, error: applicationsError } = await supabase
+    .from("applications")
+    .select(
+      `
+        id,
+        status,
+        created_at,
+        updated_at,
+        selected_resume_url,
+        job_id,
+        jobs:job_id(
+          id,
+          title,
+          company,
+          ctc,
+          skills,
+          location,
+          status
+        )
+      `,
+    )
+    .eq("student_id", student.id)
+    .order("created_at", { ascending: false });
+
+  if (applicationsError) throw applicationsError;
+
+  return {
+    student,
+    applications: (applications || []).map((item) => ({
+      id: item.id,
+      status: item.status,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      selected_resume_url: item.selected_resume_url,
+      job: item.jobs
+        ? {
+            id: item.jobs.id,
+            title: item.jobs.title,
+            company: item.jobs.company,
+            ctc: item.jobs.ctc,
+            skills: item.jobs.skills,
+            location: item.jobs.location,
+            status: item.jobs.status,
+          }
+        : null,
+    })),
+  };
+}
+
 module.exports = {
   promoteByEmail,
   listProfiles,
   analytics,
+  findStudentWithApplications,
 };

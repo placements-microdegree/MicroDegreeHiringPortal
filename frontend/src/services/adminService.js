@@ -34,3 +34,15 @@ export async function getAnalytics() {
   const data = await request("/api/admin/analytics");
   return data.analytics || {};
 }
+
+export async function checkerSearch({ type, query }) {
+  const params = new URLSearchParams({
+    type: String(type || "").trim(),
+    query: String(query || "").trim(),
+  });
+  const data = await request(`/api/admin/checker?${params.toString()}`);
+  return {
+    student: data.student || null,
+    applications: data.applications || [],
+  };
+}

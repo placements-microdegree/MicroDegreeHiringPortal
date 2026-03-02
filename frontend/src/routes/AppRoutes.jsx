@@ -21,6 +21,7 @@ import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
 import Students from "../pages/superadmin/Students";
 import SuperAdminJobs from "../pages/superadmin/SuperAdminJobs";
 import SuperAdminApplications from "../pages/superadmin/SuperAdminApplications";
+import SuperAdminChecker from "../pages/superadmin/SuperAdminChecker";
 import PageOpeningShimmer from "../components/common/PageOpeningShimmer";
 
 function HomeRedirect() {
@@ -120,6 +121,7 @@ export default function AppRoutes() {
             path="/superadmin/applications/:jobId"
             element={<SuperAdminApplications />}
           />
+          <Route path="/superadmin/checker" element={<SuperAdminChecker />} />
         </Route>
       </Route>
 
