@@ -12,6 +12,7 @@ export default function DashboardLayout({ role }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const isStudent = role === ROLES.STUDENT;
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -31,7 +32,7 @@ export default function DashboardLayout({ role }) {
         return "Manage Applications";
       return "Admin Dashboard";
     }
-    if (location.pathname.includes("/student/jobs")) return "Job Listings";
+    if (location.pathname.includes("/student/jobs")) return "Jobs (JD)";
     if (location.pathname.includes("/student/applications"))
       return "Application Status";
     if (location.pathname.includes("/student/help")) return "Help Center";
@@ -51,17 +52,19 @@ export default function DashboardLayout({ role }) {
           role={role}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          onProfileClick={isStudent ? () => setDrawerOpen(true) : undefined}
         />
         <div className="flex min-h-screen flex-1 flex-col">
           <Navbar
             title={title}
             profilePhotoUrl={profile?.profilePhotoUrl || ""}
+            studentName={profile?.fullName || "Student"}
             onProfileClick={() => setDrawerOpen(true)}
             onMenuClick={() => setSidebarOpen((prev) => !prev)}
             showProfile={showProfile}
             completionPercent={completionPercent}
           />
-          <main className="flex-1 p-6">
+          <main className={`flex-1 ${isStudent ? "bg-slate-50 p-6 lg:p-7" : "p-6"}`}>
             <Outlet />
           </main>
         </div>

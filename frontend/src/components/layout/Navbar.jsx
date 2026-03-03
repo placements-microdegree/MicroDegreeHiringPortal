@@ -1,9 +1,10 @@
 import Button from "../common/Button";
-import { FiMenu } from "react-icons/fi";
+import { FiBell, FiMenu } from "react-icons/fi";
 
 export default function Navbar({
   title,
   profilePhotoUrl,
+  studentName = "Student",
   onProfileClick,
   onMenuClick,
   showProfile = true,
@@ -17,7 +18,7 @@ export default function Navbar({
     completionPercent !== null && completionPercent !== undefined;
   const ringStyle = showCompletion
     ? {
-        background: `conic-gradient(var(--color-primary, #4f46e5) ${safePercent * 3.6}deg, #e2e8f0 0deg)`,
+        background: `conic-gradient(var(--color-primary, #2563eb) ${safePercent * 3.6}deg, #e2e8f0 0deg)`,
       }
     : undefined;
 
@@ -37,31 +38,44 @@ export default function Navbar({
         </div>
       </div>
       {showProfile ? (
-        <Button
-          variant="subtle"
-          onClick={onProfileClick}
-          className="gap-2 px-2 py-1.5 md:gap-3 md:px-4 md:py-2"
-        >
-          <div
-            className={`flex h-9 w-9 items-center justify-center rounded-full ${showCompletion ? "p-[2px]" : "overflow-hidden bg-slate-200"}`}
-            style={ringStyle}
+        <div className="flex items-center gap-2 md:gap-3">
+          <button
+            type="button"
+            aria-label="Notifications"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-primary hover:text-primary"
           >
-            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
-              <div className="h-[30px] w-[30px] overflow-hidden rounded-full bg-slate-200">
-                {profilePhotoUrl ? (
-                  <img
-                    src={profilePhotoUrl}
-                    alt="Profile"
-                    className="h-full w-full object-cover"
-                  />
-                ) : null}
+            <FiBell className="h-5 w-5" />
+          </button>
+
+          <Button
+            variant="subtle"
+            onClick={onProfileClick}
+            className="gap-2 px-2 py-1.5 md:gap-3 md:px-4 md:py-2"
+          >
+            <div
+              className={`flex h-9 w-9 items-center justify-center rounded-full ${showCompletion ? "p-[2px]" : "overflow-hidden bg-slate-200"}`}
+              style={ringStyle}
+            >
+              <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
+                <div className="h-[30px] w-[30px] overflow-hidden rounded-full bg-slate-200">
+                  {profilePhotoUrl ? (
+                    <img
+                      src={profilePhotoUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="hidden text-sm sm:block">
-            {/* Profile{showCompletion ? ` (${safePercent}%)` : ""} */} Profile
-          </div>
-        </Button>
+            <div className="hidden text-left sm:block">
+              <div className="text-sm font-semibold text-slate-800">
+                {studentName}
+              </div>
+              <div className="text-xs text-slate-500">Student</div>
+            </div>
+          </Button>
+        </div>
       ) : null}
     </header>
   );

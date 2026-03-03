@@ -1,125 +1,110 @@
 import Button from "../common/Button";
-import {
-  FiBriefcase,
-  FiCalendar,
-  FiClock,
-  FiMapPin,
-  FiMonitor,
-} from "react-icons/fi";
+import { FiCalendar, FiMapPin } from "react-icons/fi";
+
+const workModeClass = {
+  remote: "bg-sky-100 text-sky-700",
+  hybrid: "bg-indigo-100 text-indigo-700",
+  onsite: "bg-emerald-100 text-emerald-700",
+};
+
+function formatDate(dateInput) {
+  if (!dateInput) return "Not specified";
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return "Not specified";
+  return date.toLocaleDateString();
+}
+
+function normalizeSkills(skills) {
+  if (Array.isArray(skills)) return skills;
+  if (typeof skills === "string" && skills.trim()) {
+    return skills
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
 
 export default function JobCard({ job, onApply, applied }) {
-  const validTill = job.valid_till || job.validTill;
-  const formattedValidTill = validTill
-    ? new Date(validTill).toLocaleDateString()
-    : "Not specified";
-
-  const infoItems = [
-    {
-      key: "location",
-      label: "Location",
-      value: job.location || "Not specified",
-      Icon: FiMapPin,
-    },
-    {
-      key: "experience",
-      label: "Experience",
-      value: job.experience || "Not specified",
-      Icon: FiBriefcase,
-    },
-    {
-      key: "validTill",
-      label: "Valid Till",
-      value: formattedValidTill,
-      Icon: FiCalendar,
-    },
-    {
-      key: "noticePeriod",
-      label: "Notice Period",
-      value: job.notice_period || job.noticePeriod || "Not specified",
-      Icon: FiClock,
-    },
-    {
-      key: "workMode",
-      label: "Work Mode",
-      value: job.work_mode || job.workMode || "Not specified",
-      Icon: FiMonitor,
-    },
-  ];
+  const validTill = job?.valid_till || job?.validTill;
+  const workMode = String(job?.work_mode || job?.workMode || "Not specified");
+  const normalizedWorkMode = workMode.toLowerCase();
+  const modeBadgeClass =
+    workModeClass[normalizedWorkMode] || "bg-slate-100 text-slate-700";
+  const skills = normalizeSkills(job?.skills);
 
   return (
-    <div className="mx-auto w-full max-w-[460px] rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start justify-between ">
-        <div className="">
-          <h3 className="text-sm font-semibold text-slate-900">{job.title}</h3>
-          <p className="text-xs font-medium text-slate-600">{job.company}</p>
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">{job?.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">{job?.company}</p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${modeBadgeClass}`}>
+          {workMode}
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-2 text-sm text-slate-700">
+        <div className="flex items-center gap-2">
+          <FiMapPin className="h-4 w-4 text-slate-400" />
+          <span>{job?.location || "Location not specified"}</span>
+        </div>
+        <div className="rounded-xl bg-slate-50 px-3 py-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            CTC
+          </span>
+          <div className="mt-0.5 text-sm font-semibold text-slate-800">
+            {job?.ctc || "Not specified"}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <FiCalendar className="h-4 w-4 text-slate-400" />
+          <span>Valid till {formatDate(validTill)}</span>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {(job.skills || []).length > 0 ? (
-          job.skills.map((skill) => (
+      <div className="mt-4 flex flex-wrap gap-2">
+        {skills.length > 0 ? (
+          skills.map((skill) => (
             <span
               key={skill}
-              className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary"
+              className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700"
             >
               {skill}
             </span>
           ))
         ) : (
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
             Skills not specified
           </span>
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {infoItems.map((item) => {
-          const ItemIcon = item.Icon;
-
-          return (
-            <div key={item.key} className="rounded-lg  border-slate-200 p-2">
-              <div className="mb-1 flex items-center gap-1.5 text-slate-500">
-                <ItemIcon className="text-xs" />
-                <span className="text-[11px] font-semibold uppercase tracking-wide">
-                  {item.label}
-                </span>
-              </div>
-              <div className="text-[11px] font-medium text-slate-800">
-                {item.value}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-        {job.jd_link ? (
+      <div className="mt-5 flex items-center justify-between gap-2">
+        {job?.jd_link ? (
           <a
             href={job.jd_link}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             View JD
           </a>
         ) : (
-          <button
-            type="button"
-            disabled
-            className="inline-flex cursor-not-allowed items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-400"
-          >
-            JD Not Available
-          </button>
+          <span className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-400">
+            JD unavailable
+          </span>
         )}
 
         <Button
           onClick={() => onApply?.(job)}
           disabled={applied}
-          className="px-3 py-1.5 text-xs"
+          className="min-w-24"
         >
           {applied ? "Applied" : "Apply"}
         </Button>
       </div>
-    </div>
+    </article>
   );
 }

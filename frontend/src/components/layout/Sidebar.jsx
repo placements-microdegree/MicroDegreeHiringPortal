@@ -1,13 +1,28 @@
 import { NavLink } from "react-router-dom";
 import { FiX } from "react-icons/fi";
+import {
+  FiClipboard,
+  FiBookOpen,
+  FiGrid,
+  FiHelpCircle,
+  FiLogOut,
+  FiUser,
+} from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
 import { useAuth } from "../../context/authStore";
 
-const linkBase = "block rounded-xl px-3 py-2 text-sm font-medium transition";
+const linkBase =
+  "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
 
-export default function Sidebar({ role, isOpen = false, onClose }) {
+export default function Sidebar({
+  role,
+  isOpen = false,
+  onClose,
+  onProfileClick,
+}) {
   const { logout } = useAuth();
+  const isStudent = role === ROLES.STUDENT;
 
   const links =
     role === ROLES.SUPER_ADMIN
@@ -26,10 +41,20 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
             { to: "/admin/manage-applications", label: "Manage Applications" },
           ]
         : [
-            { to: "/student/dashboard", label: "Dashboard" },
-            { to: "/student/jobs", label: "JD" },
-            { to: "/student/applications", label: "Application Status" },
-            { to: "/student/help", label: "Help Center" },
+            { to: "/student/dashboard", label: "Dashboard", icon: FiGrid },
+            { to: "/student/jobs", label: "Jobs (JD)", icon: FiBookOpen },
+            {
+              to: "/student/applications",
+              label: "Application Status",
+              icon: FiClipboard,
+            },
+            {
+              type: "button",
+              label: "Profile",
+              icon: FiUser,
+              onClick: onProfileClick,
+            },
+            { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
           ];
 
   return (
@@ -42,12 +67,19 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-slate-200 bg-white p-4 transition-transform md:static md:z-auto md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white p-4 transition-transform md:static md:z-auto md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="p-3 flex items-center justify-between gap-2">
-          <div className="flex flex-col items-center">
-            <img src="/Logo.png" alt="MicroDegree" className="h-20" />
-            {/* <div className="text-xs text-slate-600">Placement Portal</div> */}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-4">
+          <div className="flex items-center gap-3">
+            <img src="/Logo.png" alt="MicroDegree" className="h-11 w-11" />
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                MicroDegree
+              </div>
+              <div className="text-xs text-slate-500">
+                {isStudent ? "Student Portal" : "Placement Portal"}
+              </div>
+            </div>
           </div>
           <button
             type="button"
@@ -59,23 +91,53 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
           </button>
         </div>
 
-        <nav className="mt-4 space-y-1">
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              onClick={onClose}
-              className={({ isActive }) =>
-                `${linkBase} ${isActive ? "bg-primary/10 text-primary" : "text-slate-700 hover:bg-slate-50"}`
-              }
-            >
-              {l.label}
-            </NavLink>
-          ))}
+        <nav className="mt-6 space-y-1.5">
+          {links.map((l) => {
+            const Icon = l.icon;
+            if (l.type === "button") {
+              return (
+                <button
+                  type="button"
+                  key={l.label}
+                  onClick={() => {
+                    l.onClick?.();
+                    onClose?.();
+                  }}
+                  className={`${linkBase} text-slate-700 hover:bg-slate-100 hover:text-slate-900`}
+                >
+                  {Icon ? <Icon className="h-4 w-4 text-slate-500" /> : null}
+                  <span>{l.label}</span>
+                </button>
+              );
+            }
+
+            return (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${linkBase} ${isActive ? "border border-primary/20 bg-primary/10 text-primary shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"}`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {Icon ? (
+                      <Icon
+                        className={`h-4 w-4 ${isActive ? "text-primary" : "text-slate-500"}`}
+                      />
+                    ) : null}
+                    <span>{l.label}</span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
-        <div className="mt-6">
-          <Button variant="outline" className="w-full" onClick={logout}>
+        <div className="mt-auto pt-6">
+          <Button variant="outline" className="w-full gap-2" onClick={logout}>
+            <FiLogOut className="h-4 w-4" />
             Logout
           </Button>
         </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { FiUpload } from "react-icons/fi";
 import Button from "../common/Button";
 import Input from "../common/Input";
 import Modal from "../common/Modal";
@@ -21,7 +22,9 @@ function getMostRecentApplication(applications = [], currentJobId) {
     const rowJobId = row?.job_id || row?.jobId;
     return currentJobId ? String(rowJobId) !== String(currentJobId) : true;
   });
+
   if (filtered.length === 0) return null;
+
   return [...filtered].sort(
     (a, b) =>
       new Date(b?.updated_at || b?.created_at || 0).getTime() -
@@ -29,23 +32,32 @@ function getMostRecentApplication(applications = [], currentJobId) {
   )[0];
 }
 
-function YesNoButtons({ value, onChange }) {
+function YesNoToggle({ value, onChange }) {
   return (
-    <div className="flex gap-2">
-      <Button
+    <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+      <button
         type="button"
-        variant={value === true ? "primary" : "outline"}
         onClick={() => onChange(true)}
+        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === true ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
       >
         Yes
-      </Button>
-      <Button
+      </button>
+      <button
         type="button"
-        variant={value === false ? "primary" : "outline"}
         onClick={() => onChange(false)}
+        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === false ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
       >
         No
-      </Button>
+      </button>
+    </div>
+  );
+}
+
+function QuestionToggle({ label, value, onChange }) {
+  return (
+    <div>
+      <div className="mb-2 text-sm font-medium text-slate-700">{label}</div>
+      <YesNoToggle value={value} onChange={onChange} />
     </div>
   );
 }
@@ -153,6 +165,7 @@ export default function ApplyJobModal({
         listMyResumes(),
         listApplicationsByStudent(),
       ]);
+
       const safeResumes = Array.isArray(resumeRows) ? resumeRows : [];
       const previousApplication = getMostRecentApplication(
         applicationRows,
@@ -171,7 +184,10 @@ export default function ApplyJobModal({
     init().catch(() => {
       setResumes([]);
       setForm(
-        buildFormFromSources({ previousApplication: null, resumeRows: [] }),
+        buildFormFromSources({
+          previousApplication: null,
+          resumeRows: [],
+        }),
       );
     });
   }, [open, job?.id, buildFormFromSources]);
@@ -185,6 +201,7 @@ export default function ApplyJobModal({
 
   const handleUploadResumes = async (files) => {
     if (!files?.length) return;
+
     const remaining = MAX_RESUMES - resumes.length;
     if (remaining <= 0) {
       await showInfo("Maximum 3 resumes are allowed", "Resume Limit Reached");
@@ -205,10 +222,7 @@ export default function ApplyJobModal({
       const rows = await listMyResumes();
       setResumes(rows || []);
     } catch (err) {
-      await showError(
-        err?.message || "Failed to upload resume",
-        "Upload Failed",
-      );
+      await showError(err?.message || "Failed to upload resume", "Upload Failed");
     } finally {
       setUploading(false);
     }
@@ -216,6 +230,7 @@ export default function ApplyJobModal({
 
   const handleDeleteResume = async (resume) => {
     if (!resume?.id) return;
+
     setUploading(true);
     try {
       await deleteResume(resume.id);
@@ -225,10 +240,7 @@ export default function ApplyJobModal({
         update({ selectedResumeUrl: "" });
       }
     } catch (err) {
-      await showError(
-        err?.message || "Failed to delete resume",
-        "Delete Failed",
-      );
+      await showError(err?.message || "Failed to delete resume", "Delete Failed");
     } finally {
       setUploading(false);
     }
@@ -236,43 +248,44 @@ export default function ApplyJobModal({
 
   const validate = () => {
     if (typeof form.isCurrentlyWorking !== "boolean") {
-      return "Please answer if you are currently working";
+      return "Please answer if you are currently working.";
     }
     if (form.isCurrentlyWorking && !String(form.noticePeriod || "").trim()) {
-      return "Notice period is required for currently working candidates";
+      return "Notice period is required for currently working candidates.";
     }
     if (!String(form.totalExperience || "").trim()) {
-      return "Total experience is required";
+      return "Total experience is required.";
     }
     if (!String(form.relevantExperience || "").trim()) {
-      return "Relevant experience is required";
+      return "Relevant experience is required.";
     }
     if (typeof form.handsOnPrimarySkills !== "boolean") {
-      return "Please answer hands-on primary skills";
+      return "Please answer hands-on primary skills.";
     }
     if (typeof form.workModeMatch !== "boolean") {
-      return "Please answer work mode preference";
+      return "Please answer work mode preference match.";
     }
     if (typeof form.interviewModeAvailable !== "boolean") {
-      return "Please answer interview mode availability";
+      return "Please answer interview availability.";
     }
     if (!String(form.currentCTC || "").trim()) {
-      return "Current CTC is required";
+      return "Current CTC is required.";
     }
     if (!String(form.expectedCTC || "").trim()) {
-      return "Expected CTC is required";
+      return "Expected CTC is required.";
     }
     if (!String(form.selectedResumeUrl || "").trim()) {
-      return "Please select one resume";
+      return "Please select one resume.";
     }
     if (!form.jdConfirmed) {
-      return "You must confirm that you read the JD fully";
+      return "You must confirm that you read the Job Description fully.";
     }
     return null;
   };
 
   const submit = async (event) => {
     event.preventDefault();
+
     const errorMessage = validate();
     if (errorMessage) {
       await showInfo(errorMessage, "Incomplete Application");
@@ -296,6 +309,7 @@ export default function ApplyJobModal({
         jdConfirmed: form.jdConfirmed,
         saveForFuture: form.saveForFuture,
       });
+
       await showSuccess("Application submitted successfully.", "Applied");
       await onApplied?.();
       onClose?.();
@@ -311,7 +325,7 @@ export default function ApplyJobModal({
       title={`Apply for ${job?.title || "Job"}`}
       open={open}
       onClose={onClose}
-      maxWidthClass="max-w-[1100px]"
+      maxWidthClass="max-w-[1000px]"
       scrollable
       footer={
         <div className="flex justify-end gap-2">
@@ -322,125 +336,124 @@ export default function ApplyJobModal({
             type="submit"
             form="apply-job-form"
             disabled={submitting || uploading}
+            className="min-w-40"
           >
             {submitting ? "Submitting..." : "Submit Application"}
           </Button>
         </div>
       }
     >
-      <form
-        id="apply-job-form"
-        onSubmit={submit}
-        className="grid grid-cols-1 gap-4 md:grid-cols-2"
-      >
-        <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-          <div>
-            <span className="font-semibold">Company:</span>{" "}
-            {job?.company || "-"}
+      <form id="apply-job-form" onSubmit={submit} className="space-y-5">
+        <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 md:grid-cols-2">
+            <div>
+              <span className="font-semibold text-slate-900">Company:</span>{" "}
+              {job?.company || "-"}
+            </div>
+            <div>
+              <span className="font-semibold text-slate-900">Work Mode:</span>{" "}
+              {job?.work_mode || job?.workMode || "Not specified"}
+            </div>
+            <div className="md:col-span-2">
+              <span className="font-semibold text-slate-900">JD Skills:</span>{" "}
+              {selectedSkills || "Not specified"}
+            </div>
           </div>
-          <div>
-            <span className="font-semibold">JD Skills:</span>{" "}
-            {selectedSkills || "Not specified"}
-          </div>
-          <div>
-            <span className="font-semibold">Work Mode:</span>{" "}
-            {job?.work_mode || "Not specified"}
-          </div>
-          <div>
-            <span className="font-semibold">Interview Mode:</span>{" "}
-            {job?.interview_mode || "Not specified"}
-          </div>
-        </div>
+        </section>
 
-        <div>
-          <div className="mb-1 text-sm font-medium text-slate-700">
-            Are you currently working?
-          </div>
-          <YesNoButtons
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <QuestionToggle
+            label="Are you currently working?"
             value={form.isCurrentlyWorking}
-            onChange={(value) => update({ isCurrentlyWorking: value })}
+            onChange={(value) =>
+              update({
+                isCurrentlyWorking: value,
+                noticePeriod: value ? form.noticePeriod : "",
+              })
+            }
           />
-        </div>
 
-        <Input
-          label="Notice period"
-          value={form.noticePeriod}
-          onChange={(e) => update({ noticePeriod: e.target.value })}
-          disabled={!form.isCurrentlyWorking}
-          placeholder={
-            form.isCurrentlyWorking ? "e.g. 30 days" : "Not required"
-          }
-        />
+          {form.isCurrentlyWorking ? (
+            <Input
+              label="Notice Period"
+              value={form.noticePeriod}
+              onChange={(event) => update({ noticePeriod: event.target.value })}
+              placeholder="e.g. 30 days"
+            />
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              Notice period field appears only for currently working candidates.
+            </div>
+          )}
 
-        <Input
-          label="Total experience"
-          value={form.totalExperience}
-          onChange={(e) => update({ totalExperience: e.target.value })}
-          placeholder="e.g. 3 years"
-        />
+          <Input
+            label="Total Experience"
+            value={form.totalExperience}
+            onChange={(event) => update({ totalExperience: event.target.value })}
+            placeholder="e.g. 3 years"
+          />
 
-        <Input
-          label="Relevant experience in JD skills"
-          value={form.relevantExperience}
-          onChange={(e) => update({ relevantExperience: e.target.value })}
-          placeholder="e.g. 2 years in DevOps"
-        />
+          <Input
+            label="Relevant Experience"
+            value={form.relevantExperience}
+            onChange={(event) => update({ relevantExperience: event.target.value })}
+            placeholder="e.g. 2 years in React"
+          />
 
-        <div>
-          <div className="mb-1 text-sm font-medium text-slate-700">
-            Hands-on primary skills?
-          </div>
-          <YesNoButtons
+          <QuestionToggle
+            label="Hands-on primary skills?"
             value={form.handsOnPrimarySkills}
             onChange={(value) => update({ handsOnPrimarySkills: value })}
           />
-        </div>
 
-        <div>
-          <div className="mb-1 text-sm font-medium text-slate-700">
-            Work mode preference matches JD?
-          </div>
-          <YesNoButtons
+          <QuestionToggle
+            label="Work mode preference match?"
             value={form.workModeMatch}
             onChange={(value) => update({ workModeMatch: value })}
           />
-        </div>
 
-        <div className="md:col-span-2">
-          <div className="mb-1 text-sm font-medium text-slate-700">
-            Available for interview mode mentioned in JD?
-          </div>
-          <YesNoButtons
+          <QuestionToggle
+            label="Interview availability?"
             value={form.interviewModeAvailable}
             onChange={(value) => update({ interviewModeAvailable: value })}
           />
-        </div>
 
-        <Input
-          label="Current CTC"
-          value={form.currentCTC}
-          onChange={(e) => update({ currentCTC: e.target.value })}
-        />
+          <div className="hidden md:block" />
 
-        <Input
-          label="Expected CTC"
-          value={form.expectedCTC}
-          onChange={(e) => update({ expectedCTC: e.target.value })}
-        />
+          <Input
+            label="Current CTC"
+            value={form.currentCTC}
+            onChange={(event) => update({ currentCTC: event.target.value })}
+            placeholder="e.g. 4.5 LPA"
+          />
 
-        <div className="md:col-span-2 rounded-lg border border-slate-200 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-semibold text-slate-900">
-              Select Resume (Max 3)
+          <Input
+            label="Expected CTC"
+            value={form.expectedCTC}
+            onChange={(event) => update({ expectedCTC: event.target.value })}
+            placeholder="e.g. 6.5 LPA"
+          />
+        </section>
+
+        <section className="rounded-xl border border-slate-200 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                Resume Selector
+              </div>
+              <div className="text-xs text-slate-500">
+                Choose one resume (max {MAX_RESUMES}).
+              </div>
             </div>
-            <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-primary hover:text-primary">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary hover:text-primary">
+              <FiUpload className="h-4 w-4" />
               Upload Resume
               <input
                 type="file"
                 className="hidden"
                 multiple
-                onChange={(e) =>
-                  handleUploadResumes(Array.from(e.target.files || []))
+                onChange={(event) =>
+                  handleUploadResumes(Array.from(event.target.files || []))
                 }
                 disabled={uploading || resumes.length >= MAX_RESUMES}
               />
@@ -449,16 +462,16 @@ export default function ApplyJobModal({
 
           <div className="mt-3 space-y-2">
             {resumes.length === 0 ? (
-              <div className="text-xs text-slate-600">
-                No resumes uploaded yet. Upload at least one resume to apply.
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                No resumes uploaded. Upload at least one resume to apply.
               </div>
             ) : (
               resumes.map((resume) => (
                 <label
                   key={resume.id || resume.file_url}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-3 py-2"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <input
                       type="radio"
                       name="selectedResume"
@@ -467,7 +480,7 @@ export default function ApplyJobModal({
                         update({ selectedResumeUrl: resume.file_url })
                       }
                     />
-                    <span className="text-sm text-slate-800">
+                    <span className="truncate text-sm text-slate-800">
                       {resume.file_name || "Resume"}
                     </span>
                   </div>
@@ -476,14 +489,14 @@ export default function ApplyJobModal({
                       href={resume.signed_url || resume.file_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs font-semibold text-primary"
+                      className="text-xs font-semibold text-primary hover:text-primaryDark"
                     >
                       View
                     </a>
                     <button
                       type="button"
-                      className="text-xs font-semibold text-red-600 hover:text-red-700"
                       onClick={() => handleDeleteResume(resume)}
+                      className="text-xs font-semibold text-red-600 hover:text-red-700"
                     >
                       Delete
                     </button>
@@ -492,27 +505,31 @@ export default function ApplyJobModal({
               ))
             )}
           </div>
-        </div>
+        </section>
 
-        <label className="md:col-span-2 flex items-start gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={form.jdConfirmed}
-            onChange={(e) => update({ jdConfirmed: e.target.checked })}
-            className="mt-1"
-          />
-          I have read the Job Description fully.
-        </label>
+        <section className="space-y-2">
+          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.jdConfirmed}
+              onChange={(event) => update({ jdConfirmed: event.target.checked })}
+              className="mt-1"
+            />
+            I have read the Job Description fully.
+          </label>
 
-        <label className="md:col-span-2 flex items-start gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={form.saveForFuture}
-            onChange={(e) => update({ saveForFuture: e.target.checked })}
-            className="mt-1"
-          />
-          Save these details for future applications.
-        </label>
+          <label className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={form.saveForFuture}
+              onChange={(event) =>
+                update({ saveForFuture: event.target.checked })
+              }
+              className="mt-1"
+            />
+            Save details for future applications.
+          </label>
+        </section>
       </form>
     </Modal>
   );
