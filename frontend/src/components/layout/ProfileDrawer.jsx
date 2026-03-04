@@ -1,8 +1,38 @@
 import { useEffect, useMemo, useState } from "react";
 import Button from "../common/Button";
 import Input from "../common/Input";
-import SkillSelector from "../student/SkillSelector";
 import { uploadProfilePhoto } from "../../services/profileService";
+
+function parseSkills(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((skill) => String(skill || "").trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function mergeUniqueSkills(existing, incoming) {
+  const seen = new Set();
+  const merged = [];
+
+  [...parseSkills(existing), ...parseSkills(incoming)].forEach((skill) => {
+    const key = skill.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(skill);
+  });
+
+  return merged;
+}
 
 export default function ProfileDrawer({ open, onClose, profile, onSave }) {
   const initial = useMemo(
@@ -24,11 +54,15 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
   );
 
   const [form, setForm] = useState(initial);
+  const [skillsInput, setSkillsInput] = useState("");
+  const [activeSkill, setActiveSkill] = useState("");
   const [saving, setSaving] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
 
   useEffect(() => {
     setForm(initial);
+    setSkillsInput("");
+    setActiveSkill("");
   }, [initial]);
 
   if (!open) return null;
@@ -62,6 +96,32 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
       onClose();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveSkillsToChips = () => {
+    const parsedDraftSkills = parseSkills(skillsInput);
+    if (parsedDraftSkills.length === 0) return;
+
+    update({ skills: mergeUniqueSkills(form.skills, parsedDraftSkills) });
+    setSkillsInput("");
+    setActiveSkill("");
+  };
+
+  const savedSkills = parseSkills(form.skills);
+
+  const removeSkillChip = (skillToRemove) => {
+    const normalizedTarget = String(skillToRemove || "").trim().toLowerCase();
+    if (!normalizedTarget) return;
+
+    update({
+      skills: savedSkills.filter(
+        (skill) => String(skill).trim().toLowerCase() !== normalizedTarget,
+      ),
+    });
+
+    if (String(activeSkill || "").trim().toLowerCase() === normalizedTarget) {
+      setActiveSkill("");
     }
   };
 
@@ -112,10 +172,68 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
             <div className="mb-2 text-sm font-medium text-slate-700">
               Skills
             </div>
-            <SkillSelector
-              selected={form.skills}
-              onChange={(skills) => update({ skills })}
+            <Input
+              value={skillsInput}
+              onChange={(e) => {
+                setSkillsInput(e.target.value);
+              }}
+              placeholder="e.g. React, Node, AWS"
             />
+            <div className="mt-2 flex justify-end">
+              <Button
+                variant="outline"
+                className="px-3 py-1.5 text-xs"
+                onClick={saveSkillsToChips}
+                disabled={parseSkills(skillsInput).length === 0}
+              >
+                Save Skills
+              </Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {savedSkills.length > 0 ? (
+                savedSkills.map((skill) => {
+                  const selected =
+                    String(activeSkill || "").trim().toLowerCase() ===
+                    String(skill || "").trim().toLowerCase();
+
+                  return (
+                    <div
+                      key={skill}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold transition ${selected ? "bg-primary text-white" : "bg-primary/10 text-primary"}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveSkill((prev) =>
+                            String(prev || "").trim().toLowerCase() ===
+                            String(skill || "").trim().toLowerCase()
+                              ? ""
+                              : skill,
+                          )
+                        }
+                        className="outline-none"
+                      >
+                        {skill}
+                      </button>
+                      {selected ? (
+                        <button
+                          type="button"
+                          onClick={() => removeSkillChip(skill)}
+                          aria-label={`Remove ${skill}`}
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-white/20 text-[11px] text-white transition hover:bg-white/30"
+                        >
+                          x
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })
+              ) : (
+                <span className="text-xs text-slate-500">
+                  Add comma separated skills and click Save Skills.
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="rounded-xl border border-slate-200 p-4">

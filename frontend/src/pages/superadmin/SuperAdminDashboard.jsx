@@ -20,11 +20,15 @@ export default function SuperAdminDashboard() {
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <div className={cardClass}>
         <div className="text-xs uppercase text-slate-500">Jobs</div>
-        <div className="text-3xl font-bold text-slate-900">{stats.jobCount}</div>
+        <div className="text-3xl font-bold text-slate-900">
+          {stats.jobCount}
+        </div>
       </div>
       <div className={cardClass}>
         <div className="text-xs uppercase text-slate-500">Applications</div>
-        <div className="text-3xl font-bold text-slate-900">{stats.appCount}</div>
+        <div className="text-3xl font-bold text-slate-900">
+          {stats.appCount}
+        </div>
       </div>
       <div className={cardClass}>
         <div className="text-xs uppercase text-slate-500">Students</div>

@@ -4,6 +4,7 @@ const {
   getSupabaseAdmin,
 } = require("../config/db");
 const { ROLES } = require("../utils/constants");
+const notificationService = require("./notificationService");
 
 const WORK_MODES = ["Remote", "Hybrid", "Onsite"];
 const INTERVIEW_MODES = ["Online", "Offline", "Hybrid"];
@@ -223,6 +224,14 @@ async function createJob({ payload, actor, jwt }) {
     .select("*")
     .single();
   if (error) throw error;
+
+  await notificationService.createNotificationsForStudents({
+    title: "New Job Posted",
+    message: `New job "${data.title}" has been posted`,
+    type: "job_posted",
+    jwt,
+  });
+
   return data;
 }
 

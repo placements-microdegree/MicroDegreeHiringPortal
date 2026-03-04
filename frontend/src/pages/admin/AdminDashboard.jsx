@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { listAllApplications } from "../../services/applicationService";
-import { deleteJob, listJobs } from "../../services/jobService";
+import { deleteJob, listJobs, updateJob } from "../../services/jobService";
+import Modal from "../../components/common/Modal";
+import JDForm from "../../components/admin/JDForm";
 import JobListWithDelete from "../../components/admin/JobListWithDelete";
-import { showSuccess } from "../../utils/alerts";
+import { showError, showSuccess } from "../../utils/alerts";
 
 export default function AdminDashboard() {
   const [jobCount, setJobCount] = useState(0);
   const [appCount, setAppCount] = useState(0);
   const [jobs, setJobs] = useState([]);
+  const [editingJob, setEditingJob] = useState(null);
 
   const refreshDashboard = async () => {
     const [listedJobs, apps] = await Promise.all([
@@ -29,6 +32,27 @@ export default function AdminDashboard() {
     await showSuccess("JD deleted successfully.");
   };
 
+  const onStartEdit = (job) => {
+    setEditingJob(job);
+  };
+
+  const onCloseEdit = () => {
+    setEditingJob(null);
+  };
+
+  const onUpdateJob = async (payload) => {
+    if (!editingJob?.id) return;
+
+    try {
+      await updateJob(editingJob.id, payload);
+      await refreshDashboard();
+      await showSuccess("JD updated successfully.");
+      onCloseEdit();
+    } catch (err) {
+      await showError(err?.message || "Failed to update JD", "Update Failed");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -48,24 +72,37 @@ export default function AdminDashboard() {
             {appCount}
           </div>
         </div>
-        {/* <div className="rounded-xl bg-white p-5">
-          <div className="text-sm font-semibold text-slate-700">Actions</div>
-          <div className="mt-2 text-sm text-slate-600">
-            View and delete posted JDs below.
-          </div>
-        </div> */}
       </div>
 
-      <div className="rounded-xl   p-4">
+      <div className="rounded-xl p-4">
         <div className="text-base font-semibold text-slate-900">Posted JDs</div>
         <div className="mt-4">
           <JobListWithDelete
             jobs={jobs}
+            onEdit={onStartEdit}
             onDelete={onDeleteJob}
             emptyMessage="No posted JDs yet."
           />
         </div>
       </div>
+
+      <Modal
+        title="Edit JD"
+        open={Boolean(editingJob)}
+        onClose={onCloseEdit}
+        maxWidthClass="max-w-[980px]"
+        scrollable
+      >
+        <JDForm
+          initialValues={editingJob}
+          onSubmit={onUpdateJob}
+          title="Edit Job Description"
+          submitLabel="Update JD"
+          savingLabel="Updating..."
+          onCancel={onCloseEdit}
+          resetOnSuccess={false}
+        />
+      </Modal>
     </div>
   );
 }

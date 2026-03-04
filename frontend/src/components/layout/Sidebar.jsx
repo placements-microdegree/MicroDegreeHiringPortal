@@ -6,7 +6,6 @@ import {
   FiGrid,
   FiHelpCircle,
   FiLogOut,
-  FiUser,
 } from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
@@ -19,7 +18,6 @@ export default function Sidebar({
   role,
   isOpen = false,
   onClose,
-  onProfileClick,
 }) {
   const { logout } = useAuth();
   const isStudent = role === ROLES.STUDENT;
@@ -49,12 +47,10 @@ export default function Sidebar({
               icon: FiClipboard,
             },
             {
-              type: "button",
-              label: "Profile",
-              icon: FiUser,
-              onClick: onProfileClick,
+              to: "/student/help",
+              label: "Help Center",
+              icon: FiHelpCircle,
             },
-            { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
           ];
 
   return (
@@ -94,23 +90,6 @@ export default function Sidebar({
         <nav className="mt-6 space-y-1.5">
           {links.map((l) => {
             const Icon = l.icon;
-            if (l.type === "button") {
-              return (
-                <button
-                  type="button"
-                  key={l.label}
-                  onClick={() => {
-                    l.onClick?.();
-                    onClose?.();
-                  }}
-                  className={`${linkBase} text-slate-700 hover:bg-slate-100 hover:text-slate-900`}
-                >
-                  {Icon ? <Icon className="h-4 w-4 text-slate-500" /> : null}
-                  <span>{l.label}</span>
-                </button>
-              );
-            }
-
             return (
               <NavLink
                 key={l.to}

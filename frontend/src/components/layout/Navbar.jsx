@@ -1,5 +1,6 @@
 import Button from "../common/Button";
-import { FiBell, FiMenu } from "react-icons/fi";
+import { FiMenu } from "react-icons/fi";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar({
   title,
@@ -39,13 +40,7 @@ export default function Navbar({
       </div>
       {showProfile ? (
         <div className="flex items-center gap-2 md:gap-3">
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-primary hover:text-primary"
-          >
-            <FiBell className="h-5 w-5" />
-          </button>
+          <NotificationBell />
 
           <Button
             variant="subtle"

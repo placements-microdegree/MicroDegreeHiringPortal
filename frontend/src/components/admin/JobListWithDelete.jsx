@@ -33,6 +33,7 @@ function formatPostedDate(value) {
 
 export default function JobListWithDelete({
   jobs,
+  onEdit,
   onDelete,
   emptyMessage = "No jobs found.",
 }) {
@@ -59,6 +60,14 @@ export default function JobListWithDelete({
     }
   };
 
+  const handleEdit = async (job) => {
+    try {
+      await onEdit?.(job);
+    } catch (err) {
+      await showError(err?.message || "Failed to edit JD", "Edit Failed");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {sortedJobs.length === 0 ? (
@@ -72,7 +81,6 @@ export default function JobListWithDelete({
               key={job.id}
               className="group w-full md:w-[calc(50%-0.75rem)] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
             >
-              {/* Header */}
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">
@@ -89,28 +97,37 @@ export default function JobListWithDelete({
                   </span>
                 </div>
 
-                <Button
-                  variant="outline"
-                  className="border-red-200 text-red-600 hover:bg-red-50"
-                  onClick={() => handleDelete(job)}
-                >
-                  Delete
-                </Button>
+                <div className="flex items-center gap-2">
+                  {onEdit ? (
+                    <Button
+                      variant="outline"
+                      className="border-primary/25 text-primary hover:bg-primary/5"
+                      onClick={() => handleEdit(job)}
+                    >
+                      Edit
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    className="border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={() => handleDelete(job)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
 
-              {/* Description */}
               <p className="mt-4 line-clamp-3 text-sm text-slate-700">
                 {job.description}
               </p>
 
-              {/* Footer */}
               <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-slate-600">
                 <span className="rounded-full bg-slate-100 px-3 py-1">
-                  📍 {job.location || "Location not specified"}
+                  Location: {job.location || "Location not specified"}
                 </span>
 
                 <span className="rounded-full bg-slate-100 px-3 py-1">
-                  💰 {job.ctc || "CTC not disclosed"}
+                  CTC: {job.ctc || "CTC not disclosed"}
                 </span>
               </div>
             </div>

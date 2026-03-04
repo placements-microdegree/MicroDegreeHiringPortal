@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Button from "../common/Button";
 import Input from "../common/Input";
 
@@ -36,12 +36,48 @@ function isGoogleDriveLikeUrl(value) {
   try {
     const url = new URL(value);
     const host = url.hostname.toLowerCase();
-    return (
-      host.includes("drive.google.com") || host.includes("docs.google.com")
-    );
+    return host.includes("drive.google.com") || host.includes("docs.google.com");
   } catch {
     return false;
   }
+}
+
+function formatDateInput(value) {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeFormValues(initialValues) {
+  if (!initialValues) return { ...INITIAL_FORM };
+
+  return {
+    title: String(initialValues.title || "").trim(),
+    company: String(initialValues.company || "").trim(),
+    jd_link: String(initialValues.jd_link || initialValues.jdLink || "").trim(),
+    skills: Array.isArray(initialValues.skills)
+      ? initialValues.skills.join(", ")
+      : String(initialValues.skills || "").trim(),
+    experience: String(initialValues.experience || "").trim(),
+    work_mode: WORK_MODE_OPTIONS.includes(initialValues.work_mode)
+      ? initialValues.work_mode
+      : "",
+    notice_period: String(
+      initialValues.notice_period || initialValues.noticePeriod || "",
+    ).trim(),
+    interview_mode: INTERVIEW_MODE_OPTIONS.includes(initialValues.interview_mode)
+      ? initialValues.interview_mode
+      : "",
+    valid_till: formatDateInput(initialValues.valid_till || initialValues.validTill),
+    status: STATUS_OPTIONS.some((opt) => opt.value === initialValues.status)
+      ? initialValues.status
+      : "active",
+    location: String(initialValues.location || "").trim(),
+    ctc: String(initialValues.ctc || "").trim(),
+  };
 }
 
 function validateForm(form) {
@@ -80,10 +116,27 @@ function validateForm(form) {
   return errors;
 }
 
-export default function JDForm({ onSubmit }) {
-  const [form, setForm] = useState(INITIAL_FORM);
+export default function JDForm({
+  onSubmit,
+  initialValues = null,
+  title = "Post Job Description",
+  submitLabel = "Post JD",
+  savingLabel = "Posting...",
+  onCancel,
+  resetOnSuccess = true,
+}) {
+  const normalizedInitial = useMemo(
+    () => normalizeFormValues(initialValues),
+    [initialValues],
+  );
+  const [form, setForm] = useState(normalizedInitial);
   const [fieldErrors, setFieldErrors] = useState({});
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm(normalizedInitial);
+    setFieldErrors({});
+  }, [normalizedInitial]);
 
   const update = (patch) => {
     const keys = Object.keys(patch);
@@ -99,8 +152,8 @@ export default function JDForm({ onSubmit }) {
     }
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const submit = async (event) => {
+    event.preventDefault();
     const errors = validateForm(form);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -123,7 +176,10 @@ export default function JDForm({ onSubmit }) {
         location: form.location.trim(),
         ctc: form.ctc.trim(),
       });
-      setForm(INITIAL_FORM);
+
+      if (resetOnSuccess) {
+        setForm({ ...INITIAL_FORM });
+      }
       setFieldErrors({});
     } finally {
       setSaving(false);
@@ -132,9 +188,7 @@ export default function JDForm({ onSubmit }) {
 
   return (
     <form onSubmit={submit} className="rounded-xl bg-white p-5">
-      <div className="text-base font-semibold text-slate-900">
-        Post Job Description
-      </div>
+      <div className="text-base font-semibold text-slate-900">{title}</div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <Input
@@ -272,9 +326,7 @@ export default function JDForm({ onSubmit }) {
             required
           />
           {fieldErrors.skills ? (
-            <div className="mt-1 text-xs text-red-600">
-              {fieldErrors.skills}
-            </div>
+            <div className="mt-1 text-xs text-red-600">{fieldErrors.skills}</div>
           ) : null}
         </label>
 
@@ -294,10 +346,15 @@ export default function JDForm({ onSubmit }) {
         />
       </div>
 
-      <div className="mt-5">
+      <div className="mt-5 flex flex-wrap gap-2">
         <Button type="submit" disabled={saving}>
-          {saving ? "Posting..." : "Post JD"}
+          {saving ? savingLabel : submitLabel}
         </Button>
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
       </div>
     </form>
   );
