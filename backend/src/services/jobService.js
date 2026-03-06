@@ -1,3 +1,5 @@
+// FILE: services/jobService.js
+
 const {
   getSupabaseUser,
   getSupabaseAnon,
@@ -51,20 +53,16 @@ function normalizeStatus(status) {
     throw createBadRequestError(`Status must be one of: ${JOB_STATUSES.join(", ")}`);
   return lowered;
 }
-function normalizeDateText(value, fieldLabel) {
+
+// NEW — accepts full ISO datetime string (UTC) from frontend
+function normalizeValidTill(value, fieldLabel) {
   const normalized = normalizeRequiredText(value, fieldLabel);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized))
-    throw createBadRequestError(`${fieldLabel} must be in YYYY-MM-DD format`);
-  const [year, month, day] = normalized.split("-").map(Number);
-  const parsed = new Date(`${normalized}T00:00:00.000Z`);
-  const isInvalid =
-    Number.isNaN(parsed.getTime()) ||
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() + 1 !== month ||
-    parsed.getUTCDate() !== day;
-  if (isInvalid) throw createBadRequestError(`${fieldLabel} must be a valid date`);
-  return normalized;
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime()))
+    throw createBadRequestError(`${fieldLabel} must be a valid date/time`);
+  return parsed.toISOString(); // always store as UTC ISO in DB
 }
+
 function normalizeSkills(skills) {
   if (Array.isArray(skills)) return skills.map((item) => normalizeText(item)).filter(Boolean);
   if (typeof skills === "string")
@@ -83,14 +81,12 @@ function normalizeJdLink(link) {
     throw createBadRequestError("JD link must be a Google Drive/Docs sharing URL");
   return normalized;
 }
-
-// interview_mode is now text[] — accepts array or single string (backward compat)
 function normalizeInterviewModes(value) {
   let modes;
   if (Array.isArray(value)) {
     modes = value;
   } else if (typeof value === "string" && value.trim()) {
-    modes = [value.trim()]; // backward compat for existing single-string data
+    modes = [value.trim()];
   } else {
     throw createBadRequestError("Interview mode is required");
   }
@@ -104,8 +100,6 @@ function normalizeInterviewModes(value) {
     return found;
   });
 }
-
-// Validate and normalize custom questions from payload
 function normalizeQuestions(questions) {
   if (!questions) return [];
   if (!Array.isArray(questions)) throw createBadRequestError("Questions must be an array");
@@ -117,14 +111,9 @@ function normalizeQuestions(questions) {
     const answerType = q?.answer_type || "text";
     if (!["text", "yesno"].includes(answerType))
       throw createBadRequestError(`Question ${i + 1} answer_type must be 'text' or 'yesno'`);
-    return {
-      question,
-      answer_type: answerType,
-      order_index: typeof q?.order_index === "number" ? q.order_index : i,
-    };
+    return { question, answer_type: answerType, order_index: typeof q?.order_index === "number" ? q.order_index : i };
   });
 }
-
 function hasOwn(payload, key) {
   return Object.prototype.hasOwnProperty.call(payload || {}, key);
 }
@@ -152,13 +141,13 @@ function buildJobWritePayload(payload = {}, { isUpdate = false } = {}) {
   if (!isUpdate || hasOwn(payload, "notice_period"))
     record.notice_period = normalizeRequiredText(payload.notice_period, "Notice period");
   if (!isUpdate || hasOwn(payload, "interview_mode"))
-    record.interview_mode = normalizeInterviewModes(payload.interview_mode); // now text[]
+    record.interview_mode = normalizeInterviewModes(payload.interview_mode);
   if (!isUpdate || hasOwn(payload, "location"))
     record.location = normalizeRequiredText(payload.location, "Location");
   if (!isUpdate || hasOwn(payload, "ctc"))
     record.ctc = normalizeRequiredText(payload.ctc, "CTC");
   if (!isUpdate || hasOwn(payload, "valid_till"))
-    record.valid_till = normalizeDateText(payload.valid_till, "Valid till");
+    record.valid_till = normalizeValidTill(payload.valid_till, "Valid till"); // ← now ISO datetime
   if (!isUpdate || hasOwn(payload, "status")) {
     const normalizedStatus = normalizeStatus(payload.status);
     if (normalizedStatus) record.status = normalizedStatus;
@@ -167,7 +156,6 @@ function buildJobWritePayload(payload = {}, { isUpdate = false } = {}) {
   return record;
 }
 
-// Delete all existing questions for a job then insert the new ones
 async function saveJobQuestions(supabase, jobId, questions) {
   const { error: deleteError } = await supabase
     .from("job_questions").delete().eq("job_id", jobId);
@@ -181,15 +169,34 @@ async function saveJobQuestions(supabase, jobId, questions) {
   return data || [];
 }
 
+// Auto-close any active jobs whose valid_till has passed
+// Called inside listJobs so it fires on every fetch — lightweight, index-backed
+async function autoCloseExpiredJobs(supabase) {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("jobs")
+    .update({ status: "closed", updated_at: now })
+    .eq("status", "active")
+    .lt("valid_till", now);
+  // Non-fatal — log but don't throw so listJobs still works
+  if (error) console.error("[autoCloseExpiredJobs]", error.message);
+}
+
 async function listJobs({ actor } = {}) {
   const supabase = getReadClient();
-  // Include custom questions in every job fetch
+
+  // Auto-close expired jobs on every fetch (admin client handles it silently)
+  const adminSupabase = getSupabaseAdmin();
+  if (adminSupabase) {
+    await autoCloseExpiredJobs(adminSupabase).catch(() => {});
+  }
+
   let query = supabase.from("jobs").select("*, job_questions(*)");
 
-  // Only students (not admin/superadmin) get active+valid_till filter
   if (actor?.role !== ROLES.ADMIN && actor?.role !== ROLES.SUPER_ADMIN) {
-    const today = new Date().toISOString().slice(0, 10);
-    query = query.eq("status", "active").gte("valid_till", today);
+    const now = new Date().toISOString();
+    // Students only see active jobs that haven't expired yet
+    query = query.eq("status", "active").gt("valid_till", now);
   }
 
   query = query.order("created_at", { ascending: false });
@@ -201,7 +208,7 @@ async function listJobs({ actor } = {}) {
     questions: Array.isArray(job.job_questions)
       ? [...job.job_questions].sort((a, b) => a.order_index - b.order_index)
       : [],
-    job_questions: undefined, // remove raw join key from response
+    job_questions: undefined,
   }));
 }
 
@@ -241,7 +248,6 @@ async function updateJob({ jobId, payload, actor, jwt }) {
     .single();
   if (error) throw error;
 
-  // Only update questions if they were explicitly included in the payload
   if (hasOwn(payload, "questions")) {
     const questions      = normalizeQuestions(payload.questions);
     const savedQuestions = await saveJobQuestions(supabase, jobId, questions);
@@ -259,7 +265,6 @@ async function deleteJob({ jobId, actor, jwt }) {
   if (!existing) return true;
   if (isSoftDeletedJob(existing)) return true;
 
-  // Soft-delete — keeps application history intact
   const { error } = await supabase
     .from("jobs")
     .update({ status: "deleted", updated_at: new Date().toISOString() })

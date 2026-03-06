@@ -1,3 +1,5 @@
+// FILE: src/components/admin/JDForm.jsx
+
 import { useEffect, useMemo, useState } from "react";
 import { FiPlus, FiTrash2 } from "react-icons/fi";
 import Button from "../common/Button";
@@ -12,7 +14,6 @@ const STATUS_OPTIONS = [
 ];
 const MAX_QUESTIONS = 5;
 
-// interview_mode is now an array [] — everything else unchanged
 const INITIAL_FORM = {
   title:          "",
   company:        "",
@@ -21,12 +22,12 @@ const INITIAL_FORM = {
   experience:     "",
   work_mode:      "",
   notice_period:  "",
-  interview_mode: [],   // ← array now
-  valid_till:     "",
+  interview_mode: [],
+  valid_till:     "",   // stored as IST datetime-local string "YYYY-MM-DDTHH:mm"
   status:         "active",
   location:       "",
   ctc:            "",
-  questions:      [],   // [{ id, question, answer_type, order_index }]
+  questions:      [],
 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -43,15 +44,38 @@ function isGoogleDriveLikeUrl(value) {
   } catch { return false; }
 }
 
-function formatDateInput(value) {
+// Convert any date/datetime value → "YYYY-MM-DDTHH:mm" in IST for the input
+function toISTDatetimeLocal(value) {
   if (!value) return "";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value);
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
+  // IST = UTC + 5:30
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const istMs  = date.getTime() + IST_OFFSET_MS;
+  const istDate = new Date(istMs);
+  const yyyy = istDate.getUTCFullYear();
+  const mm   = String(istDate.getUTCMonth() + 1).padStart(2, "0");
+  const dd   = String(istDate.getUTCDate()).padStart(2, "0");
+  const hh   = String(istDate.getUTCHours()).padStart(2, "0");
+  const min  = String(istDate.getUTCMinutes()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 }
 
-// Accepts old single-string or new array for interview_mode
+// Convert "YYYY-MM-DDTHH:mm" (IST) → ISO UTC string for the backend
+function istDatetimeLocalToISO(value) {
+  if (!value) return "";
+  // value is local IST time — treat as IST and convert to UTC
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const asUTC  = new Date(value);   // JS parses datetime-local as local time
+  // We need to explicitly interpret it as IST regardless of browser timezone
+  const [datePart, timePart] = value.split("T");
+  const [year, month, day]   = datePart.split("-").map(Number);
+  const [hour, minute]       = (timePart || "00:00").split(":").map(Number);
+  const istMs  = Date.UTC(year, month - 1, day, hour, minute) - IST_OFFSET_MS;
+  const utcDate = new Date(istMs);
+  return utcDate.toISOString();
+}
+
 function normalizeInterviewMode(value) {
   if (Array.isArray(value)) return value.filter((v) => INTERVIEW_MODE_OPTIONS.includes(v));
   if (typeof value === "string" && INTERVIEW_MODE_OPTIONS.includes(value)) return [value];
@@ -72,7 +96,7 @@ function normalizeFormValues(initialValues) {
       ? initialValues.work_mode : "",
     notice_period: String(initialValues.notice_period || initialValues.noticePeriod || "").trim(),
     interview_mode: normalizeInterviewMode(initialValues.interview_mode),
-    valid_till:    formatDateInput(initialValues.valid_till || initialValues.validTill),
+    valid_till: toISTDatetimeLocal(initialValues.valid_till || initialValues.validTill),
     status: STATUS_OPTIONS.some((o) => o.value === initialValues.status)
       ? initialValues.status : "active",
     location: String(initialValues.location || "").trim(),
@@ -102,15 +126,13 @@ function validateForm(form) {
   if (!WORK_MODE_OPTIONS.includes(form.work_mode)) errors.work_mode = "Select a valid work mode";
   if (!form.notice_period.trim())       errors.notice_period = "Notice period is required";
   if (!form.interview_mode.length)      errors.interview_mode = "Select at least one interview mode";
-  if (!form.valid_till.trim())          errors.valid_till    = "Valid Till date is required";
+  if (!form.valid_till.trim())          errors.valid_till    = "Valid Till date & time is required";
   if (!STATUS_OPTIONS.some((o) => o.value === form.status)) errors.status = "Select a valid status";
   if (!form.location.trim()) errors.location = "Location is required";
   if (!form.ctc.trim())      errors.ctc      = "CTC is required";
-
   form.questions.forEach((q, i) => {
     if (!q.question.trim()) errors[`question_${i}`] = "Question text is required";
   });
-
   return errors;
 }
 
@@ -141,7 +163,6 @@ function InterviewModeCheckboxes({ value, onChange, error }) {
               }`}
             >
               <input type="checkbox" className="hidden" checked={checked} onChange={() => toggle(mode)} />
-              {/* custom checkbox indicator */}
               <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[11px] font-bold ${
                 checked ? "border-primary bg-primary text-white" : "border-slate-300 bg-white"
               }`}>
@@ -164,9 +185,7 @@ function CustomQuestionsBuilder({ questions, onChange, errors }) {
     if (questions.length >= MAX_QUESTIONS) return;
     onChange([...questions, { id: crypto.randomUUID(), question: "", answer_type: "text", order_index: questions.length }]);
   };
-
   const remove = (i) => onChange(questions.filter((_, idx) => idx !== i));
-
   const updateQ = (i, patch) =>
     onChange(questions.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
 
@@ -210,7 +229,6 @@ function CustomQuestionsBuilder({ questions, onChange, errors }) {
                   <FiTrash2 className="h-3.5 w-3.5" /> Remove
                 </button>
               </div>
-
               <textarea
                 rows={2}
                 placeholder="e.g. Do you have experience with microservices?"
@@ -225,7 +243,6 @@ function CustomQuestionsBuilder({ questions, onChange, errors }) {
               {errors?.[`question_${i}`] && (
                 <div className="mt-1 text-xs text-red-600">{errors[`question_${i}`]}</div>
               )}
-
               <div className="mt-2 flex items-center gap-4">
                 <span className="text-xs text-slate-500">Answer type:</span>
                 {[{ val: "text", label: "Free text" }, { val: "yesno", label: "Yes / No" }].map(({ val, label }) => (
@@ -273,7 +290,6 @@ export default function JDForm({
   const update = (patch) => {
     const keys = Object.keys(patch);
     setForm((prev) => ({ ...prev, ...patch }));
-    // clear error for updated field
     if (keys.length === 1) {
       const field = keys[0];
       setFieldErrors((prev) => {
@@ -301,8 +317,9 @@ export default function JDForm({
         experience:     form.experience.trim(),
         work_mode:      form.work_mode,
         notice_period:  form.notice_period.trim(),
-        interview_mode: form.interview_mode,          // string[] e.g. ['Online','Hybrid']
-        valid_till:     form.valid_till,
+        interview_mode: form.interview_mode,
+        // Convert IST datetime-local → UTC ISO string for backend
+        valid_till:     istDatetimeLocalToISO(form.valid_till),
         status:         form.status,
         location:       form.location.trim(),
         ctc:            form.ctc.trim(),
@@ -346,7 +363,7 @@ export default function JDForm({
           onChange={(e) => update({ experience: e.target.value })}
           error={fieldErrors.experience} required />
 
-        {/* Work Mode — single select, unchanged */}
+        {/* Work Mode */}
         <label className="block">
           <div className="mb-1 text-sm font-medium text-slate-700">Work Mode</div>
           <select
@@ -366,7 +383,7 @@ export default function JDForm({
           onChange={(e) => update({ notice_period: e.target.value })}
           error={fieldErrors.notice_period} required />
 
-        {/* Interview Mode — NEW multi-select checkboxes, spans full row */}
+        {/* Interview Mode checkboxes */}
         <div className="col-span-2 md:col-span-1">
           <InterviewModeCheckboxes
             value={form.interview_mode}
@@ -375,10 +392,27 @@ export default function JDForm({
           />
         </div>
 
-        <Input label="Valid Till" type="date"
-          value={form.valid_till}
-          onChange={(e) => update({ valid_till: e.target.value })}
-          error={fieldErrors.valid_till} required />
+        {/* Valid Till — datetime-local picker (IST) */}
+        <label className="block">
+          <div className={`mb-1 text-sm font-medium ${fieldErrors.valid_till ? "text-red-600" : "text-slate-700"}`}>
+            Valid Till (IST) <span className="text-red-500">*</span>
+          </div>
+          <input
+            type="datetime-local"
+            value={form.valid_till}
+            onChange={(e) => update({ valid_till: e.target.value })}
+            className={`w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ${
+              fieldErrors.valid_till ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-primary"
+            }`}
+            required
+          />
+          <div className="mt-1 text-xs text-slate-400">
+            Enter date &amp; time in IST. Job auto-closes after this time.
+          </div>
+          {fieldErrors.valid_till && (
+            <div className="mt-1 text-xs text-red-600">{fieldErrors.valid_till}</div>
+          )}
+        </label>
 
         {/* Job Status */}
         <label className="block">
@@ -411,11 +445,11 @@ export default function JDForm({
           onChange={(e) => update({ location: e.target.value })}
           error={fieldErrors.location} required />
 
-        <Input label="CTC" value={form.ctc}
+        <Input label="CTC (in LPA)" value={form.ctc}
           onChange={(e) => update({ ctc: e.target.value })}
           error={fieldErrors.ctc} required />
 
-        {/* Custom Questions — NEW */}
+        {/* Custom Questions */}
         <CustomQuestionsBuilder
           questions={form.questions}
           onChange={(qs) => update({ questions: qs })}

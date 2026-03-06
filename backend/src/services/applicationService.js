@@ -1,3 +1,5 @@
+// FILE: services/applicationService.js
+
 const { getSupabaseUser, getSupabaseAdmin } = require("../config/db");
 const { ROLES, APPLICATION_STATUSES } = require("../utils/constants");
 const { MAX_RESUMES_PER_STUDENT } = require("./resumeService");
@@ -7,7 +9,6 @@ function getClient(jwt) {
   return admin || getSupabaseUser(jwt);
 }
 
-// hr_comment added to select
 const APPLICATIONS_ADMIN_SELECT = `
   id,
   status,
@@ -83,7 +84,7 @@ function normalizeApplicationForAdminView(row) {
     jd_confirmed:             row.jd_confirmed,
     selected_resume_url:      row.selected_resume_url,
     save_for_future:          row.save_for_future,
-    hr_comment:               row.hr_comment ?? null,  // ← new
+    hr_comment:               row.hr_comment ?? null,
     answers,
     job: row.jobs
       ? {
@@ -225,7 +226,6 @@ async function createApplication({ payload, jwt }) {
         jd_confirmed:             jdConfirmed,
         selected_resume_url:      selectedResumeUrl,
         save_for_future:          saveForFuture,
-        // hr_comment starts NULL — HR fills it later via the table
       })
       .select("*").single();
     if (error) throw error;
@@ -261,6 +261,58 @@ async function createApplication({ payload, jwt }) {
   return data;
 }
 
+// ── NEW: HR applies on behalf of a student ────────────────────────────────────
+// Bypasses eligibility/quota checks entirely — HR is trusted actor
+async function applyOnBehalf({ payload, jwt }) {
+  const supabase = getClient(jwt);
+
+  const studentId = payload.studentId;
+  const jobId     = payload.jobId;
+
+  if (!studentId) {
+    const err = new Error("Student is required"); err.status = 400; throw err;
+  }
+  if (!jobId) {
+    const err = new Error("Job is required"); err.status = 400; throw err;
+  }
+
+  // Check for duplicate
+  const { data: alreadyApplied, error: dupError } = await supabase
+    .from("applications").select("id")
+    .eq("student_id", studentId).eq("job_id", jobId).maybeSingle();
+  if (dupError) throw dupError;
+  if (alreadyApplied?.id) {
+    const err = new Error("Student has already applied for this job"); err.status = 409; throw err;
+  }
+
+  const customAnswers = Array.isArray(payload.answers) ? payload.answers : [];
+
+  const { data, error } = await supabase
+    .from("applications")
+    .insert({
+      student_id:               studentId,
+      job_id:                   jobId,
+      status:                   "Applied",
+      notice_period:            toOptionalText(payload.noticePeriod),
+      relevant_experience:      toOptionalText(payload.relevantExperience),
+      hands_on_primary_skills:  toOptionalBoolean(payload.handsOnPrimarySkills,  "handsOnPrimarySkills"),
+      work_mode_match:          toOptionalBoolean(payload.workModeMatch,          "workModeMatch"),
+      interview_mode_available: toOptionalBoolean(payload.interviewModeAvailable, "interviewModeAvailable"),
+      jd_confirmed:             true,   // HR confirms on behalf
+      selected_resume_url:      toOptionalText(payload.selectedResumeUrl) || null,
+      save_for_future:          false,
+      hr_comment:               toOptionalText(payload.hrNote) || "Applied by HR on behalf of student",
+    })
+    .select("*").single();
+  if (error) throw error;
+
+  if (customAnswers.length > 0) {
+    await saveApplicationAnswers(supabase, data.id, customAnswers);
+  }
+
+  return data;
+}
+
 async function listApplicationsByStudent({ studentId, jwt }) {
   const supabase = getClient(jwt);
   const { data, error } = await supabase
@@ -289,13 +341,12 @@ async function updateApplicationStatus({ applicationId, status, actor, jwt }) {
   return data;
 }
 
-// NEW — HR saves a personal comment on any application
 async function updateApplicationComment({ applicationId, comment, jwt }) {
   const supabase = getClient(jwt);
   const { data, error } = await supabase
     .from("applications")
     .update({
-      hr_comment: toOptionalText(comment),  // stores null if blank string
+      hr_comment: toOptionalText(comment),
       updated_at: new Date().toISOString(),
     })
     .eq("id", applicationId)
@@ -348,10 +399,11 @@ async function getStudentAnalytics({ studentId, jwt }) {
 
 module.exports = {
   createApplication,
+  applyOnBehalf,
   listApplicationsByStudent,
   listAllApplications,
   updateApplicationStatus,
-  updateApplicationComment,       // ← new
+  updateApplicationComment,
   getStudentAnalytics,
   normalizeApplicationForAdminView,
 };

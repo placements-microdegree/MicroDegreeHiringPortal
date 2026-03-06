@@ -51,7 +51,6 @@ function normalizeEmail(email) {
 function getAdminClient() {
   const admin = getSupabaseAdmin();
   if (admin) return admin;
-  // Fallback to non-cached constructor to give a clearer error.
   return getSupabaseAdminClient();
 }
 
@@ -139,6 +138,7 @@ async function enforceStudentEligibility({ user }) {
   const normalizedEmail = normalizeEmail(email);
   let profileCreatedAt = null;
   let profileCourseFee = null;
+  let profileApplicationQuota = null; // ← track existing quota
   let phone = normalizePhone(
     user.user_metadata?.phone ||
       user.app_metadata?.phone ||
@@ -148,7 +148,7 @@ async function enforceStudentEligibility({ user }) {
   if (!phone) {
     const { data: profileRow } = await supabase
       .from("profiles")
-      .select("phone, created_at, course_fee")
+      .select("phone, created_at, course_fee, application_quota") // ← added application_quota
       .eq("id", user.id)
       .maybeSingle();
     phone = normalizePhone(profileRow?.phone) || phone;
@@ -157,10 +157,16 @@ async function enforceStudentEligibility({ user }) {
     profileCourseFee = Number.isFinite(parsedProfileFee)
       ? parsedProfileFee
       : null;
+    // Preserve existing quota — null means it has never been set
+    profileApplicationQuota =
+      profileRow?.application_quota !== undefined &&
+      profileRow?.application_quota !== null
+        ? Number(profileRow.application_quota)
+        : null;
   } else {
     const { data: profileRow } = await supabase
       .from("profiles")
-      .select("created_at, course_fee")
+      .select("created_at, course_fee, application_quota") // ← added application_quota
       .eq("id", user.id)
       .maybeSingle();
     profileCreatedAt = profileRow?.created_at || null;
@@ -168,7 +174,19 @@ async function enforceStudentEligibility({ user }) {
     profileCourseFee = Number.isFinite(parsedProfileFee)
       ? parsedProfileFee
       : null;
+    profileApplicationQuota =
+      profileRow?.application_quota !== undefined &&
+      profileRow?.application_quota !== null
+        ? Number(profileRow.application_quota)
+        : null;
   }
+
+  // Use existing quota if already set; only default to 3 on first-time setup.
+  // Once set, this value is ONLY decreased by createApplication — never reset here.
+  const quotaToUse =
+    profileApplicationQuota !== null && Number.isFinite(profileApplicationQuota)
+      ? profileApplicationQuota
+      : 3;
 
   const markIneligible = async (message, courseFee = null) => {
     const { error: updateError } = await supabase.from("profiles").upsert({
@@ -179,7 +197,7 @@ async function enforceStudentEligibility({ user }) {
       course_fee: Number.isFinite(Number(courseFee)) ? Number(courseFee) : null,
       is_eligible: false,
       eligible_until: null,
-      application_quota: 3,
+      application_quota: quotaToUse, // ← preserved, not reset
       updated_at: new Date().toISOString(),
     });
     if (updateError) throw updateError;
@@ -251,7 +269,7 @@ async function enforceStudentEligibility({ user }) {
     course_fee: effectiveCourseFee,
     is_eligible: true,
     eligible_until: expiry.toISOString(),
-    application_quota: 3,
+    application_quota: quotaToUse, // ← preserved, not reset
     updated_at: new Date().toISOString(),
   });
   if (updateError) throw updateError;
@@ -436,8 +454,6 @@ async function signup(req, res, next) {
     let session = data.session || null;
     let userForProfile = data.user;
 
-    // If email confirmation is enabled in Supabase, signUp may return no session.
-    // Auto-confirm and sign in so users can continue immediately after signup.
     if (!session) {
       const { error: confirmError } =
         await adminClient.auth.admin.updateUserById(data.user.id, {
@@ -534,7 +550,6 @@ async function googleStart(req, res, next) {
     const codeVerifier = base64Url(crypto.randomBytes(32));
     const codeChallenge = base64Url(sha256(codeVerifier));
 
-    // Reset any previous attempt cookies.
     res.clearCookie("mdpp_oauth_verifier", cookieOptions());
     res.cookie("mdpp_oauth_verifier", codeVerifier, cookieOptions());
 
@@ -544,9 +559,7 @@ async function googleStart(req, res, next) {
     authorizeUrl.searchParams.set("redirect_to", redirectTo);
     authorizeUrl.searchParams.set("response_type", "code");
     authorizeUrl.searchParams.set("code_challenge", codeChallenge);
-    // Supabase expects the PKCE method to be exactly "S256".
     authorizeUrl.searchParams.set("code_challenge_method", "S256");
-    // Always show Google account chooser.
     authorizeUrl.searchParams.set("prompt", "select_account");
 
     devLog("[oauth] start", {
