@@ -106,36 +106,7 @@ export default function CloudDrive() {
           ))}
         </div>
       </section>
-
-      {/* 4 Rounds */}
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">
-          Selection Process — 4 Rounds
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {rounds.map((r) => (
-            <div
-              key={r.round}
-              className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-            >
-              <div className="mb-1 inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                {r.round}
-              </div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{r.title}</div>
-              <ul className="mt-2 space-y-1">
-                {r.points.map((p) => (
-                  <li key={p} className="flex items-start gap-1.5 text-xs text-slate-600">
-                    <FiArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Eligibility + Registration side by side */}
+{/* Eligibility + Registration side by side */}
       <div className="grid gap-4 md:grid-cols-2">
 
         {/* Eligibility */}
@@ -173,6 +144,34 @@ export default function CloudDrive() {
         </section>
 
       </div>
+
+      {/* 4 Rounds */}
+      <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-slate-900">
+          Selection Process — 4 Rounds
+        </h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          {rounds.map((r) => (
+            <div
+              key={r.round}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+            >
+              <div className="mb-1 inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                {r.round}
+              </div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">{r.title}</div>
+              <ul className="mt-2 space-y-1">
+                {r.points.map((p) => (
+                  <li key={p} className="flex items-start gap-1.5 text-xs text-slate-600">
+                    <FiArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Footer note */}
       <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
