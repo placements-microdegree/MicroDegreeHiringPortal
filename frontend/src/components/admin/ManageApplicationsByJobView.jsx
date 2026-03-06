@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { FiRefreshCw, FiSearch, FiUserPlus, FiX, FiAlertCircle, FiAlertTriangle } from "react-icons/fi";
+import { FiRefreshCw, FiSearch, FiUpload, FiUserPlus, FiX, FiAlertCircle, FiAlertTriangle } from "react-icons/fi";
 import ApplicationsTable from "./ApplicationsTable";
 import {
   listAllApplications,
@@ -12,6 +12,8 @@ import {
   searchStudents,
   getStudentProfileForHR,
   getStudentResumesForHR,
+  uploadResumesForStudent,
+  deleteResumeForStudent,
 } from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
 
@@ -211,10 +213,11 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
   const searchTimeout = useRef(null);
 
   // ── form state ────────────────────────────────────────────────────────────
-  const [form,    setForm]    = useState({ ...EMPTY_FORM });
-  const [resumes, setResumes] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [hrNote,  setHrNote]  = useState("");
+  const [form,      setForm]      = useState({ ...EMPTY_FORM });
+  const [resumes,   setResumes]   = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [answers,   setAnswers]   = useState({});
+  const [hrNote,    setHrNote]    = useState("");
 
   const update       = (patch) => setForm((prev) => ({ ...prev, ...patch }));
   const updateAnswer = (qId, val) => setAnswers((prev) => ({ ...prev, [qId]: val }));
@@ -333,6 +336,51 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     setSubmitted(false);
     setSubmitError("");
     setResumeFetchError("");
+  };
+
+  // ── HR resume upload / delete ─────────────────────────────────────────────
+  const MAX_RESUMES = 3;
+
+  const handleUploadResumes = async (files) => {
+    if (!files?.length || !selectedStudent) return;
+    if (resumes.length >= MAX_RESUMES) return;
+    const remaining = MAX_RESUMES - resumes.length;
+    const accepted  = Array.from(files).slice(0, remaining);
+    setUploading(true);
+    setResumeFetchError("");
+    try {
+      const updated = await uploadResumesForStudent(selectedStudent.id, accepted);
+      const safeResumes = Array.isArray(updated) ? updated : [];
+      setResumes(safeResumes);
+      // Auto-select the newly uploaded resume if nothing is selected yet
+      if (!form.selectedResumeUrl && safeResumes.length > 0) {
+        update({ selectedResumeUrl: safeResumes[0].file_url });
+      }
+    } catch (err) {
+      setResumeFetchError(err?.message || "Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteResume = async (resume) => {
+    if (!resume?.id || !selectedStudent) return;
+    setUploading(true);
+    setResumeFetchError("");
+    try {
+      await deleteResumeForStudent(resume.id);
+      const updated = await getStudentResumesForHR(selectedStudent.id);
+      const safeResumes = Array.isArray(updated) ? updated : [];
+      setResumes(safeResumes);
+      // Clear selection if the deleted resume was selected
+      if (form.selectedResumeUrl === resume.file_url) {
+        update({ selectedResumeUrl: safeResumes[0]?.file_url || "" });
+      }
+    } catch (err) {
+      setResumeFetchError(err?.message || "Delete failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   // ── submit ────────────────────────────────────────────────────────────────
@@ -609,7 +657,8 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
 
               {/* ── Resume selector ───────────────────────────────────── */}
               <section className={`rounded-xl border p-4 ${show() && errors.selectedResumeUrl ? "border-red-400 bg-red-50" : "border-slate-200"}`}>
-                <div className="mb-3 flex items-start justify-between gap-3">
+                {/* Header row: title + upload button */}
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className={`text-sm font-semibold ${show() && errors.selectedResumeUrl ? "text-red-700" : "text-slate-900"}`}>
                       Resume Selector
@@ -618,25 +667,49 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                       )}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {resumes.length > 0
-                        ? `${resumes.length} resume${resumes.length === 1 ? "" : "s"} found — choose one to submit.`
-                        : "No resumes found for this student."}
+                      {resumes.length >= MAX_RESUMES
+                        ? <span className="font-semibold text-amber-600">Limit reached (3/3) — delete one to upload a new resume.</span>
+                        : resumes.length > 0
+                          ? `${resumes.length}/3 resume${resumes.length === 1 ? "" : "s"} — choose one to submit.`
+                          : "No resumes yet — upload one below."}
                     </div>
                   </div>
-                  {/* Reload button — lets HR retry fetching resumes without re-searching */}
-                  <button type="button"
-                    onClick={() => fetchStudentData(selectedStudent)}
-                    disabled={loadingProfile}
-                    className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-primary hover:text-primary disabled:opacity-50"
-                    title="Reload resumes from database">
-                    <FiRefreshCw className={`h-3.5 w-3.5 ${loadingProfile ? "animate-spin" : ""}`} />
-                    Reload
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* Upload button — matches ApplyJobModal style */}
+                    <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                      resumes.length >= MAX_RESUMES || uploading
+                        ? "cursor-not-allowed border-slate-200 text-slate-400"
+                        : "border-slate-300 text-slate-700 hover:border-primary hover:text-primary"
+                    }`}>
+                      <FiUpload className="h-3.5 w-3.5" />
+                      {uploading ? "Uploading..." : "Upload Resume"}
+                      <input type="file" className="hidden" multiple accept=".pdf,.doc,.docx"
+                        disabled={uploading || resumes.length >= MAX_RESUMES}
+                        onChange={(e) => handleUploadResumes(e.target.files)}
+                      />
+                    </label>
+                    {/* Reload button */}
+                    <button type="button"
+                      onClick={() => fetchStudentData(selectedStudent)}
+                      disabled={loadingProfile || uploading}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-primary hover:text-primary disabled:opacity-50"
+                      title="Reload resumes from database">
+                      <FiRefreshCw className={`h-3.5 w-3.5 ${loadingProfile ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
                 </div>
 
+                {/* Error banner */}
+                {resumeFetchError && (
+                  <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    ⚠ {resumeFetchError}
+                  </div>
+                )}
+
+                {/* Resume list */}
                 {resumes.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                    This student has no uploaded resumes. Ask them to upload one via their profile, then click <strong>Reload</strong> above.
+                    No resumes uploaded yet. Use the <strong>Upload Resume</strong> button above to add one on behalf of the student — it will be saved to their profile.
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -656,14 +729,22 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                             {resume.file_name || "Resume"}
                           </span>
                         </div>
-                        {(resume.signed_url || resume.file_url) && (
-                          <a href={resume.signed_url || resume.file_url}
-                            target="_blank" rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="shrink-0 text-xs font-semibold text-primary hover:text-primary/80">
-                            View
-                          </a>
-                        )}
+                        <div className="flex items-center gap-3">
+                          {(resume.signed_url || resume.file_url) && (
+                            <a href={resume.signed_url || resume.file_url}
+                              target="_blank" rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-xs font-semibold text-primary hover:text-primary/80">
+                              View
+                            </a>
+                          )}
+                          <button type="button"
+                            disabled={uploading}
+                            onClick={(e) => { e.preventDefault(); handleDeleteResume(resume); }}
+                            className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50">
+                            Delete
+                          </button>
+                        </div>
                       </label>
                     ))}
                   </div>
@@ -715,9 +796,9 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
           {/* ── Actions ───────────────────────────────────────────────── */}
           <div className="flex gap-2 pt-1">
             <button type="submit"
-              disabled={submitting || !selectedStudent || loadingProfile}
+              disabled={submitting || uploading || !selectedStudent || loadingProfile}
               className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
-              {submitting ? "Submitting..." : "Apply on Behalf"}
+              {submitting ? "Submitting..." : uploading ? "Uploading..." : "Apply on Behalf"}
             </button>
             <button type="button" onClick={onClose}
               className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">

@@ -1,7 +1,7 @@
 // FILE: controllers/applicationController.js
 
 const applicationService = require("../services/applicationService");
-const resumeService      = require("../services/resumeService"); // ← added
+const resumeService = require("../services/resumeService");
 const { getSupabaseAdmin, getSupabaseUser } = require("../config/db");
 const { ROLES } = require("../utils/constants");
 
@@ -103,7 +103,7 @@ async function searchStudents(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// Fetch a single student's profile for HR pre-fill
+// NEW — fetch a single student's profile for HR pre-fill
 async function getStudentProfile(req, res, next) {
   try {
     const { studentId } = req.params;
@@ -123,23 +123,65 @@ async function getStudentProfile(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// Fetch a student's resumes with fresh signed URLs.
-// Uses resumeService.listResumesByUserWithSignedUrls — the same path that
-// students use for their own resumes — so signed URLs are always fresh and
-// the correct storage bucket / path is used automatically.
+// NEW — fetch a single student's resumes for HR resume selector
 async function getStudentResumes(req, res, next) {
   try {
     const { studentId } = req.params;
     if (!studentId) {
       return res.status(400).json({ success: false, message: "studentId is required" });
     }
+    // Use resumeService so signed URLs are generated fresh — signed_url is NOT a DB column
+    const resumes = await resumeService.listResumesByUserWithSignedUrls({
+      userId: studentId,
+      jwt: req.user.jwt,
+    });
+    return res.json({ success: true, resumes: resumes || [] });
+  } catch (err) { next(err); }
+}
 
+// HR uploads a resume on behalf of a student — saved to that student's profile in DB + storage
+async function uploadResumeForStudent(req, res, next) {
+  try {
+    const { studentId } = req.params;
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: "studentId is required" });
+    }
+    const files = req.files || [];
+    if (files.length === 0) {
+      return res.status(400).json({ success: false, message: "No files uploaded" });
+    }
+
+    const existing = await resumeService.listResumesByUser(studentId);
+    if ((existing.length || 0) + files.length > resumeService.MAX_RESUMES_PER_STUDENT) {
+      return res.status(400).json({
+        success: false,
+        message: `Maximum ${resumeService.MAX_RESUMES_PER_STUDENT} resumes are allowed`,
+      });
+    }
+
+    for (const f of files) {
+      // eslint-disable-next-line no-await-in-loop
+      await resumeService.uploadResume({
+        userId:  studentId,
+        jwt:     req.user.jwt, // service-role fallback handles the DB insert
+        file:    f,
+      });
+    }
+
+    // Return full list with fresh signed URLs so frontend can update immediately
     const resumes = await resumeService.listResumesByUserWithSignedUrls({
       userId: studentId,
       jwt:    req.user.jwt,
     });
+    return res.status(201).json({ success: true, resumes });
+  } catch (err) { next(err); }
+}
 
-    return res.json({ success: true, resumes: resumes || [] });
+// HR deletes any resume by id (same service, no ownership check needed for admin)
+async function deleteResumeForStudent(req, res, next) {
+  try {
+    await resumeService.deleteResume({ resumeId: req.params.id });
+    res.json({ success: true });
   } catch (err) { next(err); }
 }
 
@@ -154,4 +196,6 @@ module.exports = {
   searchStudents,
   getStudentProfile,
   getStudentResumes,
+  uploadResumeForStudent,
+  deleteResumeForStudent,
 };

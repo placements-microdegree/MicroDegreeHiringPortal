@@ -569,7 +569,7 @@ export default function ApplyJobModal({ open, onClose, job, profile, onApplied }
               <label className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${resumes.length >= MAX_RESUMES || uploading ? "cursor-not-allowed border-slate-200 text-slate-400" : "border-slate-300 text-slate-700 hover:border-primary hover:text-primary"}`}>
                 <FiUpload className="h-4 w-4" />
                 Upload Resume
-                <input type="file" className="hidden" multiple
+                <input type="file" className="hidden" multiple accept=".pdf,.doc,.docx"
                   onChange={(e) => handleUploadResumes(Array.from(e.target.files || []))}
                   disabled={uploading || resumes.length >= MAX_RESUMES} />
               </label>

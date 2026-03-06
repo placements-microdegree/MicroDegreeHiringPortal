@@ -1,6 +1,7 @@
 // FILE: routes/applicationRoutes.js
 
 const express    = require("express");
+const multer     = require("multer");
 const verifyToken      = require("../middleware/verifyToken");
 const authorizeRole    = require("../middleware/authorizeRole");
 const { cacheResponse, invalidateApiCache } = require("../middleware/apiCache");
@@ -9,6 +10,12 @@ const { ROLES } = require("../utils/constants");
 
 const router = express.Router();
 const ADMIN_ROLES = [ROLES.ADMIN, ROLES.SUPER_ADMIN];
+
+// Multer for HR resume uploads (same limits as the student resume route)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 // ── Student routes ────────────────────────────────────────────────────────────
 router.post(
@@ -73,6 +80,23 @@ router.post(
   authorizeRole(ADMIN_ROLES),
   invalidateApiCache(["/api/applications"]),
   applicationController.applyOnBehalf,
+);
+
+// HR uploads a resume on behalf of a student (saved to student's profile)
+router.post(
+  "/student-resumes/:studentId/upload",
+  verifyToken,
+  authorizeRole(ADMIN_ROLES),
+  upload.array("files", 3),
+  applicationController.uploadResumeForStudent,
+);
+
+// HR deletes a student's resume by id
+router.delete(
+  "/student-resumes/:id",
+  verifyToken,
+  authorizeRole(ADMIN_ROLES),
+  applicationController.deleteResumeForStudent,
 );
 
 // ── Param routes (/:id) — MUST be last ───────────────────────────────────────

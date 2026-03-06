@@ -73,3 +73,23 @@ export async function getStudentResumesForHR(studentId) {
   const data = await request(`/api/applications/student-resumes/${studentId}`);
   return data.resumes || [];
 }
+
+// HR uploads one or more resumes on behalf of a student — saved to their profile in DB + storage
+export async function uploadResumesForStudent(studentId, files) {
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("files", file);
+  }
+  const res = await fetch(
+    `${API_BASE_URL}/api/applications/student-resumes/${studentId}/upload`,
+    { method: "POST", credentials: "include", body: formData },
+  );
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(data?.message || "Upload failed");
+  return data.resumes || [];
+}
+
+// HR deletes a student's resume by id
+export async function deleteResumeForStudent(resumeId) {
+  await request(`/api/applications/student-resumes/${resumeId}`, { method: "DELETE" });
+}
