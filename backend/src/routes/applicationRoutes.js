@@ -1,13 +1,14 @@
 const express = require("express");
-const verifyToken = require("../middleware/verifyToken");
-const authorizeRole = require("../middleware/authorizeRole");
+const verifyToken    = require("../middleware/verifyToken");
+const authorizeRole  = require("../middleware/authorizeRole");
 const { cacheResponse, invalidateApiCache } = require("../middleware/apiCache");
 const applicationController = require("../controllers/applicationController");
 const { ROLES } = require("../utils/constants");
 
 const router = express.Router();
 
-// Student
+// ── Student routes ────────────────────────────────────────────────────────────
+
 router.post(
   "/apply",
   verifyToken,
@@ -19,6 +20,7 @@ router.post(
   ]),
   applicationController.apply,
 );
+
 router.get(
   "/me",
   verifyToken,
@@ -26,6 +28,7 @@ router.get(
   cacheResponse({ ttlSeconds: 30 }),
   applicationController.myApplications,
 );
+
 router.get(
   "/analytics/me",
   verifyToken,
@@ -34,7 +37,8 @@ router.get(
   applicationController.myAnalytics,
 );
 
-// Admin
+// ── Admin routes ──────────────────────────────────────────────────────────────
+
 router.get(
   "/",
   verifyToken,
@@ -42,6 +46,7 @@ router.get(
   cacheResponse({ ttlSeconds: 30 }),
   applicationController.allApplications,
 );
+
 router.patch(
   "/:id/status",
   verifyToken,
@@ -52,6 +57,14 @@ router.patch(
     "/api/applications/analytics/me",
   ]),
   applicationController.updateStatus,
+);
+
+// NEW — HR comment (no cache invalidation needed — comment is HR-only, not student-facing)
+router.patch(
+  "/:id/comment",
+  verifyToken,
+  authorizeRole([ROLES.ADMIN, ROLES.SUPER_ADMIN]),
+  applicationController.updateComment,
 );
 
 module.exports = router;

@@ -267,12 +267,12 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
                   onChange={(e) => update({ experienceYears: e.target.value })}
                 />
                 <Input
-                  label="Current CTC"
+                  label="Current CTC (in LPA)"
                   value={form.currentCTC}
                   onChange={(e) => update({ currentCTC: e.target.value })}
                 />
                 <Input
-                  label="Expected CTC"
+                  label="Expected CTC ( LPA )"
                   className="col-span-2"
                   value={form.expectedCTC}
                   onChange={(e) => update({ expectedCTC: e.target.value })}
@@ -281,7 +281,7 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
             ) : (
               <div className="mt-4">
                 <Input
-                  label="Expected CTC"
+                  label="Expected CTC ( LPA )"
                   value={form.expectedCTC}
                   onChange={(e) => update({ expectedCTC: e.target.value })}
                 />

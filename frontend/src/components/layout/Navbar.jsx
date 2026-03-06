@@ -1,6 +1,39 @@
 import Button from "../common/Button";
-import { FiMenu } from "react-icons/fi";
+import { FiMenu, FiCheckCircle, FiXCircle, FiAlertCircle } from "react-icons/fi";
 import NotificationBell from "./NotificationBell";
+
+// ── EligibilityBadge ──────────────────────────────────────────────────────────
+
+function EligibilityBadge({ isEligible, applicationQuota }) {
+  if (isEligible === true) {
+    return (
+      <span className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+        <FiCheckCircle className="h-3.5 w-3.5" />
+        Eligible
+      </span>
+    );
+  }
+
+  const quota = Number(applicationQuota ?? 0);
+
+  if (quota > 0) {
+    return (
+      <span className="hidden sm:flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+        <FiAlertCircle className="h-3.5 w-3.5" />
+        Quota: {quota}
+      </span>
+    );
+  }
+
+  return (
+    <span className="hidden sm:flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+      <FiXCircle className="h-3.5 w-3.5" />
+      Not Eligible
+    </span>
+  );
+}
+
+// ── Navbar ────────────────────────────────────────────────────────────────────
 
 export default function Navbar({
   title,
@@ -10,6 +43,9 @@ export default function Navbar({
   onMenuClick,
   showProfile = true,
   completionPercent = null,
+  // new props for eligibility
+  isEligible,
+  applicationQuota,
 }) {
   const safePercent = Math.max(
     0,
@@ -38,10 +74,21 @@ export default function Navbar({
           {title}
         </div>
       </div>
+
       {showProfile ? (
         <div className="flex items-center gap-2 md:gap-3">
+          {/* Eligibility status — shown only when props are provided */}
+          {(isEligible !== undefined || applicationQuota !== undefined) && (
+            <EligibilityBadge
+              isEligible={isEligible}
+              applicationQuota={applicationQuota}
+            />
+          )}
+
+          {/* Notification bell — unchanged */}
           <NotificationBell />
 
+          {/* Profile button — unchanged */}
           <Button
             variant="subtle"
             onClick={onProfileClick}

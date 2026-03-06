@@ -193,12 +193,12 @@ export default function CompleteProfile() {
                     }
                   />
                   <Input
-                    label="Current CTC"
+                    label="Current CTC (in LPA)"
                     value={form.currentCTC}
                     onChange={(e) => update({ currentCTC: e.target.value })}
                   />
                   <Input
-                    label="Expected CTC"
+                    label="Expected CTC ( LPA )"
                     value={form.expectedCTC}
                     onChange={(e) => update({ expectedCTC: e.target.value })}
                   />
@@ -206,7 +206,7 @@ export default function CompleteProfile() {
               ) : (
                 <div className="mt-4 w-1/2">
                   <Input
-                    label="Expected CTC only"
+                    label="Expected CTC ( LPA ) only"
                     value={form.expectedCTC}
                     onChange={(e) => update({ expectedCTC: e.target.value })}
                   />

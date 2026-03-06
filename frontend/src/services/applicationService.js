@@ -38,6 +38,15 @@ export async function updateApplicationStatus(applicationId, status) {
   return data.application;
 }
 
+// NEW — called on blur from ApplicationsTable when HR edits a comment
+export async function updateApplicationComment(applicationId, comment) {
+  const data = await request(`/api/applications/${applicationId}/comment`, {
+    method: "PATCH",
+    body: { comment },
+  });
+  return data.application;
+}
+
 export async function getStudentAnalytics() {
   const data = await request("/api/applications/analytics/me");
   return data.analytics || {};

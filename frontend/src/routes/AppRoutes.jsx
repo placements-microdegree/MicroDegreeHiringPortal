@@ -12,6 +12,8 @@ import StudentDashboard from "../pages/student/StudentDashboard";
 import JobListings from "../pages/student/JobListings";
 import ApplicationStatus from "../pages/student/ApplicationStatus";
 import HelpCenter from "../pages/student/HelpCenter";
+import CareerGuide from "../pages/student/Careerguide";
+import CloudDrive  from "../pages/student/Clouddrive";
 
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import PostJD from "../pages/admin/PostJD";
@@ -86,6 +88,8 @@ export default function AppRoutes() {
           <Route path="/student/jobs" element={<JobListings />} />
           <Route path="/student/applications" element={<ApplicationStatus />} />
           <Route path="/student/help" element={<HelpCenter />} />
+          <Route path="/student/career-guide" element={<CareerGuide />} />
+          <Route path="/student/cloud-drive"  element={<CloudDrive />} />
         </Route>
       </Route>
 

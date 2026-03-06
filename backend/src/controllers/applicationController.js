@@ -7,7 +7,7 @@ async function apply(req, res, next) {
       payload: {
         studentId: req.user.id,
         ...req.body,
-        jobId: req.body.jobId,
+        jobId:  req.body.jobId,
         status: "Applied",
       },
     });
@@ -21,7 +21,7 @@ async function myApplications(req, res, next) {
   try {
     const applications = await applicationService.listApplicationsByStudent({
       studentId: req.user.id,
-      jwt: req.user.jwt,
+      jwt:       req.user.jwt,
     });
     res.json({ success: true, applications });
   } catch (err) {
@@ -33,7 +33,7 @@ async function myAnalytics(req, res, next) {
   try {
     const analytics = await applicationService.getStudentAnalytics({
       studentId: req.user.id,
-      jwt: req.user.jwt,
+      jwt:       req.user.jwt,
     });
     res.json({ success: true, analytics });
   } catch (err) {
@@ -45,7 +45,7 @@ async function allApplications(req, res, next) {
   try {
     const applications = await applicationService.listAllApplications({
       actor: req.user,
-      jwt: req.user.jwt,
+      jwt:   req.user.jwt,
     });
     res.json({ success: true, applications });
   } catch (err) {
@@ -57,9 +57,23 @@ async function updateStatus(req, res, next) {
   try {
     const updated = await applicationService.updateApplicationStatus({
       applicationId: req.params.id,
-      status: req.body.status,
-      actor: req.user,
-      jwt: req.user.jwt,
+      status:        req.body.status,
+      actor:         req.user,
+      jwt:           req.user.jwt,
+    });
+    res.json({ success: true, application: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// NEW — HR saves/edits a comment on an application
+async function updateComment(req, res, next) {
+  try {
+    const updated = await applicationService.updateApplicationComment({
+      applicationId: req.params.id,
+      comment:       req.body.comment,
+      jwt:           req.user.jwt,
     });
     res.json({ success: true, application: updated });
   } catch (err) {
@@ -73,4 +87,5 @@ module.exports = {
   myAnalytics,
   allApplications,
   updateStatus,
+  updateComment,   // ← new
 };

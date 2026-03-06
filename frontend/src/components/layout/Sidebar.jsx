@@ -6,6 +6,7 @@ import {
   FiGrid,
   FiHelpCircle,
   FiLogOut,
+  FiCloud,
 } from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
@@ -14,11 +15,7 @@ import { useAuth } from "../../context/authStore";
 const linkBase =
   "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
 
-export default function Sidebar({
-  role,
-  isOpen = false,
-  onClose,
-}) {
+export default function Sidebar({ role, isOpen = false, onClose }) {
   const { logout } = useAuth();
   const isStudent = role === ROLES.STUDENT;
 
@@ -47,6 +44,16 @@ export default function Sidebar({
               icon: FiClipboard,
             },
             {
+              to: "/student/career-guide",
+              label: "Career Assistance Guide",
+              icon: FiBookOpen,
+            },
+{
+              to: "/student/cloud-drive",
+              label: "Cloud Drive",
+              icon: FiCloud,
+            },
+               {
               to: "/student/help",
               label: "Help Center",
               icon: FiHelpCircle,
@@ -55,6 +62,7 @@ export default function Sidebar({
 
   return (
     <>
+      {/* Mobile backdrop */}
       <button
         type="button"
         aria-label="Close sidebar"
@@ -62,9 +70,18 @@ export default function Sidebar({
         className={`fixed inset-0 z-40 bg-black/40 transition md:hidden ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
       />
 
+      {/*
+        Mobile  → fixed overlay (slide in/out), unchanged behaviour
+        Desktop → sticky, full viewport height, never scrolls with page content
+      */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white p-4 transition-transform md:static md:z-auto md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`
+          fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white p-4 transition-transform
+          md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 md:overflow-y-auto
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
       >
+        {/* Logo / portal header */}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-4">
           <div className="flex items-center gap-3">
             <img src="/Logo.png" alt="MicroDegree" className="h-11 w-11" />
@@ -87,6 +104,7 @@ export default function Sidebar({
           </button>
         </div>
 
+        {/* Nav links */}
         <nav className="mt-6 space-y-1.5">
           {links.map((l) => {
             const Icon = l.icon;
@@ -96,7 +114,11 @@ export default function Sidebar({
                 to={l.to}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `${linkBase} ${isActive ? "border border-primary/20 bg-primary/10 text-primary shadow-sm" : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"}`
+                  `${linkBase} ${
+                    isActive
+                      ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  }`
                 }
               >
                 {({ isActive }) => (
@@ -114,6 +136,7 @@ export default function Sidebar({
           })}
         </nav>
 
+        {/* Logout */}
         <div className="mt-auto pt-6">
           <Button variant="outline" className="w-full gap-2" onClick={logout}>
             <FiLogOut className="h-4 w-4" />
