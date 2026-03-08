@@ -86,3 +86,12 @@ export async function updateProfile(nextProfile) {
   });
   return data.profile;
 }
+
+// export async function updateProfile(nextProfile) {
+//   console.log("skills being sent:", nextProfile?.skills);
+//   const data = await request("/api/profile/me", {
+//     method: "PUT",
+//     body: nextProfile,
+//   });
+//   return data.profile;
+// }
