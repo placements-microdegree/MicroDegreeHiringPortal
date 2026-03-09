@@ -33,6 +33,10 @@ async function request(path, { method = "GET", body, headers } = {}) {
 
 export async function getSession() {
   try {
+    const cookiesExist = document.cookie.includes("mdpp_access_token");
+
+    if (!cookiesExist) return null; // 🔥 FIX
+
     const data = await request("/api/auth/me");
     return data.user;
   } catch {
