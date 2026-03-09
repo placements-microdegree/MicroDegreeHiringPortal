@@ -34,7 +34,7 @@ function formatDate(dateInput) {
 }
 
 const STATUS_META = {
-  pending:     { label: "Pending",             Icon: FiClock,       cls: "bg-amber-50   text-amber-700   border-amber-200"   },
+  Applied:     { label: "Applied",             Icon: FiClock,       cls: "bg-amber-50   text-amber-700   border-amber-200"   },
   reviewed:    { label: "Reviewed",            Icon: FiAlertCircle, cls: "bg-blue-50    text-blue-700    border-blue-200"    },
   accepted:    { label: "Accepted",            Icon: FiCheckCircle, cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   rejected:    { label: "Rejected",            Icon: FiXCircle,     cls: "bg-red-50     text-red-700     border-red-200"     },
@@ -48,7 +48,7 @@ const STATUS_META = {
 function StatsBar({ jobs, apps }) {
   const safeJobs = Array.isArray(jobs) ? jobs : [];
   const safeApps = Array.isArray(apps) ? apps : [];
-  const statuses = safeApps.map((a) => (a?.status || "pending").toLowerCase());
+  const statuses = safeApps.map((a) => (a?.status || "Applied").toLowerCase());
 
   const stats = [
     { label: "Total Jobs Available",   value: safeJobs.length,                                                     icon: FiBriefcase, color: "text-blue-600",    bg: "bg-blue-50"    },
@@ -81,8 +81,8 @@ function StatsBar({ jobs, apps }) {
 function ApplicationCard({ application, jobs }) {
   const jobId  = String(application?.job_id || application?.jobId || "");
   const job    = jobs.find((j) => String(j.id) === jobId);
-  const status = (application?.status || "pending").toLowerCase();
-  const meta   = STATUS_META[status] || STATUS_META.pending;
+  const status = (application?.status || "Applied").toLowerCase();
+  const meta   = STATUS_META[status] || STATUS_META.Applied;
   const { Icon } = meta;
 
   return (
