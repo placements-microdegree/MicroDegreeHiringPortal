@@ -31,18 +31,7 @@ async function request(path, { method = "GET", body, headers } = {}) {
   return data;
 }
 
-export async function getSession() {
-  try {
-    const cookiesExist = document.cookie.includes("mdpp_access_token");
-
-    if (!cookiesExist) return null; // 🔥 FIX
-
-    const data = await request("/api/auth/me");
-    return data.user;
-  } catch {
-    return null;
-  }
-}
+export async function getSession() { try { const data = await request("/api/auth/me"); return data.user; } catch { return null; } }
 
 export async function loginWithPassword({ email, password }) {
   const data = await request("/api/auth/login", {
