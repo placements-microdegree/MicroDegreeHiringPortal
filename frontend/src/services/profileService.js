@@ -1,6 +1,7 @@
 // FILE: src/services/profileService.js
+import { resolveApiBaseUrl } from "../utils/apiBaseUrl";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = resolveApiBaseUrl();
 
 async function request(path, { method = "GET", body, headers } = {}) {
   const isForm = body instanceof FormData;
@@ -13,9 +14,9 @@ async function request(path, { method = "GET", body, headers } = {}) {
 
   // ⚠️ IMPORTANT: must stringify plain objects — raw object sends "[object Object]"
   let requestBody;
-  if (body == null)   requestBody = undefined;
-  else if (isForm)    requestBody = body;
-  else                requestBody = JSON.stringify(body);
+  if (body == null) requestBody = undefined;
+  else if (isForm) requestBody = body;
+  else requestBody = JSON.stringify(body);
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method,

@@ -1,6 +1,7 @@
 import { ROLES } from "../utils/constants";
+import { resolveApiBaseUrl } from "../utils/apiBaseUrl";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = resolveApiBaseUrl();
 
 async function request(path, { method = "GET", body, headers } = {}) {
   const isForm = body instanceof FormData;
@@ -31,7 +32,14 @@ async function request(path, { method = "GET", body, headers } = {}) {
   return data;
 }
 
-export async function getSession() { try { const data = await request("/api/auth/me"); return data.user; } catch { return null; } }
+export async function getSession() {
+  try {
+    const data = await request("/api/auth/me");
+    return data.user;
+  } catch {
+    return null;
+  }
+}
 
 export async function loginWithPassword({ email, password }) {
   const data = await request("/api/auth/login", {

@@ -7,6 +7,7 @@ import { useAuth } from "../../context/authStore";
 import { ROLES } from "../../utils/constants";
 import { isStudentProfileComplete } from "../../utils/profileChecks";
 import { showError } from "../../utils/alerts";
+import { resolveApiBaseUrl } from "../../utils/apiBaseUrl";
 
 const ROLE_OPTIONS = [
   { value: "student", label: "Student Login" },
@@ -16,7 +17,7 @@ const ROLE_OPTIONS = [
 export default function Login() {
   const navigate = useNavigate();
   const { login, profile, user } = useAuth();
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL = resolveApiBaseUrl();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [email, setEmail] = useState("");

@@ -1,6 +1,7 @@
 // FILE: src/services/applicationService.js
+import { resolveApiBaseUrl } from "../utils/apiBaseUrl";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = resolveApiBaseUrl();
 
 async function request(path, { method = "GET", body } = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -15,7 +16,10 @@ async function request(path, { method = "GET", body } = {}) {
 }
 
 export async function createApplication(payload) {
-  const data = await request("/api/applications/apply", { method: "POST", body: payload });
+  const data = await request("/api/applications/apply", {
+    method: "POST",
+    body: payload,
+  });
   return data.application;
 }
 
@@ -31,21 +35,24 @@ export async function listAllApplications() {
 
 export async function updateApplicationStatus(applicationId, status) {
   const data = await request(`/api/applications/${applicationId}/status`, {
-    method: "PATCH", body: { status },
+    method: "PATCH",
+    body: { status },
   });
   return data.application;
 }
 
 export async function updateApplicationComment(applicationId, comment) {
   const data = await request(`/api/applications/${applicationId}/comment`, {
-    method: "PATCH", body: { comment },
+    method: "PATCH",
+    body: { comment },
   });
   return data.application;
 }
 
 export async function applyOnBehalf(payload) {
   const data = await request("/api/applications/apply-on-behalf", {
-    method: "POST", body: payload,
+    method: "POST",
+    body: payload,
   });
   return data.application;
 }
@@ -58,7 +65,9 @@ export async function getStudentAnalytics() {
 // Search students by name, email or phone
 export async function searchStudents(query) {
   const params = new URLSearchParams({ q: query });
-  const data = await request(`/api/applications/search-students?${params.toString()}`);
+  const data = await request(
+    `/api/applications/search-students?${params.toString()}`,
+  );
   return data.students || [];
 }
 
@@ -91,5 +100,7 @@ export async function uploadResumesForStudent(studentId, files) {
 
 // HR deletes a student's resume by id
 export async function deleteResumeForStudent(resumeId) {
-  await request(`/api/applications/student-resumes/${resumeId}`, { method: "DELETE" });
+  await request(`/api/applications/student-resumes/${resumeId}`, {
+    method: "DELETE",
+  });
 }
