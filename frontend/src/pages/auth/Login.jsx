@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import RoleDropdown from "../../components/common/RoleDropdown";
@@ -18,10 +18,23 @@ export default function Login() {
   const { login, profile, user } = useAuth();
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loginType, setLoginType] = useState("student");
+
+  // Handle OAuth error redirects (e.g. expired state on re-login)
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError) {
+      const desc =
+        searchParams.get("error_description") ||
+        "OAuth login failed. Please try again.";
+      showError(desc, "Login Failed");
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!user) return;
@@ -44,7 +57,10 @@ export default function Login() {
     setSubmitting(true);
 
     try {
-      const { session, profile: freshProfile } = await login({ email, password });
+      const { session, profile: freshProfile } = await login({
+        email,
+        password,
+      });
       const profileToCheck = freshProfile || profile;
       const needsProfile =
         session.role === ROLES.STUDENT &&
@@ -161,7 +177,11 @@ export default function Login() {
                 placeholder="Enter your password"
               />
 
-              <Button type="submit" className="w-full py-2.5" disabled={submitting}>
+              <Button
+                type="submit"
+                className="w-full py-2.5"
+                disabled={submitting}
+              >
                 {submitting ? "Logging in..." : "Login"}
               </Button>
             </form>

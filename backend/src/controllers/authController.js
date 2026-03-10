@@ -535,6 +535,19 @@ async function logout(req, res) {
 
 async function googleStart(req, res, next) {
   try {
+    const frontendOrigin =
+      process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+
+    // If user already has a valid session, redirect to frontend instead of re-triggering OAuth
+    const existingJwt = req.cookies?.["mdpp_access_token"] || null;
+    if (existingJwt) {
+      const supabaseCheck = getSupabaseAnonClient();
+      const { data, error } = await supabaseCheck.auth.getUser(existingJwt);
+      if (!error && data?.user) {
+        return res.redirect(`${frontendOrigin}/login`);
+      }
+    }
+
     const supabaseUrl = process.env.SUPABASE_URL;
     const inferredBackendOrigin = `${req.protocol}://${req.get("host")}`;
     const backendOrigin =
