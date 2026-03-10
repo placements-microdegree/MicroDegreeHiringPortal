@@ -12,6 +12,7 @@ import {
   FaYoutube,
   FaLinkedinIn,
   FaFacebookF,
+  FaWhatsapp,
 } from "react-icons/fa";
 
 const offices = [
@@ -61,7 +62,6 @@ const socials = [
 export default function HelpCenter() {
   return (
     <div className="space-y-4">
-
       {/* Header */}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <h1 className="text-base font-semibold text-slate-900">Help Center</h1>
@@ -72,7 +72,9 @@ export default function HelpCenter() {
 
       {/* Contact */}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">📞 Contact Us</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          📞 Contact Us
+        </h2>
         <div className="grid gap-3 md:grid-cols-2">
           <a
             href="tel:08047109999"
@@ -112,7 +114,9 @@ export default function HelpCenter() {
 
       {/* Offices */}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">🏢 Our Offices</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          🏢 Our Offices
+        </h2>
         <div className="grid gap-3 md:grid-cols-2">
           {offices.map((office) => (
             <div
@@ -146,10 +150,11 @@ export default function HelpCenter() {
 
       {/* Social + App side by side */}
       <div className="grid gap-4 md:grid-cols-2">
-
         {/* Social Media */}
         <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">🌐 Follow Us</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            🌐 Follow Us
+          </h2>
           <div className="grid grid-cols-2 gap-2">
             {socials.map(({ label, url, icon: Icon, color }) => (
               <a
@@ -168,7 +173,9 @@ export default function HelpCenter() {
 
         {/* App Download */}
         <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">📱 Get the App</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            📱 Get the App
+          </h2>
           <div className="flex flex-col gap-3">
             <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -194,9 +201,18 @@ export default function HelpCenter() {
             </a>
           </div>
         </section>
-
       </div>
 
+      <a
+        id="fixedWALink"
+        href="https://api.whatsapp.com/send?phone=916366983877&text=Hello%2C%20I%20have%20a%20question%20regarding%20Courses%2FCertification%2FOthers"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Chat on WhatsApp"
+        className="fixed bottom-8 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg transition hover:scale-105 hover:bg-[#20ba57] sm:bottom-10 sm:right-8 sm:h-15 sm:w-15"
+      >
+        <FaWhatsapp className="text-3xl" />
+      </a>
     </div>
   );
 }
