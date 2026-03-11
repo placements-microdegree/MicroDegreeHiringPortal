@@ -1,3 +1,5 @@
+// FILE: src/components/student/Sidebar.jsx
+
 import { NavLink } from "react-router-dom";
 import { FiX } from "react-icons/fi";
 import {
@@ -16,48 +18,38 @@ const linkBase =
   "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
 
 export default function Sidebar({ role, isOpen = false, onClose }) {
-  const { logout } = useAuth();
-  const isStudent = role === ROLES.STUDENT;
+  const { logout, profile } = useAuth();
+  const isStudent  = role === ROLES.STUDENT;
+  const isEligible = profile?.isEligible === true;
 
   const links =
     role === ROLES.SUPER_ADMIN
       ? [
-          { to: "/superadmin/dashboard", label: "Dashboard" },
-          { to: "/superadmin/manage-hr", label: "Manage HR Admins" },
-          { to: "/superadmin/students", label: "View Students" },
-          { to: "/superadmin/jobs", label: "View Jobs" },
-          { to: "/superadmin/applications", label: "Applications" },
-          { to: "/superadmin/checker", label: "Checker" },
+          { to: "/superadmin/dashboard",    label: "Dashboard"        },
+          { to: "/superadmin/manage-hr",    label: "Manage HR Admins" },
+          { to: "/superadmin/students",     label: "View Students"    },
+          { to: "/superadmin/jobs",         label: "View Jobs"        },
+          { to: "/superadmin/applications", label: "Applications"     },
+          { to: "/superadmin/checker",      label: "Checker"          },
         ]
       : role === ROLES.ADMIN
         ? [
-            { to: "/admin/dashboard", label: "Dashboard" },
-            { to: "/admin/post-jd", label: "Post JD" },
+            { to: "/admin/dashboard",           label: "Dashboard"           },
+            { to: "/admin/post-jd",             label: "Post JD"             },
             { to: "/admin/manage-applications", label: "Manage Applications" },
           ]
         : [
-            { to: "/student/dashboard", label: "Dashboard", icon: FiGrid },
-            { to: "/student/jobs", label: "Jobs (JD)", icon: FiBookOpen },
-            {
-              to: "/student/applications",
-              label: "Application Status",
-              icon: FiClipboard,
-            },
-            {
-              to: "/student/career-guide",
-              label: "Career Assistance Guide",
-              icon: FiBookOpen,
-            },
-{
-              to: "/student/cloud-drive",
-              label: "Cloud Drive",
-              icon: FiCloud,
-            },
-               {
-              to: "/student/help",
-              label: "Help Center",
-              icon: FiHelpCircle,
-            },
+            { to: "/student/dashboard",    label: "Dashboard",          icon: FiGrid      },
+            { to: "/student/jobs",         label: "Jobs (JD)",          icon: FiBookOpen  },
+            { to: "/student/applications", label: "Application Status", icon: FiClipboard },
+            // Only visible when profile.isEligible === true
+            ...(isEligible
+              ? [
+                  { to: "/student/career-guide", label: "Career Assistance Guide", icon: FiBookOpen },
+                  { to: "/student/cloud-drive",  label: "Cloud Drive",             icon: FiCloud    },
+                ]
+              : []),
+            { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
           ];
 
   return (
@@ -67,13 +59,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         type="button"
         aria-label="Close sidebar"
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/40 transition md:hidden ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        className={`fixed inset-0 z-40 bg-black/40 transition md:hidden ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
       />
 
-      {/*
-        Mobile  → fixed overlay (slide in/out), unchanged behaviour
-        Desktop → sticky, full viewport height, never scrolls with page content
-      */}
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white p-4 transition-transform
@@ -81,14 +71,12 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        {/* Logo / portal header */}
+        {/* Logo */}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-4">
           <div className="flex items-center gap-3">
             <img src="/Logo.png" alt="MicroDegree" className="h-11 w-11" />
             <div>
-              <div className="text-sm font-semibold text-slate-900">
-                MicroDegree
-              </div>
+              <div className="text-sm font-semibold text-slate-900">MicroDegree</div>
               <div className="text-xs text-slate-500">
                 {isStudent ? "Student Portal" : "Placement Portal"}
               </div>
@@ -123,11 +111,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
               >
                 {({ isActive }) => (
                   <>
-                    {Icon ? (
+                    {Icon && (
                       <Icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : "text-slate-500"}`}
                       />
-                    ) : null}
+                    )}
                     <span>{l.label}</span>
                   </>
                 )}
