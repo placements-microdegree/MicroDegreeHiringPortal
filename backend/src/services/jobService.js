@@ -7,11 +7,12 @@ const {
 } = require("../config/db");
 const { ROLES } = require("../utils/constants");
 const notificationService = require("./notificationService");
+const emailService = require("./emailService");
 
-const WORK_MODES      = ["Remote", "Hybrid", "Onsite"];
+const WORK_MODES = ["Remote", "Hybrid", "Onsite"];
 const INTERVIEW_MODES = ["Online", "Offline", "Hybrid"];
-const JOB_STATUSES    = ["active", "closed", "deleted"];
-const MAX_QUESTIONS   = 5;
+const JOB_STATUSES = ["active", "closed", "deleted"];
+const MAX_QUESTIONS = 5;
 
 function isSoftDeletedJob(job) {
   return String(job?.status || "").toLowerCase() === "deleted";
@@ -41,8 +42,13 @@ function normalizeRequiredText(value, fieldLabel) {
 }
 function normalizeEnum(value, allowed, fieldLabel) {
   const normalized = normalizeRequiredText(value, fieldLabel);
-  const found = allowed.find((item) => item.toLowerCase() === normalized.toLowerCase());
-  if (!found) throw createBadRequestError(`${fieldLabel} must be one of: ${allowed.join(", ")}`);
+  const found = allowed.find(
+    (item) => item.toLowerCase() === normalized.toLowerCase(),
+  );
+  if (!found)
+    throw createBadRequestError(
+      `${fieldLabel} must be one of: ${allowed.join(", ")}`,
+    );
   return found;
 }
 function normalizeStatus(status) {
@@ -50,7 +56,9 @@ function normalizeStatus(status) {
   if (!normalized) return null;
   const lowered = normalized.toLowerCase();
   if (!JOB_STATUSES.includes(lowered))
-    throw createBadRequestError(`Status must be one of: ${JOB_STATUSES.join(", ")}`);
+    throw createBadRequestError(
+      `Status must be one of: ${JOB_STATUSES.join(", ")}`,
+    );
   return lowered;
 }
 
@@ -64,21 +72,31 @@ function normalizeValidTill(value, fieldLabel) {
 }
 
 function normalizeSkills(skills) {
-  if (Array.isArray(skills)) return skills.map((item) => normalizeText(item)).filter(Boolean);
+  if (Array.isArray(skills))
+    return skills.map((item) => normalizeText(item)).filter(Boolean);
   if (typeof skills === "string")
-    return skills.split(",").map((item) => normalizeText(item)).filter(Boolean);
+    return skills
+      .split(",")
+      .map((item) => normalizeText(item))
+      .filter(Boolean);
   if (skills === null || skills === undefined) return [];
-  throw createBadRequestError("Skills must be a comma-separated string or an array");
+  throw createBadRequestError(
+    "Skills must be a comma-separated string or an array",
+  );
 }
 function normalizeJdLink(link) {
   const normalized = normalizeRequiredText(link, "JD link");
   let parsed;
-  try { parsed = new URL(normalized); } catch {
+  try {
+    parsed = new URL(normalized);
+  } catch {
     throw createBadRequestError("JD link must be a valid URL");
   }
   const host = parsed.hostname.toLowerCase();
   if (!host.includes("drive.google.com") && !host.includes("docs.google.com"))
-    throw createBadRequestError("JD link must be a Google Drive/Docs sharing URL");
+    throw createBadRequestError(
+      "JD link must be a Google Drive/Docs sharing URL",
+    );
   return normalized;
 }
 function normalizeInterviewModes(value) {
@@ -90,28 +108,41 @@ function normalizeInterviewModes(value) {
   } else {
     throw createBadRequestError("Interview mode is required");
   }
-  if (modes.length === 0) throw createBadRequestError("Select at least one interview mode");
+  if (modes.length === 0)
+    throw createBadRequestError("Select at least one interview mode");
   return modes.map((m) => {
     const found = INTERVIEW_MODES.find(
       (im) => im.toLowerCase() === String(m).trim().toLowerCase(),
     );
     if (!found)
-      throw createBadRequestError(`Invalid interview mode "${m}". Must be one of: ${INTERVIEW_MODES.join(", ")}`);
+      throw createBadRequestError(
+        `Invalid interview mode "${m}". Must be one of: ${INTERVIEW_MODES.join(", ")}`,
+      );
     return found;
   });
 }
 function normalizeQuestions(questions) {
   if (!questions) return [];
-  if (!Array.isArray(questions)) throw createBadRequestError("Questions must be an array");
+  if (!Array.isArray(questions))
+    throw createBadRequestError("Questions must be an array");
   if (questions.length > MAX_QUESTIONS)
-    throw createBadRequestError(`Maximum ${MAX_QUESTIONS} custom questions allowed`);
+    throw createBadRequestError(
+      `Maximum ${MAX_QUESTIONS} custom questions allowed`,
+    );
   return questions.map((q, i) => {
     const question = normalizeText(q?.question);
-    if (!question) throw createBadRequestError(`Question ${i + 1} text is required`);
+    if (!question)
+      throw createBadRequestError(`Question ${i + 1} text is required`);
     const answerType = q?.answer_type || "text";
     if (!["text", "yesno"].includes(answerType))
-      throw createBadRequestError(`Question ${i + 1} answer_type must be 'text' or 'yesno'`);
-    return { question, answer_type: answerType, order_index: typeof q?.order_index === "number" ? q.order_index : i };
+      throw createBadRequestError(
+        `Question ${i + 1} answer_type must be 'text' or 'yesno'`,
+      );
+    return {
+      question,
+      answer_type: answerType,
+      order_index: typeof q?.order_index === "number" ? q.order_index : i,
+    };
   });
 }
 function hasOwn(payload, key) {
@@ -125,7 +156,10 @@ function buildJobWritePayload(payload = {}, { isUpdate = false } = {}) {
   if (!isUpdate || hasOwn(payload, "company"))
     record.company = normalizeRequiredText(payload.company, "Company");
   if (!isUpdate || hasOwn(payload, "description"))
-    record.description = normalizeRequiredText(payload.description, "Description");
+    record.description = normalizeRequiredText(
+      payload.description,
+      "Description",
+    );
   if (!isUpdate || hasOwn(payload, "jd_link"))
     record.jd_link = normalizeJdLink(payload.jd_link);
   if (!isUpdate || hasOwn(payload, "skills")) {
@@ -137,9 +171,16 @@ function buildJobWritePayload(payload = {}, { isUpdate = false } = {}) {
   if (!isUpdate || hasOwn(payload, "experience"))
     record.experience = normalizeRequiredText(payload.experience, "Experience");
   if (!isUpdate || hasOwn(payload, "work_mode"))
-    record.work_mode = normalizeEnum(payload.work_mode, WORK_MODES, "Work mode");
+    record.work_mode = normalizeEnum(
+      payload.work_mode,
+      WORK_MODES,
+      "Work mode",
+    );
   if (!isUpdate || hasOwn(payload, "notice_period"))
-    record.notice_period = normalizeRequiredText(payload.notice_period, "Notice period");
+    record.notice_period = normalizeRequiredText(
+      payload.notice_period,
+      "Notice period",
+    );
   if (!isUpdate || hasOwn(payload, "interview_mode"))
     record.interview_mode = normalizeInterviewModes(payload.interview_mode);
   if (!isUpdate || hasOwn(payload, "location"))
@@ -158,7 +199,9 @@ function buildJobWritePayload(payload = {}, { isUpdate = false } = {}) {
 
 async function saveJobQuestions(supabase, jobId, questions) {
   const { error: deleteError } = await supabase
-    .from("job_questions").delete().eq("job_id", jobId);
+    .from("job_questions")
+    .delete()
+    .eq("job_id", jobId);
   if (deleteError) throw deleteError;
   if (!questions || questions.length === 0) return [];
   const { data, error } = await supabase
@@ -213,13 +256,17 @@ async function listJobs({ actor } = {}) {
 }
 
 async function createJob({ payload, actor, jwt }) {
-  const supabase  = getWriteClient(jwt);
+  const supabase = getWriteClient(jwt);
   const questions = normalizeQuestions(payload.questions);
-  const record    = buildJobWritePayload(payload, { isUpdate: false });
+  const record = buildJobWritePayload(payload, { isUpdate: false });
 
   const { data, error } = await supabase
     .from("jobs")
-    .insert({ ...record, posted_by: actor?.id || null, status: record.status || "active" })
+    .insert({
+      ...record,
+      posted_by: actor?.id || null,
+      status: record.status || "active",
+    })
     .select("*")
     .single();
   if (error) throw error;
@@ -227,17 +274,20 @@ async function createJob({ payload, actor, jwt }) {
   const savedQuestions = await saveJobQuestions(supabase, data.id, questions);
 
   await notificationService.createNotificationsForStudents({
-    title:   "New Job Posted",
+    title: "New Job Posted",
     message: `New job "${data.title}" has been posted`,
-    type:    "job_posted",
+    type: "job_posted",
     jwt,
   });
+
+  // Send email notification to eligible students (fire-and-forget)
+  emailService.notifyEligibleStudentsByEmail(data);
 
   return { ...data, questions: savedQuestions };
 }
 
 async function updateJob({ jobId, payload, actor, jwt }) {
-  const supabase      = getWriteClient(jwt);
+  const supabase = getWriteClient(jwt);
   const updatePayload = buildJobWritePayload(payload, { isUpdate: true });
 
   const { data, error } = await supabase
@@ -249,7 +299,7 @@ async function updateJob({ jobId, payload, actor, jwt }) {
   if (error) throw error;
 
   if (hasOwn(payload, "questions")) {
-    const questions      = normalizeQuestions(payload.questions);
+    const questions = normalizeQuestions(payload.questions);
     const savedQuestions = await saveJobQuestions(supabase, jobId, questions);
     return { ...data, questions: savedQuestions };
   }
@@ -260,7 +310,10 @@ async function updateJob({ jobId, payload, actor, jwt }) {
 async function deleteJob({ jobId, actor, jwt }) {
   const supabase = getWriteClient(jwt);
   const { data: existing, error: loadError } = await supabase
-    .from("jobs").select("*").eq("id", jobId).maybeSingle();
+    .from("jobs")
+    .select("*")
+    .eq("id", jobId)
+    .maybeSingle();
   if (loadError) throw loadError;
   if (!existing) return true;
   if (isSoftDeletedJob(existing)) return true;
