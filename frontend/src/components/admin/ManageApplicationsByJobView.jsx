@@ -162,7 +162,7 @@ function CustomQuestionField({ question, index, value, onChange, error }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Apply On Behalf Modal
+// Apply On Behalf Modal — unchanged from before
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM = {
@@ -203,16 +203,14 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     return "";
   }, [job]);
 
-  // ── student search state ──────────────────────────────────────────────────
   const [query,            setQuery]            = useState("");
   const [searchResults,    setSearchResults]    = useState([]);
   const [searching,        setSearching]        = useState(false);
   const [selectedStudent,  setSelectedStudent]  = useState(null);
   const [loadingProfile,   setLoadingProfile]   = useState(false);
-  const [resumeFetchError, setResumeFetchError] = useState(""); // ← NEW
+  const [resumeFetchError, setResumeFetchError] = useState("");
   const searchTimeout = useRef(null);
 
-  // ── form state ────────────────────────────────────────────────────────────
   const [form,      setForm]      = useState({ ...EMPTY_FORM });
   const [resumes,   setResumes]   = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -222,12 +220,10 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
   const update       = (patch) => setForm((prev) => ({ ...prev, ...patch }));
   const updateAnswer = (qId, val) => setAnswers((prev) => ({ ...prev, [qId]: val }));
 
-  // ── submit state ──────────────────────────────────────────────────────────
   const [submitted,   setSubmitted]   = useState(false);
   const [submitting,  setSubmitting]  = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // ── validation ────────────────────────────────────────────────────────────
   const errors = useMemo(() => {
     const e = {};
     if (typeof form.isCurrentlyWorking !== "boolean")                       e.isCurrentlyWorking     = true;
@@ -254,7 +250,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
 
   const show = () => submitted;
 
-  // ── student search debounce ───────────────────────────────────────────────
   useEffect(() => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     if (!query.trim() || selectedStudent) { setSearchResults([]); return; }
@@ -269,8 +264,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     return () => clearTimeout(searchTimeout.current);
   }, [query, selectedStudent]);
 
-  // ── fetch student profile + resumes ──────────────────────────────────────
-  // Extracted into its own function so it can also be triggered as a retry.
   const fetchStudentData = async (student) => {
     setLoadingProfile(true);
     setResumeFetchError("");
@@ -281,7 +274,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
       ]);
       const safeResumes = Array.isArray(resumeRows) ? resumeRows : [];
       setResumes(safeResumes);
-
       setForm({
         isCurrentlyWorking:
           typeof profile?.is_currently_working === "boolean"
@@ -299,12 +291,10 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
         interviewModeAvailable: null,
         currentCTC:  profile?.current_ctc  ? String(profile.current_ctc)  : "",
         expectedCTC: profile?.expected_ctc ? String(profile.expected_ctc) : "",
-        // auto-select when there is exactly one resume; leave blank otherwise so HR picks
         selectedResumeUrl: safeResumes.length === 1 ? (safeResumes[0]?.file_url || "") : "",
         jdConfirmed: false,
       });
     } catch (err) {
-      // ← KEY FIX: was silently caught before — now surfaces to HR with retry button
       setResumeFetchError(err?.message || "Failed to load student data. Please try again.");
       setResumes([]);
     } finally {
@@ -312,7 +302,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     }
   };
 
-  // ── select student ────────────────────────────────────────────────────────
   const selectStudent = async (student) => {
     setSelectedStudent(student);
     setQuery(student.full_name || student.email || "");
@@ -338,7 +327,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     setResumeFetchError("");
   };
 
-  // ── HR resume upload / delete ─────────────────────────────────────────────
   const MAX_RESUMES = 3;
 
   const handleUploadResumes = async (files) => {
@@ -352,7 +340,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
       const updated = await uploadResumesForStudent(selectedStudent.id, accepted);
       const safeResumes = Array.isArray(updated) ? updated : [];
       setResumes(safeResumes);
-      // Auto-select the newly uploaded resume if nothing is selected yet
       if (!form.selectedResumeUrl && safeResumes.length > 0) {
         update({ selectedResumeUrl: safeResumes[0].file_url });
       }
@@ -372,7 +359,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
       const updated = await getStudentResumesForHR(selectedStudent.id);
       const safeResumes = Array.isArray(updated) ? updated : [];
       setResumes(safeResumes);
-      // Clear selection if the deleted resume was selected
       if (form.selectedResumeUrl === resume.file_url) {
         update({ selectedResumeUrl: safeResumes[0]?.file_url || "" });
       }
@@ -383,7 +369,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     }
   };
 
-  // ── submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError("");
@@ -419,15 +404,12 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     }
   };
 
-  // ── render ────────────────────────────────────────────────────────────────
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
-
-        {/* ── Header ───────────────────────────────────────────────────── */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
           <div>
             <div className="text-base font-semibold text-slate-900">Apply on Behalf</div>
@@ -440,8 +422,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5 p-5">
-
-          {/* ── 1. Student search ─────────────────────────────────────── */}
           <section>
             <div className="mb-1 text-sm font-medium text-slate-700">
               Search Student <span className="text-red-500">*</span>
@@ -451,8 +431,7 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
               <input type="text"
                 placeholder="Search by name, email or phone..."
                 className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-primary"
-                value={query}
-                autoFocus
+                value={query} autoFocus
                 onChange={(e) => { setQuery(e.target.value); if (selectedStudent) clearStudent(); }}
               />
               {selectedStudent && (
@@ -463,7 +442,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
               )}
             </div>
 
-            {/* Search dropdown */}
             {!selectedStudent && (searchResults.length > 0 || searching) && (
               <div className="mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                 {searching && <div className="px-4 py-3 text-sm text-slate-500">Searching...</div>}
@@ -485,7 +463,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
               </div>
             )}
 
-            {/* Selected student chip */}
             {selectedStudent && (
               <div className="mt-2 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-xs font-bold text-emerald-700">
@@ -499,33 +476,27 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
             )}
           </section>
 
-          {/* ── Loading profile ───────────────────────────────────────── */}
           {loadingProfile && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 animate-pulse">
               Loading student profile and resumes...
             </div>
           )}
 
-          {/* ── Fetch error with retry ─────────────────────────────────── */}
-          {/* ← NEW: previously this was silently swallowed */}
           {!loadingProfile && resumeFetchError && selectedStudent && (
             <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <div className="flex items-start gap-2 text-sm text-amber-800">
                 <FiAlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                 <span>{resumeFetchError}</span>
               </div>
-              <button type="button"
-                onClick={() => fetchStudentData(selectedStudent)}
+              <button type="button" onClick={() => fetchStudentData(selectedStudent)}
                 className="shrink-0 rounded-lg border border-amber-300 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100">
                 Retry
               </button>
             </div>
           )}
 
-          {/* ── 2. Full form — shown after student selected + loaded ───── */}
           {selectedStudent && !loadingProfile && !resumeFetchError && (
             <>
-              {/* Job info summary */}
               <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
                 <div className="grid grid-cols-1 gap-2 text-slate-700 md:grid-cols-2">
                   <div><span className="font-semibold text-slate-900">Company:</span> {job?.company || "—"}</div>
@@ -540,22 +511,18 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 </div>
               </section>
 
-              {/* ── Application fields ───────────────────────────────── */}
               <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
                 <QuestionToggle
                   label="Is the student currently working?"
                   value={form.isCurrentlyWorking}
                   onChange={(v) => update({ isCurrentlyWorking: v, noticePeriod: v ? form.noticePeriod : "" })}
                   error={show() && errors.isCurrentlyWorking}
                 />
-
                 {form.isCurrentlyWorking ? (
                   <FieldInput label="Notice Period" value={form.noticePeriod}
                     onChange={(v) => update({ noticePeriod: v })}
                     placeholder="e.g. 30 days / Immediate"
-                    error={show() && errors.noticePeriod}
-                    required
+                    error={show() && errors.noticePeriod} required
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
@@ -563,21 +530,16 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                   </div>
                 )}
 
-                {/* Total experience slider — pre-filled from DB */}
                 <div>
                   <div className={`mb-1.5 text-sm font-medium ${show() && errors.totalExperience ? "text-red-600" : "text-slate-700"}`}>
                     Total Experience <span className="text-red-500">*</span>
-                    {show() && errors.totalExperience && (
-                      <span className="ml-2 text-xs font-normal text-red-500">— Required</span>
-                    )}
+                    {show() && errors.totalExperience && <span className="ml-2 text-xs font-normal text-red-500">— Required</span>}
                   </div>
                   <div className={`rounded-xl border px-4 py-3 ${show() && errors.totalExperience ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"}`}>
                     <div className="mb-2 flex items-center justify-between text-sm">
                       <span className="text-slate-500">Years</span>
                       <span className="font-semibold text-slate-900">
-                        {form.totalExperience
-                          ? `${form.totalExperience} yr${Number(form.totalExperience) === 1 ? "" : "s"}`
-                          : "Select"}
+                        {form.totalExperience ? `${form.totalExperience} yr${Number(form.totalExperience) === 1 ? "" : "s"}` : "Select"}
                       </span>
                     </div>
                     <input type="range" min={1} max={20} step={1}
@@ -594,8 +556,7 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 <FieldInput label="Relevant Experience as per JD" value={form.relevantExperience}
                   onChange={(v) => update({ relevantExperience: v })}
                   placeholder="e.g. 2 years in React / AWS"
-                  error={show() && errors.relevantExperience}
-                  required
+                  error={show() && errors.relevantExperience} required
                 />
 
                 <QuestionToggle
@@ -605,7 +566,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                   onChange={(v) => update({ handsOnPrimarySkills: v })}
                   error={show() && errors.handsOnPrimarySkills}
                 />
-
                 <QuestionToggle
                   label={jobWorkMode ? `Comfortable with ${jobWorkMode} work mode?` : "Work mode match?"}
                   sublabel={jobWorkMode ? `This role requires ${jobWorkMode}` : undefined}
@@ -613,7 +573,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                   onChange={(v) => update({ workModeMatch: v })}
                   error={show() && errors.workModeMatch}
                 />
-
                 <QuestionToggle
                   label={interviewModeDisplay ? `Available for ${interviewModeDisplay} interview?` : "Available for interview?"}
                   sublabel={interviewModeDisplay ? `Interview mode: ${interviewModeDisplay}` : undefined}
@@ -621,21 +580,15 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                   onChange={(v) => update({ interviewModeAvailable: v })}
                   error={show() && errors.interviewModeAvailable}
                 />
-
                 <div className="hidden md:block" />
 
                 <FieldInput label="Current CTC (in LPA)" value={form.currentCTC}
-                  onChange={(v) => update({ currentCTC: v })}
-                  placeholder="e.g. 4.5 LPA"
-                  error={show() && errors.currentCTC}
-                  required
+                  onChange={(v) => update({ currentCTC: v })} placeholder="e.g. 4.5 LPA"
+                  error={show() && errors.currentCTC} required
                 />
-
                 <FieldInput label="Expected CTC (in LPA)" value={form.expectedCTC}
-                  onChange={(v) => update({ expectedCTC: v })}
-                  placeholder="e.g. 6.5 LPA"
-                  error={show() && errors.expectedCTC}
-                  required
+                  onChange={(v) => update({ expectedCTC: v })} placeholder="e.g. 6.5 LPA"
+                  error={show() && errors.expectedCTC} required
                 />
 
                 {jobQuestions.length > 0 && (
@@ -655,16 +608,12 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 )}
               </section>
 
-              {/* ── Resume selector ───────────────────────────────────── */}
               <section className={`rounded-xl border p-4 ${show() && errors.selectedResumeUrl ? "border-red-400 bg-red-50" : "border-slate-200"}`}>
-                {/* Header row: title + upload button */}
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className={`text-sm font-semibold ${show() && errors.selectedResumeUrl ? "text-red-700" : "text-slate-900"}`}>
                       Resume Selector
-                      {show() && errors.selectedResumeUrl && (
-                        <span className="ml-2 text-xs font-normal text-red-600">— Please select a resume</span>
-                      )}
+                      {show() && errors.selectedResumeUrl && <span className="ml-2 text-xs font-normal text-red-600">— Please select a resume</span>}
                     </div>
                     <div className="text-xs text-slate-500">
                       {resumes.length >= MAX_RESUMES
@@ -675,7 +624,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Upload button — matches ApplyJobModal style */}
                     <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
                       resumes.length >= MAX_RESUMES || uploading
                         ? "cursor-not-allowed border-slate-200 text-slate-400"
@@ -688,7 +636,6 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                         onChange={(e) => handleUploadResumes(e.target.files)}
                       />
                     </label>
-                    {/* Reload button */}
                     <button type="button"
                       onClick={() => fetchStudentData(selectedStudent)}
                       disabled={loadingProfile || uploading}
@@ -699,14 +646,12 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                   </div>
                 </div>
 
-                {/* Error banner */}
                 {resumeFetchError && (
                   <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                     ⚠ {resumeFetchError}
                   </div>
                 )}
 
-                {/* Resume list */}
                 {resumes.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                     No resumes uploaded yet. Use the <strong>Upload Resume</strong> button above to add one on behalf of the student — it will be saved to their profile.
@@ -716,30 +661,24 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                     {resumes.map((resume) => (
                       <label key={resume.id || resume.file_url}
                         className={`flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 transition ${
-                          form.selectedResumeUrl === resume.file_url
-                            ? "border-primary bg-primary/5"
-                            : "border-slate-200 bg-white hover:border-slate-300"
+                          form.selectedResumeUrl === resume.file_url ? "border-primary bg-primary/5" : "border-slate-200 bg-white hover:border-slate-300"
                         }`}>
                         <div className="flex min-w-0 items-center gap-2">
                           <input type="radio" name="hr_selectedResume"
                             checked={form.selectedResumeUrl === resume.file_url}
                             onChange={() => update({ selectedResumeUrl: resume.file_url })}
                           />
-                          <span className="truncate text-sm text-slate-800">
-                            {resume.file_name || "Resume"}
-                          </span>
+                          <span className="truncate text-sm text-slate-800">{resume.file_name || "Resume"}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           {(resume.signed_url || resume.file_url) && (
-                            <a href={resume.signed_url || resume.file_url}
-                              target="_blank" rel="noreferrer"
+                            <a href={resume.signed_url || resume.file_url} target="_blank" rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               className="text-xs font-semibold text-primary hover:text-primary/80">
                               View
                             </a>
                           )}
-                          <button type="button"
-                            disabled={uploading}
+                          <button type="button" disabled={uploading}
                             onClick={(e) => { e.preventDefault(); handleDeleteResume(resume); }}
                             className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50">
                             Delete
@@ -751,12 +690,9 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 )}
               </section>
 
-              {/* ── JD confirmed ──────────────────────────────────────── */}
               <section>
                 <label className={`flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${
-                  show() && errors.jdConfirmed
-                    ? "border-red-400 bg-red-50 text-red-700"
-                    : "border-slate-200 bg-slate-50 text-slate-700"
+                  show() && errors.jdConfirmed ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 bg-slate-50 text-slate-700"
                 }`}>
                   <input type="checkbox" className="mt-1"
                     checked={form.jdConfirmed}
@@ -773,27 +709,23 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 </label>
               </section>
 
-              {/* ── HR Note (optional) ────────────────────────────────── */}
               <label className="block">
                 <div className="mb-1 text-sm font-medium text-slate-700">HR Note (optional)</div>
                 <textarea rows={2}
                   className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                   placeholder="e.g. Applied on behalf — student contacted via phone"
-                  value={hrNote}
-                  onChange={(e) => setHrNote(e.target.value)}
+                  value={hrNote} onChange={(e) => setHrNote(e.target.value)}
                 />
               </label>
             </>
           )}
 
-          {/* ── Error banner ──────────────────────────────────────────── */}
           {submitError && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {submitError}
             </div>
           )}
 
-          {/* ── Actions ───────────────────────────────────────────────── */}
           <div className="flex gap-2 pt-1">
             <button type="submit"
               disabled={submitting || uploading || !selectedStudent || loadingProfile}
@@ -821,6 +753,10 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [showApplyModal, setShowApplyModal] = useState(false);
+
+  // ── Search + Sort (jobs grid only) ────────────────────────────────────────
+  const [search,    setSearch]    = useState("");
+  const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
 
   const refresh = async () => {
     setIsLoading(true);
@@ -859,6 +795,8 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
     () => rows.map((row) => mapApplicationRow(row, jobsById)),
     [rows, jobsById],
   );
+
+  // Build raw job cards from applications
   const jobCards = useMemo(() => {
     const jobsMap = new Map();
     for (const row of normalizedRows) {
@@ -879,8 +817,26 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
         existing.applicationsCount += 1;
       }
     }
-    return Array.from(jobsMap.values()).sort((a, b) => a.title.localeCompare(b.title));
+    return Array.from(jobsMap.values());
   }, [normalizedRows]);
+
+  // Filter by search + sort by date
+  const filteredJobCards = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? jobCards.filter(
+          (j) =>
+            j.title?.toLowerCase().includes(q) ||
+            j.company?.toLowerCase().includes(q),
+        )
+      : jobCards;
+
+    return [...filtered].sort((a, b) => {
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return sortOrder === "newest" ? db - da : da - db;
+    });
+  }, [jobCards, search, sortOrder]);
 
   if (isLoading) {
     return <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Loading applications...</div>;
@@ -898,9 +854,11 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
     );
   }
 
+  // ── Jobs grid ─────────────────────────────────────────────────────────────
   if (!selectedJobId) {
     return (
       <div className="space-y-4">
+        {/* Top row: title + refresh */}
         <div className="flex items-center justify-between gap-3">
           <div className="text-base font-semibold text-slate-900">Posted Jobs</div>
           <button type="button" onClick={refresh} disabled={isLoading}
@@ -908,13 +866,66 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
             <FiRefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </button>
         </div>
-        {jobCards.length === 0 ? (
+
+        {/* Search + Sort controls */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-[200px] flex-1">
+            <FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by job title or company..."
+              className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+            />
+            {search && (
+              <button type="button" onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <FiX className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Sort toggle */}
+          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <button type="button" onClick={() => setSortOrder("newest")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${sortOrder === "newest" ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}>
+              Newest First
+            </button>
+            <button type="button" onClick={() => setSortOrder("oldest")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${sortOrder === "oldest" ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}>
+              Oldest First
+            </button>
+          </div>
+        </div>
+
+        {/* Result count */}
+        {search && (
+          <p className="text-xs text-slate-500">
+            {filteredJobCards.length === 0
+              ? "No jobs match your search."
+              : `Showing ${filteredJobCards.length} of ${jobCards.length} job${jobCards.length !== 1 ? "s" : ""}`}
+          </p>
+        )}
+
+        {/* Grid */}
+        {filteredJobCards.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-            No posted jobs with applications yet.
+            {search ? (
+              <span>
+                No jobs found for "<span className="font-medium">{search}</span>".{" "}
+                <button type="button" onClick={() => setSearch("")}
+                  className="font-semibold text-primary hover:underline">
+                  Clear search
+                </button>
+              </span>
+            ) : (
+              "No posted jobs with applications yet."
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {jobCards.map((job) => (
+            {filteredJobCards.map((job) => (
               <Link key={job.id} to={`${basePath}/${job.id}`}
                 className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary">
                 <div className="flex items-start justify-between gap-3">
@@ -936,6 +947,7 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
     );
   }
 
+  // ── Single job: applicants view ───────────────────────────────────────────
   const filteredRows     = normalizedRows.filter((row) => String(getJobId(row)) === String(selectedJobId));
   const selectedJob      = jobs.find((j) => String(j.id) === String(selectedJobId));
   const selectedJobTitle = filteredRows[0]?.jobTitle || selectedJob?.title || "Job";
@@ -951,7 +963,7 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
       )}
       <div>
         <Link to={basePath} className="text-sm font-semibold text-primary hover:underline">
-          Back to jobs
+          ← Back to jobs
         </Link>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">

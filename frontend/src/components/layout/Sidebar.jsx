@@ -9,6 +9,7 @@ import {
   FiHelpCircle,
   FiLogOut,
   FiCloud,
+  FiBriefcase,
 } from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
@@ -37,6 +38,8 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
             { to: "/admin/dashboard",           label: "Dashboard"           },
             { to: "/admin/post-jd",             label: "Post JD"             },
             { to: "/admin/manage-applications", label: "Manage Applications" },
+            // HR can post external company jobs
+            { to: "/admin/external-jobs",       label: "External Jobs",  icon: FiBriefcase },
           ]
         : [
             { to: "/student/dashboard",    label: "Dashboard",          icon: FiGrid      },
@@ -45,8 +48,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
             // Only visible when profile.isEligible === true
             ...(isEligible
               ? [
-                  { to: "/student/career-guide", label: "Career Assistance Guide", icon: FiBookOpen },
-                  { to: "/student/cloud-drive",  label: "Cloud Drive",             icon: FiCloud    },
+                  { to: "/student/external-jobs", label: "External Jobs",          icon: FiBriefcase },
+                  { to: "/student/career-guide",  label: "Career Assistance Guide", icon: FiBookOpen  },
+                  { to: "/student/cloud-drive",   label: "Cloud Drive",             icon: FiCloud     },
                 ]
               : []),
             { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
@@ -112,9 +116,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                 {({ isActive }) => (
                   <>
                     {Icon && (
-                      <Icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : "text-slate-500"}`}
-                      />
+                      <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-slate-500"}`} />
                     )}
                     <span>{l.label}</span>
                   </>
