@@ -1,7 +1,4 @@
 const { getSupabaseUser, getSupabaseAdmin } = require("../config/db");
-const { ROLES } = require("../utils/constants");
-
-const BULK_INSERT_CHUNK = 500;
 
 function getWriteClient(jwt) {
   const admin = getSupabaseAdmin();
@@ -13,75 +10,122 @@ function getReadClient(jwt) {
   return admin || getSupabaseUser(jwt);
 }
 
-function splitIntoChunks(items, size) {
-  const safeItems = Array.isArray(items) ? items : [];
-  const chunkSize = Math.max(1, Number(size) || 1);
-  const chunks = [];
-
-  for (let index = 0; index < safeItems.length; index += chunkSize) {
-    chunks.push(safeItems.slice(index, index + chunkSize));
-  }
-
-  return chunks;
-}
-
-async function createNotificationsForStudents({ title, message, type, jwt }) {
+/**
+ * Insert a single broadcast notification (user_id = NULL).
+ * Visible to all students — no per-user rows needed.
+ */
+async function createBroadcastNotification({ title, message, type, jwt }) {
   const normalizedTitle = String(title || "").trim();
   const normalizedMessage = String(message || "").trim();
-
-  if (!normalizedTitle || !normalizedMessage) return { insertedCount: 0 };
+  if (!normalizedTitle || !normalizedMessage) return null;
 
   const supabase = getWriteClient(jwt);
 
-  const { data: students, error: studentsError } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("role", ROLES.STUDENT);
-  if (studentsError) throw studentsError;
-
-  if (!Array.isArray(students) || students.length === 0) {
-    return { insertedCount: 0 };
-  }
-
-  const rows = students
-    .map((student) => student?.id)
-    .filter(Boolean)
-    .map((studentId) => ({
-      user_id: studentId,
+  const { data, error } = await supabase
+    .from("notifications")
+    .insert({
+      user_id: null,
       title: normalizedTitle,
       message: normalizedMessage,
       type: type || null,
-    }));
-
-  const chunks = splitIntoChunks(rows, BULK_INSERT_CHUNK);
-  for (const chunk of chunks) {
-    // Bulk insert in chunks to avoid oversized payloads for large student cohorts.
-    // eslint-disable-next-line no-await-in-loop
-    const { error } = await supabase.from("notifications").insert(chunk);
-    if (error) throw error;
-  }
-
-  return { insertedCount: rows.length };
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
 }
 
+/**
+ * List notifications for a student:
+ *  • Broadcast notifications (user_id IS NULL) that the user hasn't read
+ *  • Personal notifications (user_id = userId, kept for backward compat)
+ */
 async function listNotificationsByUser({ userId, jwt, limit = 50 }) {
   const safeLimit = Math.min(200, Math.max(1, Number(limit) || 50));
   const supabase = getReadClient(jwt);
 
-  const { data, error } = await supabase
+  // 1. Get IDs of broadcasts this user already read
+  const { data: readRows, error: readError } = await supabase
+    .from("notification_reads")
+    .select("notification_id")
+    .eq("user_id", userId);
+  if (readError) throw readError;
+
+  const readIds = (readRows || []).map((r) => r.notification_id);
+
+  // 2. Fetch broadcast notifications (user_id is null)
+  let broadcastQuery = supabase
+    .from("notifications")
+    .select("*")
+    .is("user_id", null)
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
+
+  if (readIds.length > 0) {
+    broadcastQuery = broadcastQuery.not("id", "in", `(${readIds.join(",")})`);
+  }
+
+  const { data: broadcasts, error: bErr } = await broadcastQuery;
+  if (bErr) throw bErr;
+
+  // Mark all broadcast items as unread for the UI
+  const broadcastItems = (broadcasts || []).map((n) => ({
+    ...n,
+    is_read: false,
+  }));
+
+  // 3. Fetch personal/legacy notifications for this user
+  const { data: personal, error: pErr } = await supabase
     .from("notifications")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .limit(safeLimit);
-  if (error) throw error;
+  if (pErr) throw pErr;
 
-  return data || [];
+  // 4. Merge, sort by created_at desc, clip to limit
+  const merged = [...broadcastItems, ...(personal || [])]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, safeLimit);
+
+  return merged;
 }
 
+/**
+ * Mark a notification as read.
+ * - Broadcast (user_id is null): insert into notification_reads
+ * - Personal (user_id = userId): update the row directly
+ */
 async function markNotificationAsRead({ notificationId, userId, jwt }) {
   const supabase = getWriteClient(jwt);
 
+  // Check if the notification exists
+  const { data: notification, error: fetchErr } = await supabase
+    .from("notifications")
+    .select("id, user_id")
+    .eq("id", notificationId)
+    .maybeSingle();
+  if (fetchErr) throw fetchErr;
+
+  if (!notification) {
+    const err = new Error("Notification not found");
+    err.status = 404;
+    throw err;
+  }
+
+  // Broadcast notification — track read in notification_reads
+  if (notification.user_id === null) {
+    const { error } = await supabase
+      .from("notification_reads")
+      .upsert(
+        { notification_id: notificationId, user_id: userId },
+        { onConflict: "notification_id,user_id" },
+      );
+    if (error) throw error;
+    return { ...notification, is_read: true };
+  }
+
+  // Personal notification — update in place
   const { data, error } = await supabase
     .from("notifications")
     .update({ is_read: true })
@@ -92,16 +136,16 @@ async function markNotificationAsRead({ notificationId, userId, jwt }) {
   if (error) throw error;
 
   if (!data) {
-    const notFoundError = new Error("Notification not found");
-    notFoundError.status = 404;
-    throw notFoundError;
+    const err = new Error("Notification not found");
+    err.status = 404;
+    throw err;
   }
 
   return data;
 }
 
 module.exports = {
-  createNotificationsForStudents,
+  createBroadcastNotification,
   listNotificationsByUser,
   markNotificationAsRead,
 };

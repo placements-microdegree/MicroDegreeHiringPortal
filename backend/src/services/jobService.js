@@ -273,7 +273,7 @@ async function createJob({ payload, actor, jwt }) {
 
   const savedQuestions = await saveJobQuestions(supabase, data.id, questions);
 
-  await notificationService.createNotificationsForStudents({
+  await notificationService.createBroadcastNotification({
     title: "New Job Posted",
     message: `New job "${data.title}" has been posted`,
     type: "job_posted",
