@@ -198,7 +198,9 @@ async function notifyEligibleStudentsByEmail(job) {
   try {
     const transporter = getTransporter();
     if (!transporter) {
-      console.error("[emailService] Skipping — SMTP transporter not available.");
+      console.error(
+        "[emailService] Skipping — SMTP transporter not available.",
+      );
       return;
     }
 
@@ -220,8 +222,6 @@ async function notifyEligibleStudentsByEmail(job) {
 
     console.log(
       `[emailService] Job alert sent to ${emails.length} eligible student(s). MessageId: ${info.messageId}`,
-    );
-      `[emailService] Job alert sent to ${emails.length} eligible student(s).`,
     );
   } catch (err) {
     console.error(
