@@ -281,7 +281,9 @@ async function createJob({ payload, actor, jwt }) {
   });
 
   // Send email notification to eligible students (fire-and-forget)
-  emailService.notifyEligibleStudentsByEmail(data);
+  emailService.notifyEligibleStudentsByEmail(data).catch((err) => {
+    console.error("[jobService] Email notification failed:", err.message);
+  });
 
   return { ...data, questions: savedQuestions };
 }

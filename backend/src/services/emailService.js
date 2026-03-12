@@ -4,15 +4,35 @@ const nodemailer = require("nodemailer");
 const { getSupabaseAdmin } = require("../config/db");
 const { ROLES } = require("../utils/constants");
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+/**
+ * Lazy-initialised transporter so env vars are definitely loaded
+ * by the time we first send an email (important on DigitalOcean App Platform).
+ */
+let _transporter = null;
+
+function getTransporter() {
+  if (_transporter) return _transporter;
+
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    console.error(
+      "[emailService] SMTP not configured — SMTP_HOST, SMTP_USER, or SMTP_PASS is missing.",
+    );
+    return null;
+  }
+
+  _transporter = nodemailer.createTransport({
+    host,
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: Number(process.env.SMTP_PORT) === 465,
+    auth: { user, pass },
+  });
+
+  return _transporter;
+}
 
 /**
  * Fetch emails of all eligible students (is_eligible = true).
@@ -176,6 +196,12 @@ function buildJobEmailHtml(job) {
  */
 async function notifyEligibleStudentsByEmail(job) {
   try {
+    const transporter = getTransporter();
+    if (!transporter) {
+      console.error("[emailService] Skipping — SMTP transporter not available.");
+      return;
+    }
+
     const emails = await getEligibleStudentEmails();
     if (emails.length === 0) {
       console.log("[emailService] No eligible students to notify.");
@@ -185,7 +211,7 @@ async function notifyEligibleStudentsByEmail(job) {
     const html = buildJobEmailHtml(job);
     const subject = `🚀 New Job Alert: ${job.title} at ${job.company}`;
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       bcc: emails,
       subject,
@@ -193,6 +219,8 @@ async function notifyEligibleStudentsByEmail(job) {
     });
 
     console.log(
+      `[emailService] Job alert sent to ${emails.length} eligible student(s). MessageId: ${info.messageId}`,
+    );
       `[emailService] Job alert sent to ${emails.length} eligible student(s).`,
     );
   } catch (err) {
