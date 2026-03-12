@@ -179,7 +179,7 @@ async function listProfiles({ role } = {}) {
   let query = supabase
     .from("profiles")
     .select(
-      "id, full_name, email, phone, role, location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at",
+      "id, full_name, email, phone, role, location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url",
     )
     // Some deployments created `profiles` without a created_at column; avoid hard‑requiring it.
     .order("updated_at", { ascending: false });

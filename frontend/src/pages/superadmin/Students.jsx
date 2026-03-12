@@ -16,6 +16,7 @@ export default function Students() {
     phone: r.phone,
     isEligible: r.is_eligible || r.isEligible,
     eligibleUntil: r.eligible_until || r.eligibleUntil,
+    resumeUrl: r.resume_url || r.resumeUrl,
   }));
 
   return <StudentsTable rows={mapped} />;
