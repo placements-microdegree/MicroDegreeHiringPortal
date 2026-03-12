@@ -192,8 +192,11 @@ function buildJobEmailHtml(job) {
 
 /**
  * Send new-job email to all eligible students.
+ * AWS SES limits BCC to 50 recipients per call, so we batch accordingly.
  * Runs in the background — failures are logged, never thrown.
  */
+const SES_BCC_LIMIT = 50;
+
 async function notifyEligibleStudentsByEmail(job) {
   try {
     const transporter = getTransporter();
@@ -212,16 +215,25 @@ async function notifyEligibleStudentsByEmail(job) {
 
     const html = buildJobEmailHtml(job);
     const subject = `🚀 New Job Alert: ${job.title} at ${job.company}`;
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER;
 
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      bcc: emails,
-      subject,
-      html,
-    });
+    // Send in batches of 50 to stay within SES recipient limit
+    for (let i = 0; i < emails.length; i += SES_BCC_LIMIT) {
+      const batch = emails.slice(i, i + SES_BCC_LIMIT);
+      // eslint-disable-next-line no-await-in-loop
+      const info = await transporter.sendMail({
+        from,
+        bcc: batch,
+        subject,
+        html,
+      });
+      console.log(
+        `[emailService] Batch ${Math.floor(i / SES_BCC_LIMIT) + 1} sent to ${batch.length} student(s). MessageId: ${info.messageId}`,
+      );
+    }
 
     console.log(
-      `[emailService] Job alert sent to ${emails.length} eligible student(s). MessageId: ${info.messageId}`,
+      `[emailService] Job alert sent to ${emails.length} eligible student(s) in ${Math.ceil(emails.length / SES_BCC_LIMIT)} batch(es).`,
     );
   } catch (err) {
     console.error(
