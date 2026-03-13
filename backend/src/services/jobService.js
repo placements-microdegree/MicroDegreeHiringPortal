@@ -13,7 +13,7 @@ const WORK_MODES = ["Remote", "Hybrid", "Onsite"];
 const INTERVIEW_MODES = ["Online", "Offline", "Hybrid"];
 const JOB_STATUSES = ["active", "closed", "deleted"];
 const MAX_QUESTIONS = 5;
-const CLOSED_TO_DELETED_AFTER_DAYS = 2;
+const CLOSED_TO_DELETED_AFTER_DAYS = 30;
 
 function isSoftDeletedJob(job) {
   return String(job?.status || "").toLowerCase() === "deleted";
