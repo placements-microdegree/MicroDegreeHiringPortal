@@ -34,14 +34,72 @@ function formatDate(dateInput) {
 }
 
 const STATUS_META = {
-  Applied:     { label: "Applied",             Icon: FiClock,       cls: "bg-amber-50   text-amber-700   border-amber-200"   },
-  reviewed:    { label: "Reviewed",            Icon: FiAlertCircle, cls: "bg-blue-50    text-blue-700    border-blue-200"    },
-  accepted:    { label: "Accepted",            Icon: FiCheckCircle, cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  rejected:    { label: "Rejected",            Icon: FiXCircle,     cls: "bg-red-50     text-red-700     border-red-200"     },
-  shortlisted: { label: "Shortlisted",         Icon: FiStar,        cls: "bg-purple-50  text-purple-700  border-purple-200"  },
-  interview:   { label: "Interview Scheduled", Icon: FiCalendar,    cls: "bg-indigo-50  text-indigo-700  border-indigo-200"  },
-  selected:    { label: "Selected",            Icon: FiAward,       cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  Applied: {
+    label: "Applied",
+    Icon: FiClock,
+    cls: "bg-amber-50   text-amber-700   border-amber-200",
+  },
+  Reviewed: {
+    label: "Reviewed",
+    Icon: FiAlertCircle,
+    cls: "bg-blue-50    text-blue-700    border-blue-200",
+  },
+  Accepted: {
+    label: "Accepted",
+    Icon: FiCheckCircle,
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  Rejected: {
+    label: "Rejected",
+    Icon: FiXCircle,
+    cls: "bg-red-50     text-red-700     border-red-200",
+  },
+  Shortlisted: {
+    label: "Shortlisted",
+    Icon: FiStar,
+    cls: "bg-purple-50  text-purple-700  border-purple-200",
+  },
+  Interview: {
+    label: "Interview Scheduled",
+    Icon: FiCalendar,
+    cls: "bg-indigo-50  text-indigo-700  border-indigo-200",
+  },
+  Selected: {
+    label: "Selected",
+    Icon: FiAward,
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  "Resume Screening Rejected": {
+    label: "Resume Screening Rejected",
+    Icon: FiXCircle,
+    cls: "bg-rose-50 text-rose-700 border-rose-200",
+  },
+  "Profile Mapped for client": {
+    label: "Profile Mapped for client",
+    Icon: FiAlertCircle,
+    cls: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  },
+  "Client Rejected": {
+    label: "Client Rejected",
+    Icon: FiXCircle,
+    cls: "bg-rose-50 text-rose-700 border-rose-200",
+  },
 };
+
+function normalizeApplicationStatus(status) {
+  const value = String(status || "").trim();
+  if (!value) return "Applied";
+
+  if (value === "ResumeScreeningRejected") return "Resume Screening Rejected";
+  if (value.toLowerCase() === "reviewed") return "Reviewed";
+  if (value.toLowerCase() === "accepted") return "Accepted";
+  if (value.toLowerCase() === "rejected") return "Rejected";
+  if (value.toLowerCase() === "shortlisted") return "Shortlisted";
+  if (value.toLowerCase() === "interview") return "Interview";
+  if (value.toLowerCase() === "selected") return "Selected";
+
+  return value;
+}
 
 // ── StatsBar ──────────────────────────────────────────────────────────────────
 
@@ -51,27 +109,65 @@ function StatsBar({ jobs, apps }) {
   const statuses = safeApps.map((a) => (a?.status || "Applied").toLowerCase());
 
   const stats = [
-    { label: "Total Jobs Available",   value: safeJobs.length,                                                     icon: FiBriefcase, color: "text-blue-600",    bg: "bg-blue-50"    },
-    { label: "Applications Submitted", value: safeApps.length,                                                     icon: FiFileText,  color: "text-violet-600",  bg: "bg-violet-50"  },
-    { label: "Shortlisted",            value: statuses.filter((s) => s === "shortlisted").length,                  icon: FiStar,      color: "text-amber-600",   bg: "bg-amber-50"   },
-    { label: "Interview Scheduled",    value: statuses.filter((s) => s === "interview").length,                    icon: FiCalendar,  color: "text-indigo-600",  bg: "bg-indigo-50"  },
-    { label: "Selected",               value: statuses.filter((s) => s === "selected" || s === "accepted").length, icon: FiAward,     color: "text-emerald-600", bg: "bg-emerald-50" },
+    {
+      label: "Total Jobs Available",
+      value: safeJobs.length,
+      icon: FiBriefcase,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "Applications Submitted",
+      value: safeApps.length,
+      icon: FiFileText,
+      color: "text-violet-600",
+      bg: "bg-violet-50",
+    },
+    {
+      label: "Shortlisted",
+      value: statuses.filter((s) => s === "shortlisted").length,
+      icon: FiStar,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+    },
+    {
+      label: "Interview Scheduled",
+      value: statuses.filter((s) => s === "interview").length,
+      icon: FiCalendar,
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+    },
+    {
+      label: "Selected",
+      value: statuses.filter((s) => s === "selected" || s === "accepted")
+        .length,
+      icon: FiAward,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-      {stats.map(({ label, value, icon: Icon, color, bg }) => (
-        <div
-          key={label}
-          className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-        >
-          <div className={`mb-2 flex h-10 w-10 items-center justify-center rounded-xl ${bg}`}>
-            <Icon className={`h-5 w-5 ${color}`} />
+      {stats.map((item) => {
+        const StatIcon = item.icon;
+        return (
+          <div
+            key={item.label}
+            className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <div
+              className={`mb-2 flex h-10 w-10 items-center justify-center rounded-xl ${item.bg}`}
+            >
+              <StatIcon className={`h-5 w-5 ${item.color}`} />
+            </div>
+            <p className="text-2xl font-bold text-slate-900">{item.value}</p>
+            <p className="mt-0.5 text-center text-xs text-slate-500">
+              {item.label}
+            </p>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{value}</p>
-          <p className="mt-0.5 text-center text-xs text-slate-500">{label}</p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -79,10 +175,10 @@ function StatsBar({ jobs, apps }) {
 // ── ApplicationCard ───────────────────────────────────────────────────────────
 
 function ApplicationCard({ application, jobs }) {
-  const jobId  = String(application?.job_id || application?.jobId || "");
-  const job    = jobs.find((j) => String(j.id) === jobId);
-  const status = (application?.status || "Applied").toLowerCase();
-  const meta   = STATUS_META[status] || STATUS_META.Applied;
+  const jobId = String(application?.job_id || application?.jobId || "");
+  const job = jobs.find((j) => String(j.id) === jobId);
+  const status = normalizeApplicationStatus(application?.status);
+  const meta = STATUS_META[status] || STATUS_META.Applied;
   const { Icon } = meta;
 
   return (
@@ -96,7 +192,9 @@ function ApplicationCard({ application, jobs }) {
             {job?.company || "Company Unavailable"}
           </p>
         </div>
-        <span className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${meta.cls}`}>
+        <span
+          className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${meta.cls}`}
+        >
           <Icon className="h-3.5 w-3.5" />
           {meta.label}
         </span>
@@ -104,13 +202,17 @@ function ApplicationCard({ application, jobs }) {
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-slate-50 px-3 py-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Applied on</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            Applied on
+          </p>
           <p className="mt-0.5 text-sm font-semibold text-slate-700">
             {formatDate(application?.created_at || application?.createdAt)}
           </p>
         </div>
         <div className="rounded-xl bg-slate-50 px-3 py-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Location</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            Location
+          </p>
           <p className="mt-0.5 truncate text-sm font-semibold text-slate-700">
             {job?.location || "—"}
           </p>
@@ -119,8 +221,12 @@ function ApplicationCard({ application, jobs }) {
 
       {job?.ctc && (
         <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">CTC</p>
-          <p className="mt-0.5 text-sm font-semibold text-slate-800">{job.ctc}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            CTC
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-slate-800">
+            {job.ctc}
+          </p>
         </div>
       )}
     </article>
@@ -132,11 +238,11 @@ function ApplicationCard({ application, jobs }) {
 function StudentDashboardHome({ profile }) {
   const navigate = useNavigate();
 
-  const [jobs,        setJobs]        = useState([]);
-  const [apps,        setApps]        = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [apps, setApps] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [applyOpen,   setApplyOpen]   = useState(false);
-  const [isLoading,   setIsLoading]   = useState(true);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -156,7 +262,9 @@ function StudentDashboardHome({ profile }) {
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
 
   const appliedJobIds = useMemo(
     () =>
@@ -168,15 +276,15 @@ function StudentDashboardHome({ profile }) {
     [apps],
   );
 
-  const safeJobs    = Array.isArray(jobs) ? jobs : [];
-  const safeApps    = Array.isArray(apps) ? apps : [];
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const safeApps = Array.isArray(apps) ? apps : [];
   const previewJobs = safeJobs.slice(0, 3);
   const previewApps = safeApps.slice(0, 3);
 
   const apply = async (job) => {
     const hasEligibilityWindow = profile?.isEligible === true;
-    const remainingQuota       = Number(profile?.applicationQuota ?? 0);
-    const hasQuotaAccess       = !hasEligibilityWindow && remainingQuota > 0;
+    const remainingQuota = Number(profile?.applicationQuota ?? 0);
+    const hasQuotaAccess = !hasEligibilityWindow && remainingQuota > 0;
 
     if (!hasEligibilityWindow && !hasQuotaAccess) {
       await showInfo(
@@ -218,8 +326,12 @@ function StudentDashboardHome({ profile }) {
           <section>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Open Jobs</h2>
-                <p className="text-sm text-slate-500">Latest opportunities for you</p>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Open Jobs
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Latest opportunities for you
+                </p>
               </div>
               {safeJobs.length > 3 && (
                 <button
@@ -265,8 +377,12 @@ function StudentDashboardHome({ profile }) {
           <section>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-900">Recent Applications</h2>
-                <p className="text-sm text-slate-500">Track your latest submissions</p>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Recent Applications
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Track your latest submissions
+                </p>
               </div>
               {safeApps.length > 3 && (
                 <button
@@ -323,9 +439,9 @@ function StudentDashboardHome({ profile }) {
 
 export default function DashboardLayout({ role }) {
   const { profile, updateProfile } = useAuth();
-  const [drawerOpen,  setDrawerOpen]  = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location  = useLocation();
+  const location = useLocation();
   const isStudent = role === ROLES.STUDENT;
 
   useEffect(() => {
@@ -334,20 +450,22 @@ export default function DashboardLayout({ role }) {
 
   const title = useMemo(() => {
     if (role === ROLES.SUPER_ADMIN) {
-      if (location.pathname.includes("manage-hr"))    return "Manage HR Admins";
-      if (location.pathname.includes("students"))     return "Students";
-      if (location.pathname.includes("jobs"))         return "Jobs";
+      if (location.pathname.includes("manage-hr")) return "Manage HR Admins";
+      if (location.pathname.includes("students")) return "Students";
+      if (location.pathname.includes("jobs")) return "Jobs";
       if (location.pathname.includes("applications")) return "Applications";
       return "Super Admin Dashboard";
     }
     if (role === ROLES.ADMIN) {
-      if (location.pathname.includes("post-jd"))             return "Post JD";
-      if (location.pathname.includes("manage-applications")) return "Manage Applications";
+      if (location.pathname.includes("post-jd")) return "Post JD";
+      if (location.pathname.includes("manage-applications"))
+        return "Manage Applications";
       return "Admin Dashboard";
     }
-    if (location.pathname.includes("/student/jobs"))         return "Jobs (JD)";
-    if (location.pathname.includes("/student/applications")) return "Application Status";
-    if (location.pathname.includes("/student/help"))         return "Help Center";
+    if (location.pathname.includes("/student/jobs")) return "Jobs (JD)";
+    if (location.pathname.includes("/student/applications"))
+      return "Application Status";
+    if (location.pathname.includes("/student/help")) return "Help Center";
     return "Student Dashboard";
   }, [location.pathname, role]);
 
@@ -390,7 +508,9 @@ export default function DashboardLayout({ role }) {
             applicationQuota={profile?.applicationQuota}
           />
 
-          <main className={`flex-1 ${isStudent ? "bg-slate-50 p-6 lg:p-7" : "p-6"}`}>
+          <main
+            className={`flex-1 ${isStudent ? "bg-slate-50 p-6 lg:p-7" : "p-6"}`}
+          >
             {isStudentHome ? (
               <StudentDashboardHome profile={profile} />
             ) : (

@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { FiArrowRight } from "react-icons/fi";
 import Loader from "../../components/common/Loader";
-import { getStudentAnalytics, listApplicationsByStudent } from "../../services/applicationService";
+import {
+  getStudentAnalytics,
+  listApplicationsByStudent,
+} from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
 
 const analyticsMeta = [
@@ -19,7 +22,17 @@ const statusClass = {
   Interview: "bg-orange-100 text-orange-700",
   Selected: "bg-emerald-100 text-emerald-700",
   Rejected: "bg-red-100 text-red-700",
+  "Resume Screening Rejected": "bg-rose-100 text-rose-700",
+  "Profile Mapped for client": "bg-yellow-100 text-yellow-700",
+  "Client Rejected": "bg-rose-100 text-rose-700",
 };
+
+function normalizeApplicationStatus(status) {
+  const value = String(status || "").trim();
+  if (!value) return "Applied";
+  if (value === "ResumeScreeningRejected") return "Resume Screening Rejected";
+  return value;
+}
 
 function formatDate(dateInput) {
   if (!dateInput) return "Not specified";
@@ -182,7 +195,8 @@ export default function StudentDashboard() {
                         {job?.title || "Job"}
                       </h3>
                       <p className="text-sm text-slate-600">
-                        {job?.company || "Company"} | {job?.location || "Location not specified"}
+                        {job?.company || "Company"} |{" "}
+                        {job?.location || "Location not specified"}
                       </p>
                     </div>
                     <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
@@ -219,7 +233,7 @@ export default function StudentDashboard() {
           ) : (
             <ol className="space-y-3">
               {recentApplications.map((application, index) => {
-                const status = application?.status || "Applied";
+                const status = normalizeApplicationStatus(application?.status);
                 const timelineClass =
                   statusClass[status] || "bg-slate-100 text-slate-700";
                 const showConnector = index < recentApplications.length - 1;
@@ -235,10 +249,14 @@ export default function StudentDashboard() {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <div className="font-medium text-slate-900">
-                          {application?.jobs?.title || application?.jobTitle || "Job"}
+                          {application?.jobs?.title ||
+                            application?.jobTitle ||
+                            "Job"}
                         </div>
                         <div className="text-sm text-slate-600">
-                          {application?.jobs?.company || application?.company || "Company"}
+                          {application?.jobs?.company ||
+                            application?.company ||
+                            "Company"}
                         </div>
                       </div>
                       <span
