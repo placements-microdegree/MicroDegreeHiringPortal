@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Button from "../common/Button";
-import { FiCalendar, FiMapPin, FiClock } from "react-icons/fi";
+import { FiCalendar, FiMapPin, FiClock, FiBriefcase } from "react-icons/fi";
 
 const workModeClass = {
   remote: "bg-sky-100 text-sky-700",
@@ -16,34 +16,38 @@ function getValidityDisplay(validTill) {
   if (!validTill) return { type: "date", text: "Not specified" };
 
   const expiry = new Date(validTill);
-  if (Number.isNaN(expiry.getTime())) return { type: "date", text: "Not specified" };
+  if (Number.isNaN(expiry.getTime()))
+    return { type: "date", text: "Not specified" };
 
-  const nowMs   = Date.now();
-  const diffMs  = expiry.getTime() - nowMs;
+  const nowMs = Date.now();
+  const diffMs = expiry.getTime() - nowMs;
 
   // Already expired
   if (diffMs <= 0) return { type: "expired", text: "Expired" };
 
-  const diffHours   = diffMs / (1000 * 60 * 60);
+  const diffHours = diffMs / (1000 * 60 * 60);
   const diffMinutes = diffMs / (1000 * 60);
 
   // Under 24 hours — show countdown
   if (diffHours < 24) {
     if (diffMinutes < 60) {
       const mins = Math.floor(diffMinutes);
-      return { type: "urgent", text: `${mins} minute${mins !== 1 ? "s" : ""} left to apply` };
+      return {
+        type: "urgent",
+        text: `${mins} minute${mins !== 1 ? "s" : ""} left to apply`,
+      };
     }
     const hours = Math.floor(diffHours);
-    const mins  = Math.floor(diffMinutes % 60);
+    const mins = Math.floor(diffMinutes % 60);
     const minPart = mins > 0 ? ` ${mins}m` : "";
     return { type: "urgent", text: `${hours}h${minPart} left to apply` };
   }
 
   // More than 24 hours — show date only
   const text = expiry.toLocaleDateString("en-IN", {
-    day:   "numeric",
+    day: "numeric",
     month: "short",
-    year:  "numeric",
+    year: "numeric",
   });
   return { type: "date", text: `Valid till ${text}` };
 }
@@ -64,7 +68,7 @@ function SkillsList({ skills }) {
   }
 
   const visible = expanded ? skills : skills.slice(0, SKILLS_VISIBLE);
-  const hidden  = skills.length - SKILLS_VISIBLE;
+  const hidden = skills.length - SKILLS_VISIBLE;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -79,7 +83,10 @@ function SkillsList({ skills }) {
       {!expanded && hidden > 0 && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(true);
+          }}
           className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:border-primary hover:text-primary"
         >
           +{hidden} more
@@ -88,7 +95,10 @@ function SkillsList({ skills }) {
       {expanded && hidden > 0 && (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setExpanded(false);
+          }}
           className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-400 transition hover:border-slate-300"
         >
           show less
@@ -103,29 +113,38 @@ function SkillsList({ skills }) {
 function normalizeSkills(skills) {
   if (Array.isArray(skills)) return skills.filter(Boolean);
   if (typeof skills === "string" && skills.trim())
-    return skills.split(",").map((s) => s.trim()).filter(Boolean);
+    return skills
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   return [];
 }
 
 // ── JobCard ───────────────────────────────────────────────────────────────────
 
 export default function JobCard({ job, onApply, applied }) {
-  const validTill   = job?.valid_till || job?.validTill;
-  const workMode    = String(job?.work_mode || job?.workMode || "Not specified");
-  const modeBadge   = workModeClass[workMode.toLowerCase()] || "bg-slate-100 text-slate-700";
-  const skills      = normalizeSkills(job?.skills);
-  const validity    = getValidityDisplay(validTill);
+  const validTill = job?.valid_till || job?.validTill;
+  const workMode = String(job?.work_mode || job?.workMode || "Not specified");
+  const modeBadge =
+    workModeClass[workMode.toLowerCase()] || "bg-slate-100 text-slate-700";
+  const skills = normalizeSkills(job?.skills);
+  const validity = getValidityDisplay(validTill);
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-
       {/* Title + work mode badge */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">{job?.title}</h3>
-          <p className="mt-0.5 text-sm text-slate-600">{job?.company}</p>
+          <h3 className="text-base font-semibold text-slate-900">
+            {job?.title}
+          </h3>
+          <p className="mt-0.5 text-sm font-semibold text-slate-600">
+            {job?.company}
+          </p>
         </div>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${modeBadge}`}>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${modeBadge}`}
+        >
           {workMode}
         </span>
       </div>
@@ -133,25 +152,36 @@ export default function JobCard({ job, onApply, applied }) {
       {/* Details */}
       <div className="mt-4 space-y-2 text-sm text-slate-700">
         <div className="flex items-center gap-2">
-          <FiMapPin className="h-4 w-4 shrink-0 text-slate-400" />
+          <FiMapPin className="h-4 w-4 shrink-0 text-rose-500" />
           <span>{job?.location || "Location not specified"}</span>
         </div>
 
+        <div className="flex items-center gap-2">
+          <FiBriefcase className="h-4 w-4 shrink-0 text-violet-500" />
+          <span>{job?.experience || "Experience not specified"}</span>
+        </div>
+
         <div className="rounded-xl bg-slate-50 px-3 py-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">CTC(in LPA)</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            CTC(in LPA)
+          </span>
           <div className="mt-0.5 text-sm font-semibold text-slate-800">
             {job?.ctc || "Not specified"}
           </div>
         </div>
 
         {/* Validity — countdown or date */}
-        <div className={`flex items-center gap-2 ${validity.type === "expired" ? "text-red-500" : validity.type === "urgent" ? "text-amber-600" : "text-slate-600"}`}>
+        <div
+          className={`flex items-center gap-2 ${validity.type === "expired" ? "text-red-500" : validity.type === "urgent" ? "text-amber-600" : "text-slate-600"}`}
+        >
           {validity.type === "urgent" ? (
             <FiClock className="h-4 w-4 shrink-0" />
           ) : (
-            <FiCalendar className="h-4 w-4 shrink-0 text-slate-400" />
+            <FiCalendar className="h-4 w-4 shrink-0 text-sky-500" />
           )}
-          <span className={`text-sm ${validity.type === "urgent" ? "font-semibold" : ""}`}>
+          <span
+            className={`text-sm ${validity.type === "urgent" ? "font-semibold" : ""}`}
+          >
             {validity.text}
           </span>
         </div>
@@ -184,7 +214,11 @@ export default function JobCard({ job, onApply, applied }) {
           disabled={applied || validity.type === "expired"}
           className="min-w-24"
         >
-          {applied ? "Applied" : validity.type === "expired" ? "Closed" : "Apply"}
+          {applied
+            ? "Applied"
+            : validity.type === "expired"
+              ? "Closed"
+              : "Apply"}
         </Button>
       </div>
     </article>

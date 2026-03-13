@@ -203,7 +203,7 @@ function ApplicationCard({ application, jobs }) {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-slate-50 px-3 py-2">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            Applied on
+            Applied <on></on>
           </p>
           <p className="mt-0.5 text-sm font-semibold text-slate-700">
             {formatDate(application?.created_at || application?.createdAt)}

@@ -1,6 +1,7 @@
 // FILE: src/components/common/NotificationBell.jsx
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FiBell } from "react-icons/fi";
 import {
   listNotifications,
@@ -11,7 +12,7 @@ function formatRelativeTime(dateInput) {
   const date = new Date(dateInput);
   if (Number.isNaN(date.getTime())) return "";
 
-  const diffMs      = Date.now() - date.getTime();
+  const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
   if (diffMinutes <= 0) return "Just now";
@@ -29,12 +30,13 @@ function isRead(notification) {
 }
 
 export default function NotificationBell() {
-  const rootRef   = useRef(null);
-  const [open,         setOpen]         = useState(false);
-  const [loading,      setLoading]      = useState(true);
-  const [notifications,setNotifications]= useState([]);
+  const navigate = useNavigate();
+  const rootRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
-  const [markingId,    setMarkingId]    = useState("");
+  const [markingId, setMarkingId] = useState("");
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !isRead(item)).length,
@@ -72,13 +74,13 @@ export default function NotificationBell() {
     const handleEscape = (event) => {
       if (event.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown",  handlePointerDown);
+    document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown",    handleEscape);
+    document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener("mousedown",  handlePointerDown);
+      document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown",    handleEscape);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
@@ -89,21 +91,27 @@ export default function NotificationBell() {
   };
 
   const onNotificationClick = async (notification) => {
-    if (!notification?.id || isRead(notification)) return;
+    if (!notification?.id) return;
+
     const targetId = notification.id;
-    setMarkingId(targetId);
-    setNotifications((prev) =>
-      prev.map((row) =>
-        row.id === targetId ? { ...row, is_read: true, isRead: true } : row,
-      ),
-    );
-    try {
-      await markNotificationRead(targetId);
-    } catch {
-      refreshNotifications({ silent: true });
-    } finally {
-      setMarkingId("");
+    if (!isRead(notification)) {
+      setMarkingId(targetId);
+      setNotifications((prev) =>
+        prev.map((row) =>
+          row.id === targetId ? { ...row, is_read: true, isRead: true } : row,
+        ),
+      );
+      try {
+        await markNotificationRead(targetId);
+      } catch {
+        refreshNotifications({ silent: true });
+      } finally {
+        setMarkingId("");
+      }
     }
+
+    setOpen(false);
+    navigate("/student/jobs");
   };
 
   return (
@@ -137,14 +145,17 @@ export default function NotificationBell() {
           sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-80
           rounded-2xl border border-slate-200 bg-white p-3 shadow-xl
           transition-all duration-200 ease-out
-          ${open
-            ? "pointer-events-auto translate-y-0 opacity-100"
-            : "pointer-events-none -translate-y-1 opacity-0"
+          ${
+            open
+              ? "pointer-events-auto translate-y-0 opacity-100"
+              : "pointer-events-none -translate-y-1 opacity-0"
           }
         `}
       >
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">Notifications</h3>
+          <h3 className="text-sm font-semibold text-slate-900">
+            Notifications
+          </h3>
           {unreadCount > 0 && (
             <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
               {unreadCount} unread
