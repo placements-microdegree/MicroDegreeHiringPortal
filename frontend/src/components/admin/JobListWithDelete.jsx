@@ -8,7 +8,7 @@ function normalizeStatus(status) {
     .toLowerCase();
   if (value === "active") return "Active";
   if (value === "deleted") return "Deleted";
-  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Unknown";
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Closed";
 }
 
 function getStatusChipClasses(status) {

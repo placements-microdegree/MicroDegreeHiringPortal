@@ -53,7 +53,7 @@ function normalizeJobStatus(status) {
     .toLowerCase();
   if (value === "active") return "active";
   if (value === "deleted") return "deleted";
-  return "unknown";
+  return "closed";
 }
 function getJobStatusChipClasses(status) {
   if (status === "active") return "bg-emerald-100 text-emerald-700";
@@ -1148,7 +1148,7 @@ export default function ManageApplicationsByJobView({
         if (!existing.createdAt)
           existing.createdAt =
             row.jobs?.created_at || row.job?.created_at || null;
-        if (existing.status === "unknown")
+        if (existing.status === "closed")
           existing.status = normalizeJobStatus(
             row.jobs?.status || row.job?.status,
           );
