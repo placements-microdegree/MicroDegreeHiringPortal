@@ -13,6 +13,7 @@ const WORK_MODES = ["Remote", "Hybrid", "Onsite"];
 const INTERVIEW_MODES = ["Online", "Offline", "Hybrid"];
 const JOB_STATUSES = ["active", "closed", "deleted"];
 const MAX_QUESTIONS = 5;
+const CLOSED_TO_DELETED_AFTER_DAYS = 2;
 
 function isSoftDeletedJob(job) {
   return String(job?.status || "").toLowerCase() === "deleted";
@@ -225,21 +226,61 @@ async function autoCloseExpiredJobs(supabase) {
   if (error) console.error("[autoCloseExpiredJobs]", error.message);
 }
 
-async function listJobs({ actor } = {}) {
+// Auto-move closed jobs to deleted after retention window
+async function autoDeleteStaleClosedJobs(supabase) {
+  const cutoff = new Date(
+    Date.now() - CLOSED_TO_DELETED_AFTER_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+
+  const { error: updatedAtError } = await supabase
+    .from("jobs")
+    .update({ status: "deleted", updated_at: new Date().toISOString() })
+    .eq("status", "closed")
+    .lt("updated_at", cutoff);
+
+  if (updatedAtError)
+    console.error(
+      "[autoDeleteStaleClosedJobs.updated_at]",
+      updatedAtError.message,
+    );
+
+  // Backward compatibility for rows with NULL updated_at
+  const { error: createdAtError } = await supabase
+    .from("jobs")
+    .update({ status: "deleted", updated_at: new Date().toISOString() })
+    .eq("status", "closed")
+    .is("updated_at", null)
+    .lt("created_at", cutoff);
+
+  if (createdAtError)
+    console.error(
+      "[autoDeleteStaleClosedJobs.created_at]",
+      createdAtError.message,
+    );
+}
+
+async function listJobs({ actor, includeClosed = false } = {}) {
   const supabase = getReadClient();
 
   // Auto-close expired jobs on every fetch (admin client handles it silently)
   const adminSupabase = getSupabaseAdmin();
   if (adminSupabase) {
     await autoCloseExpiredJobs(adminSupabase).catch(() => {});
+    await autoDeleteStaleClosedJobs(adminSupabase).catch(() => {});
   }
 
   let query = supabase.from("jobs").select("*, job_questions(*)");
 
   if (actor?.role !== ROLES.ADMIN && actor?.role !== ROLES.SUPER_ADMIN) {
     const now = new Date().toISOString();
-    // Students only see active jobs that haven't expired yet
-    query = query.eq("status", "active").gt("valid_till", now);
+    const canIncludeClosed = includeClosed && actor?.role === ROLES.STUDENT;
+    if (canIncludeClosed) {
+      // Student Jobs page: show active + closed, but never deleted
+      query = query.in("status", ["active", "closed"]);
+    } else {
+      // Default student views (dashboard/others): only active, not expired
+      query = query.eq("status", "active").gt("valid_till", now);
+    }
   }
 
   query = query.order("created_at", { ascending: false });

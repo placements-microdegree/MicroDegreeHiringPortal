@@ -12,17 +12,17 @@ import { FiRefreshCw } from "react-icons/fi";
 
 export default function JobListings() {
   const { profile } = useAuth();
-  const [jobs,        setJobs]        = useState([]);
-  const [apps,        setApps]        = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [apps, setApps] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [applyOpen,   setApplyOpen]   = useState(false);
-  const [isLoading,   setIsLoading]   = useState(true);
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refresh = async () => {
     setIsLoading(true);
     try {
       const [jobRows, appRows] = await Promise.all([
-        listJobs(),
+        listJobs({ includeClosed: true }),
         listApplicationsByStudent(),
       ]);
       setJobs(Array.isArray(jobRows) ? jobRows : []);
@@ -52,8 +52,8 @@ export default function JobListings() {
 
   const apply = async (job) => {
     const hasEligibilityWindow = profile?.isEligible === true;
-    const remainingQuota       = Number(profile?.applicationQuota ?? 0);
-    const hasQuotaAccess       = !hasEligibilityWindow && remainingQuota > 0;
+    const remainingQuota = Number(profile?.applicationQuota ?? 0);
+    const hasQuotaAccess = !hasEligibilityWindow && remainingQuota > 0;
 
     if (!hasEligibilityWindow && !hasQuotaAccess) {
       await showInfo(
@@ -91,7 +91,9 @@ export default function JobListings() {
           title="Refresh jobs"
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-primary hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <FiRefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          <FiRefreshCw
+            className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+          />
           {isLoading ? "Refreshing..." : "Refresh"}
         </button>
       </section>
@@ -103,7 +105,9 @@ export default function JobListings() {
         </div>
       ) : safeJobs.length === 0 ? (
         <div className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center shadow-sm">
-          <p className="text-base text-slate-600">No jobs posted at the moment</p>
+          <p className="text-base text-slate-600">
+            No jobs posted at the moment
+          </p>
           <button
             type="button"
             onClick={refresh}

@@ -14,8 +14,12 @@ async function request(path, { method = "GET", body } = {}) {
   return data;
 }
 
-export async function listJobs() {
-  const data = await request("/api/jobs");
+export async function listJobs({ includeClosed = false } = {}) {
+  const params = new URLSearchParams();
+  if (includeClosed) params.set("includeClosed", "true");
+  const query = params.toString();
+  const path = query ? `/api/jobs?${query}` : "/api/jobs";
+  const data = await request(path);
   return data.jobs || [];
 }
 

@@ -124,11 +124,14 @@ function normalizeSkills(skills) {
 
 export default function JobCard({ job, onApply, applied }) {
   const validTill = job?.valid_till || job?.validTill;
+  const status = String(job?.status || "active").toLowerCase();
+  const isClosed = status === "closed";
   const workMode = String(job?.work_mode || job?.workMode || "Not specified");
   const modeBadge =
     workModeClass[workMode.toLowerCase()] || "bg-slate-100 text-slate-700";
   const skills = normalizeSkills(job?.skills);
   const validity = getValidityDisplay(validTill);
+  const disableApply = applied || validity.type === "expired" || isClosed;
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
@@ -142,11 +145,18 @@ export default function JobCard({ job, onApply, applied }) {
             {job?.company}
           </p>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${modeBadge}`}
-        >
-          {workMode}
-        </span>
+        <div className="flex flex-col items-end gap-1.5">
+          <span
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${modeBadge}`}
+          >
+            {workMode}
+          </span>
+          {isClosed && (
+            <span className="shrink-0 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+              Closed
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Details */}
@@ -211,12 +221,12 @@ export default function JobCard({ job, onApply, applied }) {
 
         <Button
           onClick={() => onApply?.(job)}
-          disabled={applied || validity.type === "expired"}
+          disabled={disableApply}
           className="min-w-24"
         >
           {applied
             ? "Applied"
-            : validity.type === "expired"
+            : isClosed || validity.type === "expired"
               ? "Closed"
               : "Apply"}
         </Button>

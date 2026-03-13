@@ -2,7 +2,12 @@ const jobService = require("../services/jobService");
 
 async function list(req, res, next) {
   try {
-    const jobs = await jobService.listJobs({ actor: req.user });
+    const includeClosed =
+      String(req.query?.includeClosed || "false") === "true";
+    const jobs = await jobService.listJobs({
+      actor: req.user,
+      includeClosed,
+    });
     res.json({ success: true, jobs });
   } catch (err) {
     next(err);
