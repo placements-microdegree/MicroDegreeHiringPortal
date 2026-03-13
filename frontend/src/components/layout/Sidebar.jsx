@@ -51,58 +51,62 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     };
   }, [isStudent, isEligible]);
 
-  const links =
-    role === ROLES.SUPER_ADMIN
-      ? [
-          { to: "/superadmin/dashboard", label: "Dashboard" },
-          { to: "/superadmin/manage-hr", label: "Manage HR Admins" },
-          { to: "/superadmin/students", label: "View Students" },
-          { to: "/superadmin/jobs", label: "View Jobs" },
-          { to: "/superadmin/applications", label: "Applications" },
-          { to: "/superadmin/checker", label: "Checker" },
-        ]
-      : role === ROLES.ADMIN
+  let links = [];
+  if (role === ROLES.SUPER_ADMIN) {
+    links = [
+      { to: "/superadmin/dashboard", label: "Dashboard" },
+      { to: "/superadmin/manage-hr", label: "Manage HR Admins" },
+      { to: "/superadmin/students", label: "View Students" },
+      { to: "/superadmin/jobs", label: "View Jobs" },
+      { to: "/superadmin/applications", label: "Applications" },
+      {
+        to: "/superadmin/external-job-analytics",
+        label: "External Job Analytics",
+      },
+      { to: "/superadmin/checker", label: "Checker" },
+    ];
+  } else if (role === ROLES.ADMIN) {
+    links = [
+      { to: "/admin/dashboard", label: "Dashboard" },
+      { to: "/admin/post-jd", label: "Post JD" },
+      { to: "/admin/manage-applications", label: "Manage Applications" },
+      {
+        to: "/admin/external-jobs",
+        label: "External Jobs",
+        icon: FiBriefcase,
+      },
+    ];
+  } else {
+    links = [
+      { to: "/student/dashboard", label: "Dashboard", icon: FiGrid },
+      { to: "/student/jobs", label: "Jobs (JD)", icon: FiBookOpen },
+      {
+        to: "/student/applications",
+        label: "Application Status",
+        icon: FiClipboard,
+      },
+      ...(isEligible
         ? [
-            { to: "/admin/dashboard", label: "Dashboard" },
-            { to: "/admin/post-jd", label: "Post JD" },
-            { to: "/admin/manage-applications", label: "Manage Applications" },
-            // HR can post external company jobs
             {
-              to: "/admin/external-jobs",
+              to: "/student/external-jobs",
               label: "External Jobs",
               icon: FiBriefcase,
             },
-          ]
-        : [
-            { to: "/student/dashboard", label: "Dashboard", icon: FiGrid },
-            { to: "/student/jobs", label: "Jobs (JD)", icon: FiBookOpen },
             {
-              to: "/student/applications",
-              label: "Application Status",
-              icon: FiClipboard,
+              to: "/student/career-guide",
+              label: "Career Assistance Guide",
+              icon: FiBookOpen,
             },
-            // Only visible when profile.isEligible === true
-            ...(isEligible
-              ? [
-                  {
-                    to: "/student/external-jobs",
-                    label: "External Jobs",
-                    icon: FiBriefcase,
-                  },
-                  {
-                    to: "/student/career-guide",
-                    label: "Career Assistance Guide",
-                    icon: FiBookOpen,
-                  },
-                  {
-                    to: "/student/cloud-drive",
-                    label: "Cloud Drive",
-                    icon: FiCloud,
-                  },
-                ]
-              : []),
-            { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
-          ];
+            {
+              to: "/student/cloud-drive",
+              label: "Cloud Drive",
+              icon: FiCloud,
+            },
+          ]
+        : []),
+      { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
+    ];
+  }
 
   return (
     <>

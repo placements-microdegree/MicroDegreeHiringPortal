@@ -10,7 +10,10 @@ import {
   FiClock,
   FiChevronDown,
 } from "react-icons/fi";
-import { listActiveExternalJobs } from "../../services/externalJobService";
+import {
+  listActiveExternalJobs,
+  trackExternalJobClick,
+} from "../../services/externalJobService";
 import { showError } from "../../utils/alerts";
 import Loader from "../../components/common/Loader";
 
@@ -48,6 +51,11 @@ export default function ExternalJobs() {
   useEffect(() => {
     refresh();
   }, []);
+
+  const onApplyClick = (jobId) => {
+    // Fire and forget so navigation is instant while analytics is captured.
+    void trackExternalJobClick(jobId).catch(() => {});
+  };
 
   let content = null;
   if (isLoading) {
@@ -111,6 +119,7 @@ export default function ExternalJobs() {
                       href={job.apply_link}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() => onApplyClick(job.id)}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primary/90"
                     >
                       <FiExternalLink className="h-3.5 w-3.5" />

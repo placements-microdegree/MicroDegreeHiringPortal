@@ -81,4 +81,25 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { listActive, listAll, create, bulkCreate, update, remove };
+// POST /api/external-jobs/:id/click
+async function trackClick(req, res, next) {
+  try {
+    const result = await externalJobService.trackExternalJobClick({
+      jwt: req.user.jwt,
+      jobId: req.params.id,
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  listActive,
+  listAll,
+  create,
+  bulkCreate,
+  update,
+  remove,
+  trackClick,
+};

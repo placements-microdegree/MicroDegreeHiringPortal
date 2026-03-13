@@ -151,6 +151,46 @@ async function deleteExternalJob({ jwt, jobId }) {
   if (error) throw error;
 }
 
+// Track student apply-link click for analytics
+async function trackExternalJobClick({ jwt, jobId }) {
+  const supabase = getClient(jwt);
+
+  const { data: job, error: readError } = await supabase
+    .from("external_jobs")
+    .select("id, status, apply_click_count")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (readError) throw readError;
+  if (!job) {
+    const err = new Error("External job not found");
+    err.status = 404;
+    throw err;
+  }
+  if (job.status !== "active") {
+    const err = new Error("External job is not active");
+    err.status = 400;
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const nextCount = Number(job.apply_click_count || 0) + 1;
+
+  const { data, error } = await supabase
+    .from("external_jobs")
+    .update({
+      apply_click_count: nextCount,
+      last_clicked_at: now,
+      updated_at: now,
+    })
+    .eq("id", jobId)
+    .select("id, apply_click_count, last_clicked_at")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 module.exports = {
   listActiveExternalJobs,
   listAllExternalJobs,
@@ -158,4 +198,5 @@ module.exports = {
   bulkCreateExternalJobs,
   updateExternalJob,
   deleteExternalJob,
+  trackExternalJobClick,
 };

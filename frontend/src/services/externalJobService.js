@@ -60,3 +60,15 @@ export async function updateExternalJob(id, payload) {
 export async function deleteExternalJob(id) {
   await request(`/api/external-jobs/${id}`, { method: "DELETE" });
 }
+
+// Student — track apply click for analytics
+export async function trackExternalJobClick(id) {
+  const data = await request(`/api/external-jobs/${id}/click`, {
+    method: "POST",
+  });
+  return {
+    id: data.id,
+    applyClickCount: Number(data.apply_click_count || 0),
+    lastClickedAt: data.last_clicked_at || null,
+  };
+}

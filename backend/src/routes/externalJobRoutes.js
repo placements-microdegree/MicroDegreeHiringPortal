@@ -46,6 +46,15 @@ router.post(
   externalJobController.bulkCreate,
 );
 
+// Eligible students — track apply-link click
+router.post(
+  "/:id/click",
+  verifyToken,
+  authorizeRole([ROLES.STUDENT]),
+  invalidateApiCache(["/api/external-jobs/all"]),
+  externalJobController.trackClick,
+);
+
 // HR/admin — update
 router.put(
   "/:id",
