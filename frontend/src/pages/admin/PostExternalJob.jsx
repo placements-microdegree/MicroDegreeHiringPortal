@@ -2,44 +2,118 @@
 // Route: /admin/external-jobs
 
 import { useEffect, useState } from "react";
-import { FiPlus, FiEdit2, FiTrash2, FiX, FiExternalLink, FiRefreshCw } from "react-icons/fi";
+import {
+  FiPlus,
+  FiEdit2,
+  FiTrash2,
+  FiX,
+  FiExternalLink,
+  FiRefreshCw,
+} from "react-icons/fi";
+import * as XLSX from "xlsx";
 import {
   listAllExternalJobs,
   createExternalJob,
+  createExternalJobsBulk,
   updateExternalJob,
   deleteExternalJob,
 } from "../../services/externalJobService";
-import { showError } from "../../utils/alerts";
+import { showError, showSuccess } from "../../utils/alerts";
 
 const EMPTY_FORM = {
-  company:     "",
-  jobRole:     "",
-  experience:  "",
-  ctc:         "",
-  location:    "",
-  applyLink:   "",
+  company: "",
+  jobRole: "",
+  experience: "",
+  ctc: "",
+  location: "",
+  applyLink: "",
   description: "",
-  status:      "active",
+  status: "active",
 };
+
+function normalizeHeader(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "_")
+    .replaceAll(/^_+|_+$/g, "");
+}
+
+function mapRowsToExternalJobs(rows) {
+  if (!rows.length) return [];
+  const headerRow = (rows[0] || []).map(normalizeHeader);
+  const headerIndex = new Map(headerRow.map((name, idx) => [name, idx]));
+
+  const required = [
+    "apply_link",
+    "company_name",
+    "job_title",
+    "location",
+    "experience",
+  ];
+
+  const missing = required.filter((key) => !headerIndex.has(key));
+  if (missing.length) {
+    throw new Error(`Missing headers: ${missing.join(", ")}`);
+  }
+
+  const get = (row, key) => {
+    const idx = headerIndex.get(key);
+    if (idx === undefined) return "";
+    return String(row[idx] ?? "").trim();
+  };
+
+  return rows
+    .slice(1)
+    .map((row) => ({
+      company: get(row, "company_name"),
+      jobRole: get(row, "job_title"),
+      location: get(row, "location"),
+      experience: get(row, "experience"),
+      applyLink: get(row, "apply_link"),
+      ctc: "",
+      description: "",
+    }))
+    .filter(
+      (item) =>
+        item.company ||
+        item.jobRole ||
+        item.location ||
+        item.experience ||
+        item.applyLink,
+    );
+}
+
+async function parseExternalJobsFile(file) {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(firstSheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
+  return mapRowsToExternalJobs(rows);
+}
 
 function FormModal({ initial, onSave, onClose }) {
   const isEdit = Boolean(initial?.id);
-  const [form,    setForm]    = useState(
+  const [form, setForm] = useState(
     isEdit
       ? {
-          company:     initial.company     || "",
-          jobRole:     initial.job_role    || "",
-          experience:  initial.experience  || "",
-          ctc:         initial.ctc         || "",
-          location:    initial.location    || "",
-          applyLink:   initial.apply_link  || "",
+          company: initial.company || "",
+          jobRole: initial.job_role || "",
+          experience: initial.experience || "",
+          ctc: initial.ctc || "",
+          location: initial.location || "",
+          applyLink: initial.apply_link || "",
           description: initial.description || "",
-          status:      initial.status      || "active",
+          status: initial.status || "active",
         }
       : { ...EMPTY_FORM },
   );
-  const [saving,  setSaving]  = useState(false);
-  const [errors,  setErrors]  = useState({});
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const update = (patch) => {
     setForm((p) => ({ ...p, ...patch }));
@@ -49,11 +123,13 @@ function FormModal({ initial, onSave, onClose }) {
 
   const validate = () => {
     const e = {};
-    if (!form.company.trim())   e.company   = "Required";
-    if (!form.jobRole.trim())   e.jobRole   = "Required";
+    if (!form.company.trim()) e.company = "Required";
+    if (!form.jobRole.trim()) e.jobRole = "Required";
     if (!form.applyLink.trim()) e.applyLink = "Required";
     // basic URL check
-    try { new URL(form.applyLink.trim()); } catch {
+    try {
+      new URL(form.applyLink.trim());
+    } catch {
       if (form.applyLink.trim()) e.applyLink = "Must be a valid URL";
     }
     return e;
@@ -61,7 +137,10 @@ function FormModal({ initial, onSave, onClose }) {
 
   const handleSave = async () => {
     const e = validate();
-    if (Object.keys(e).length) { setErrors(e); return; }
+    if (Object.keys(e).length) {
+      setErrors(e);
+      return;
+    }
     setSaving(true);
     try {
       await onSave(form);
@@ -76,7 +155,9 @@ function FormModal({ initial, onSave, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
         {/* Header */}
@@ -84,8 +165,11 @@ function FormModal({ initial, onSave, onClose }) {
           <div className="text-base font-semibold text-slate-900">
             {isEdit ? "Edit External Job" : "Post External Job"}
           </div>
-          <button type="button" onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+          >
             <FiX className="h-5 w-5" />
           </button>
         </div>
@@ -95,79 +179,122 @@ function FormModal({ initial, onSave, onClose }) {
           {/* Company + Job Role */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={`mb-1 block text-sm font-medium ${errors.company ? "text-red-600" : "text-slate-700"}`}>
+              <label
+                className={`mb-1 block text-sm font-medium ${errors.company ? "text-red-600" : "text-slate-700"}`}
+              >
                 Company Name <span className="text-red-500">*</span>
               </label>
-              <input type="text" placeholder="e.g. Google"
+              <input
+                type="text"
+                placeholder="e.g. Google"
                 className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-primary ${errors.company ? "border-red-400 bg-red-50" : "border-slate-200"}`}
-                value={form.company} onChange={(e) => update({ company: e.target.value })}
+                value={form.company}
+                onChange={(e) => update({ company: e.target.value })}
               />
-              {errors.company && <p className="mt-1 text-xs text-red-600">{errors.company}</p>}
+              {errors.company && (
+                <p className="mt-1 text-xs text-red-600">{errors.company}</p>
+              )}
             </div>
             <div>
-              <label className={`mb-1 block text-sm font-medium ${errors.jobRole ? "text-red-600" : "text-slate-700"}`}>
+              <label
+                className={`mb-1 block text-sm font-medium ${errors.jobRole ? "text-red-600" : "text-slate-700"}`}
+              >
                 Job Role <span className="text-red-500">*</span>
               </label>
-              <input type="text" placeholder="e.g. Frontend Engineer"
+              <input
+                type="text"
+                placeholder="e.g. Frontend Engineer"
                 className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-primary ${errors.jobRole ? "border-red-400 bg-red-50" : "border-slate-200"}`}
-                value={form.jobRole} onChange={(e) => update({ jobRole: e.target.value })}
+                value={form.jobRole}
+                onChange={(e) => update({ jobRole: e.target.value })}
               />
-              {errors.jobRole && <p className="mt-1 text-xs text-red-600">{errors.jobRole}</p>}
+              {errors.jobRole && (
+                <p className="mt-1 text-xs text-red-600">{errors.jobRole}</p>
+              )}
             </div>
           </div>
 
           {/* Experience + CTC */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Experience</label>
-              <input type="text" placeholder="e.g. 2–4 years"
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Experience
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 2–4 years"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
-                value={form.experience} onChange={(e) => update({ experience: e.target.value })}
+                value={form.experience}
+                onChange={(e) => update({ experience: e.target.value })}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">CTC</label>
-              <input type="text" placeholder="e.g. 8–12 LPA"
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                CTC
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 8–12 LPA"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
-                value={form.ctc} onChange={(e) => update({ ctc: e.target.value })}
+                value={form.ctc}
+                onChange={(e) => update({ ctc: e.target.value })}
               />
             </div>
           </div>
 
           {/* Location */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Location</label>
-            <input type="text" placeholder="e.g. Bengaluru / Remote"
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Location
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Bengaluru / Remote"
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
-              value={form.location} onChange={(e) => update({ location: e.target.value })}
+              value={form.location}
+              onChange={(e) => update({ location: e.target.value })}
             />
           </div>
 
           {/* Apply Link */}
           <div>
-            <label className={`mb-1 block text-sm font-medium ${errors.applyLink ? "text-red-600" : "text-slate-700"}`}>
+            <label
+              className={`mb-1 block text-sm font-medium ${errors.applyLink ? "text-red-600" : "text-slate-700"}`}
+            >
               Apply Link <span className="text-red-500">*</span>
             </label>
-            <input type="url" placeholder="https://careers.company.com/job/..."
+            <input
+              type="url"
+              placeholder="https://careers.company.com/job/..."
               className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-primary ${errors.applyLink ? "border-red-400 bg-red-50" : "border-slate-200"}`}
-              value={form.applyLink} onChange={(e) => update({ applyLink: e.target.value })}
+              value={form.applyLink}
+              onChange={(e) => update({ applyLink: e.target.value })}
             />
-            {errors.applyLink && <p className="mt-1 text-xs text-red-600">{errors.applyLink}</p>}
+            {errors.applyLink && (
+              <p className="mt-1 text-xs text-red-600">{errors.applyLink}</p>
+            )}
           </div>
 
           {/* Description */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Description (optional)</label>
-            <textarea rows={3} placeholder="Brief role description..."
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Description (optional)
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Brief role description..."
               className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
-              value={form.description} onChange={(e) => update({ description: e.target.value })}
+              value={form.description}
+              onChange={(e) => update({ description: e.target.value })}
             />
           </div>
 
           {/* Status (edit only) */}
           {isEdit && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Status
+              </label>
               <select
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
                 value={form.status}
@@ -182,12 +309,19 @@ function FormModal({ initial, onSave, onClose }) {
 
         {/* Footer */}
         <div className="flex gap-2 border-t border-slate-200 px-5 py-4">
-          <button type="button" onClick={handleSave} disabled={saving}
-            className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60"
+          >
             {saving ? "Saving..." : isEdit ? "Update Job" : "Post Job"}
           </button>
-          <button type="button" onClick={onClose}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+          >
             Cancel
           </button>
         </div>
@@ -197,11 +331,12 @@ function FormModal({ initial, onSave, onClose }) {
 }
 
 export default function PostExternalJob() {
-  const [jobs,       setJobs]       = useState([]);
-  const [isLoading,  setIsLoading]  = useState(true);
-  const [modalJob,   setModalJob]   = useState(null);   // null = closed, {} = new, job obj = edit
-  const [modalOpen,  setModalOpen]  = useState(false);
-  const [deleting,   setDeleting]   = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [modalJob, setModalJob] = useState(null); // null = closed, {} = new, job obj = edit
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -215,10 +350,18 @@ export default function PostExternalJob() {
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
 
-  const openNew  = () => { setModalJob(null);  setModalOpen(true); };
-  const openEdit = (job) => { setModalJob(job); setModalOpen(true); };
+  const openNew = () => {
+    setModalJob(null);
+    setModalOpen(true);
+  };
+  const openEdit = (job) => {
+    setModalJob(job);
+    setModalOpen(true);
+  };
   const closeModal = () => setModalOpen(false);
 
   const handleSave = async (form) => {
@@ -243,23 +386,78 @@ export default function PostExternalJob() {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const jobsToCreate = await parseExternalJobsFile(file);
+      if (!jobsToCreate.length) {
+        throw new Error("No data rows found in the uploaded file");
+      }
+
+      const invalid = jobsToCreate.find(
+        (row) => !row.company || !row.jobRole || !row.applyLink,
+      );
+      if (invalid) {
+        throw new Error(
+          "Some rows are missing required values (Company_Name, Job_Title, Apply_Link)",
+        );
+      }
+
+      const result = await createExternalJobsBulk(jobsToCreate);
+      await refresh();
+      await showSuccess(
+        `Imported ${result.count || jobsToCreate.length} external jobs.`,
+      );
+    } catch (err) {
+      await showError(err?.message || "Failed to import file");
+    } finally {
+      event.target.value = "";
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">External Job Postings</h1>
+          <h1 className="text-lg font-semibold text-slate-900">
+            External Job Postings
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Post external company jobs. Eligible students will see these and can apply directly.
+            Post external company jobs. Eligible students will see these and can
+            apply directly.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={refresh} disabled={isLoading}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-200 p-2.5 text-slate-600 transition hover:border-primary hover:text-primary disabled:opacity-50">
-            <FiRefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            {isUploading ? "Uploading..." : "Upload CSV/XLS"}
+            <input
+              type="file"
+              accept=".csv,.xls,.xlsx"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 p-2.5 text-slate-600 transition hover:border-primary hover:text-primary disabled:opacity-50"
+          >
+            <FiRefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
           </button>
-          <button type="button" onClick={openNew}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90">
+          <button
+            type="button"
+            onClick={openNew}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90"
+          >
             <FiPlus className="h-4 w-4" />
             Post Job
           </button>
@@ -274,8 +472,11 @@ export default function PostExternalJob() {
       ) : jobs.length === 0 ? (
         <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white text-sm text-slate-500">
           <p>No external jobs posted yet.</p>
-          <button type="button" onClick={openNew}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90">
+          <button
+            type="button"
+            onClick={openNew}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90"
+          >
             <FiPlus className="h-4 w-4" /> Post First Job
           </button>
         </div>
@@ -296,36 +497,57 @@ export default function PostExternalJob() {
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <tr key={job.id} className="border-t border-slate-100 transition hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{job.company}</td>
+                <tr
+                  key={job.id}
+                  className="border-t border-slate-100 transition hover:bg-slate-50"
+                >
+                  <td className="px-4 py-3 font-medium text-slate-900">
+                    {job.company}
+                  </td>
                   <td className="px-4 py-3 text-slate-700">{job.job_role}</td>
-                  <td className="px-4 py-3 text-slate-600">{job.experience || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {job.experience || "—"}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{job.ctc || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{job.location || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {job.location || "—"}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                      job.status === "active"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-500"
-                    }`}>
+                    <span
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        job.status === "active"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
                       {job.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <a href={job.apply_link} target="_blank" rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                    <a
+                      href={job.apply_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                    >
                       <FiExternalLink className="h-3.5 w-3.5" /> Open
                     </a>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => openEdit(job)}
-                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-primary">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(job)}
+                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-primary"
+                      >
                         <FiEdit2 className="h-4 w-4" />
                       </button>
-                      <button type="button" onClick={() => handleDelete(job)}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(job)}
                         disabled={deleting === job.id}
-                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
+                        className="rounded-lg p-1.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                      >
                         <FiTrash2 className="h-4 w-4" />
                       </button>
                     </div>

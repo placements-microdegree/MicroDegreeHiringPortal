@@ -28,13 +28,31 @@ export async function listAllExternalJobs() {
 
 // HR — create
 export async function createExternalJob(payload) {
-  const data = await request("/api/external-jobs", { method: "POST", body: payload });
+  const data = await request("/api/external-jobs", {
+    method: "POST",
+    body: payload,
+  });
   return data.job;
+}
+
+// HR — bulk create
+export async function createExternalJobsBulk(jobs) {
+  const data = await request("/api/external-jobs/bulk", {
+    method: "POST",
+    body: { jobs },
+  });
+  return {
+    jobs: data.jobs || [],
+    count: Number(data.count || 0),
+  };
 }
 
 // HR — update
 export async function updateExternalJob(id, payload) {
-  const data = await request(`/api/external-jobs/${id}`, { method: "PUT", body: payload });
+  const data = await request(`/api/external-jobs/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
   return data.job;
 }
 

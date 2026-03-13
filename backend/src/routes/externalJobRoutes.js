@@ -1,13 +1,13 @@
 // FILE: routes/externalJobRoutes.js
 
-const express            = require("express");
-const verifyToken        = require("../middleware/verifyToken");
-const authorizeRole      = require("../middleware/authorizeRole");
+const express = require("express");
+const verifyToken = require("../middleware/verifyToken");
+const authorizeRole = require("../middleware/authorizeRole");
 const { cacheResponse, invalidateApiCache } = require("../middleware/apiCache");
 const externalJobController = require("../controllers/externalJobController");
-const { ROLES }          = require("../utils/constants");
+const { ROLES } = require("../utils/constants");
 
-const router      = express.Router();
+const router = express.Router();
 const ADMIN_ROLES = [ROLES.ADMIN, ROLES.SUPER_ADMIN];
 
 // Eligible students — view active jobs
@@ -35,6 +35,15 @@ router.post(
   authorizeRole(ADMIN_ROLES),
   invalidateApiCache(["/api/external-jobs"]),
   externalJobController.create,
+);
+
+// HR/admin — bulk create from file mapping
+router.post(
+  "/bulk",
+  verifyToken,
+  authorizeRole(ADMIN_ROLES),
+  invalidateApiCache(["/api/external-jobs"]),
+  externalJobController.bulkCreate,
 );
 
 // HR/admin — update
