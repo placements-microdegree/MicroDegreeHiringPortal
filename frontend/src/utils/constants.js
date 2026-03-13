@@ -11,5 +11,8 @@ export const APPLICATION_STATUSES = [
   "Shortlisted",
   "Interview",
   "Selected",
+  "Resume Screening Rejected",
+  "Profile Mapped for client",
+  "Client Rejected",
   "Rejected",
 ];

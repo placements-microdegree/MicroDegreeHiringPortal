@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { FiRefreshCw, FiSearch, FiUpload, FiUserPlus, FiX, FiAlertCircle, FiAlertTriangle } from "react-icons/fi";
+import {
+  FiRefreshCw,
+  FiSearch,
+  FiUpload,
+  FiUserPlus,
+  FiX,
+  FiAlertCircle,
+  FiAlertTriangle,
+} from "react-icons/fi";
+import { showError } from "../../utils/alerts";
 import ApplicationsTable from "./ApplicationsTable";
 import {
   listAllApplications,
@@ -22,19 +31,32 @@ import { listJobs } from "../../services/jobService";
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getJobId(application) {
-  return application.job_id || application.jobId || application.job?.id || application.jobs?.id || null;
+  return (
+    application.job_id ||
+    application.jobId ||
+    application.job?.id ||
+    application.jobs?.id ||
+    null
+  );
 }
 function getJobTitle(application) {
-  return application.job?.title || application.jobs?.title || application.jobTitle || "Untitled Job";
+  return (
+    application.job?.title ||
+    application.jobs?.title ||
+    application.jobTitle ||
+    "Untitled Job"
+  );
 }
 function normalizeJobStatus(status) {
-  const value = String(status || "").trim().toLowerCase();
-  if (value === "active")  return "active";
+  const value = String(status || "")
+    .trim()
+    .toLowerCase();
+  if (value === "active") return "active";
   if (value === "deleted") return "deleted";
   return "unknown";
 }
 function getJobStatusChipClasses(status) {
-  if (status === "active")  return "bg-emerald-100 text-emerald-700";
+  if (status === "active") return "bg-emerald-100 text-emerald-700";
   if (status === "deleted") return "bg-rose-100 text-rose-700";
   return "bg-slate-100 text-slate-700";
 }
@@ -42,44 +64,66 @@ function formatPostedDate(value) {
   if (!value) return "N/A";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "N/A";
-  return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 function mapApplicationRow(row, jobsById) {
   const resumes =
-    row.student?.resumes || row.profiles?.resumes || row.resumes ||
+    row.student?.resumes ||
+    row.profiles?.resumes ||
+    row.resumes ||
     (Array.isArray(row.profiles?.resumes) ? row.profiles.resumes : []);
   const selectedResume = (Array.isArray(resumes) ? resumes : []).find(
     (item) => item?.file_url === row.selected_resume_url,
   );
   const fallbackResume = Array.isArray(resumes) ? resumes[0] : null;
   const resume = selectedResume || fallbackResume || null;
-  const jobId         = getJobId(row);
+  const jobId = getJobId(row);
   const jobFromLookup = jobId ? jobsById.get(String(jobId)) : null;
-  const mergedJob     = row.job  ? { ...row.job,  ...(jobFromLookup || {}) }
-    : row.jobs ? { ...row.jobs, ...(jobFromLookup || {}) }
-    : jobFromLookup || null;
-  const jobTitle   = mergedJob?.title   || row.jobTitle  || jobFromLookup?.title   || "Untitled Job";
-  const jobCompany = mergedJob?.company || row.company   || "-";
-  const student    = row.student || row.profiles || null;
+  const mergedJob = row.job
+    ? { ...row.job, ...(jobFromLookup || {}) }
+    : row.jobs
+      ? { ...row.jobs, ...(jobFromLookup || {}) }
+      : jobFromLookup || null;
+  const jobTitle =
+    mergedJob?.title || row.jobTitle || jobFromLookup?.title || "Untitled Job";
+  const jobCompany = mergedJob?.company || row.company || "-";
+  const student = row.student || row.profiles || null;
   return {
     ...row,
     job_id: row.job_id || row.jobId || jobId,
-    job:    mergedJob || null,
-    jobs:   mergedJob || (jobId ? { id: jobId, title: jobTitle, company: jobCompany } : null),
-    studentName:     student?.full_name    || row.studentName,
-    studentPhone:    student?.phone,
-    studentEmail:    student?.email,
-    studentLocation: student?.location     || "",
-    totalExperience: student?.total_experience || row.total_experience || row.totalExperience || "",
-    currentCTC:      student?.current_ctc  || row.current_ctc  || row.currentCTC  || "",
-    expectedCTC:     student?.expected_ctc || row.expected_ctc || row.expectedCTC || "",
-    noticePeriod:    row.notice_period     || row.noticePeriod || "",
-    appliedAt:       row.created_at        || row.createdAt    || null,
+    job: mergedJob || null,
+    jobs:
+      mergedJob ||
+      (jobId ? { id: jobId, title: jobTitle, company: jobCompany } : null),
+    studentName: student?.full_name || row.studentName,
+    studentPhone: student?.phone,
+    studentEmail: student?.email,
+    studentLocation: student?.location || "",
+    totalExperience:
+      student?.total_experience ||
+      row.total_experience ||
+      row.totalExperience ||
+      "",
+    currentCTC: student?.current_ctc || row.current_ctc || row.currentCTC || "",
+    expectedCTC:
+      student?.expected_ctc || row.expected_ctc || row.expectedCTC || "",
+    noticePeriod: row.notice_period || row.noticePeriod || "",
+    appliedAt: row.created_at || row.createdAt || null,
     resumeName:
       resume?.file_name ||
-      (row.selected_resume_url ? String(row.selected_resume_url).split("/").pop() : ""),
+      (row.selected_resume_url
+        ? String(row.selected_resume_url).split("/").pop()
+        : ""),
     resumeUrl:
-      resume?.signed_url || resume?.file_url || resume?.url || resume?.public_url || row.resumeUrl,
+      resume?.signed_url ||
+      resume?.file_url ||
+      resume?.url ||
+      resume?.public_url ||
+      row.resumeUrl,
     jobTitle,
     hr_comment: row.hr_comment ?? null,
   };
@@ -91,13 +135,21 @@ function mapApplicationRow(row, jobsById) {
 
 function YesNoToggle({ value, onChange, error }) {
   return (
-    <div className={`inline-flex rounded-xl border p-1 ${error ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"}`}>
-      <button type="button" onClick={() => onChange(true)}
-        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === true ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}>
+    <div
+      className={`inline-flex rounded-xl border p-1 ${error ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+    >
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === true ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
+      >
         Yes
       </button>
-      <button type="button" onClick={() => onChange(false)}
-        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === false ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}>
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === false ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
+      >
         No
       </button>
     </div>
@@ -107,8 +159,16 @@ function YesNoToggle({ value, onChange, error }) {
 function QuestionToggle({ label, sublabel, value, onChange, error }) {
   return (
     <div>
-      <div className={`mb-0.5 text-sm font-medium ${error ? "text-red-600" : "text-slate-700"}`}>{label}</div>
-      {sublabel ? <div className="mb-2 text-xs text-slate-500">{sublabel}</div> : <div className="mb-2" />}
+      <div
+        className={`mb-0.5 text-sm font-medium ${error ? "text-red-600" : "text-slate-700"}`}
+      >
+        {label}
+      </div>
+      {sublabel ? (
+        <div className="mb-2 text-xs text-slate-500">{sublabel}</div>
+      ) : (
+        <div className="mb-2" />
+      )}
       <YesNoToggle value={value} onChange={onChange} error={error} />
       {error && (
         <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
@@ -122,12 +182,17 @@ function QuestionToggle({ label, sublabel, value, onChange, error }) {
 function FieldInput({ label, value, onChange, placeholder, error, required }) {
   return (
     <label className="block">
-      <div className={`mb-1 text-sm font-medium ${error ? "text-red-600" : "text-slate-700"}`}>
-        {label}{required && <span className="ml-0.5 text-red-500">*</span>}
+      <div
+        className={`mb-1 text-sm font-medium ${error ? "text-red-600" : "text-slate-700"}`}
+      >
+        {label}
+        {required && <span className="ml-0.5 text-red-500">*</span>}
       </div>
-      <input type="text"
+      <input
+        type="text"
         className={`w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-primary ${error ? "border-red-400" : "border-slate-200"}`}
-        value={value} placeholder={placeholder || ""}
+        value={value}
+        placeholder={placeholder || ""}
         onChange={(e) => onChange(e.target.value)}
       />
       {error && <p className="mt-1 text-xs text-red-600">Required</p>}
@@ -139,22 +204,41 @@ function CustomQuestionField({ question, index, value, onChange, error }) {
   const isYesNo = question.answer_type === "yesno";
   return (
     <div className="col-span-2">
-      <div className={`mb-1 text-sm font-medium ${error ? "text-red-600" : "text-slate-700"}`}>
-        Q{index + 1}. {question.question}<span className="ml-1 text-red-500">*</span>
+      <div
+        className={`mb-1 text-sm font-medium ${error ? "text-red-600" : "text-slate-700"}`}
+      >
+        Q{index + 1}. {question.question}
+        <span className="ml-1 text-red-500">*</span>
       </div>
       {isYesNo ? (
         <>
-          <YesNoToggle value={typeof value === "boolean" ? value : null} onChange={onChange} error={error} />
-          {error && <p className="mt-1 flex items-center gap-1 text-xs text-red-600"><FiAlertCircle className="h-3 w-3" />Required</p>}
+          <YesNoToggle
+            value={typeof value === "boolean" ? value : null}
+            onChange={onChange}
+            error={error}
+          />
+          {error && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+              <FiAlertCircle className="h-3 w-3" />
+              Required
+            </p>
+          )}
         </>
       ) : (
         <>
-          <textarea rows={2} placeholder="Type answer here..."
+          <textarea
+            rows={2}
+            placeholder="Type answer here..."
             value={typeof value === "string" ? value : ""}
             onChange={(e) => onChange(e.target.value)}
             className={`w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ${error ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-primary"}`}
           />
-          {error && <p className="mt-1 flex items-center gap-1 text-xs text-red-600"><FiAlertCircle className="h-3 w-3" />Required</p>}
+          {error && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+              <FiAlertCircle className="h-3 w-3" />
+              Required
+            </p>
+          )}
         </>
       )}
     </div>
@@ -166,27 +250,30 @@ function CustomQuestionField({ question, index, value, onChange, error }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const EMPTY_FORM = {
-  isCurrentlyWorking:     null,
-  noticePeriod:           "",
-  totalExperience:        "",
-  relevantExperience:     "",
-  handsOnPrimarySkills:   null,
-  workModeMatch:          null,
+  isCurrentlyWorking: null,
+  noticePeriod: "",
+  totalExperience: "",
+  relevantExperience: "",
+  handsOnPrimarySkills: null,
+  workModeMatch: null,
   interviewModeAvailable: null,
-  currentCTC:             "",
-  expectedCTC:            "",
-  selectedResumeUrl:      "",
-  jdConfirmed:            false,
+  currentCTC: "",
+  expectedCTC: "",
+  selectedResumeUrl: "",
+  jdConfirmed: false,
 };
 
 function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
-  const jobId    = job?.id;
+  const jobId = job?.id;
   const jobTitle = job?.title || "Job";
 
   const jobQuestions = useMemo(
-    () => Array.isArray(job?.questions)
-      ? [...job.questions].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-      : [],
+    () =>
+      Array.isArray(job?.questions)
+        ? [...job.questions].sort(
+            (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0),
+          )
+        : [],
     [job],
   );
   const jobWorkMode = job?.work_mode || "";
@@ -203,40 +290,47 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     return "";
   }, [job]);
 
-  const [query,            setQuery]            = useState("");
-  const [searchResults,    setSearchResults]    = useState([]);
-  const [searching,        setSearching]        = useState(false);
-  const [selectedStudent,  setSelectedStudent]  = useState(null);
-  const [loadingProfile,   setLoadingProfile]   = useState(false);
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const [resumeFetchError, setResumeFetchError] = useState("");
   const searchTimeout = useRef(null);
 
-  const [form,      setForm]      = useState({ ...EMPTY_FORM });
-  const [resumes,   setResumes]   = useState([]);
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [resumes, setResumes] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [answers,   setAnswers]   = useState({});
-  const [hrNote,    setHrNote]    = useState("");
+  const [answers, setAnswers] = useState({});
+  const [hrNote, setHrNote] = useState("");
 
-  const update       = (patch) => setForm((prev) => ({ ...prev, ...patch }));
-  const updateAnswer = (qId, val) => setAnswers((prev) => ({ ...prev, [qId]: val }));
+  const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const updateAnswer = (qId, val) =>
+    setAnswers((prev) => ({ ...prev, [qId]: val }));
 
-  const [submitted,   setSubmitted]   = useState(false);
-  const [submitting,  setSubmitting]  = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
   const errors = useMemo(() => {
     const e = {};
-    if (typeof form.isCurrentlyWorking !== "boolean")                       e.isCurrentlyWorking     = true;
-    if (form.isCurrentlyWorking && !String(form.noticePeriod || "").trim()) e.noticePeriod           = true;
-    if (!String(form.totalExperience    || "").trim())                      e.totalExperience        = true;
-    if (!String(form.relevantExperience || "").trim())                      e.relevantExperience     = true;
-    if (typeof form.handsOnPrimarySkills   !== "boolean")                   e.handsOnPrimarySkills   = true;
-    if (typeof form.workModeMatch          !== "boolean")                   e.workModeMatch          = true;
-    if (typeof form.interviewModeAvailable !== "boolean")                   e.interviewModeAvailable = true;
-    if (!String(form.currentCTC  || "").trim())                             e.currentCTC             = true;
-    if (!String(form.expectedCTC || "").trim())                             e.expectedCTC            = true;
-    if (!String(form.selectedResumeUrl || "").trim())                       e.selectedResumeUrl      = true;
-    if (!form.jdConfirmed)                                                  e.jdConfirmed            = true;
+    if (typeof form.isCurrentlyWorking !== "boolean")
+      e.isCurrentlyWorking = true;
+    if (form.isCurrentlyWorking && !String(form.noticePeriod || "").trim())
+      e.noticePeriod = true;
+    if (!String(form.totalExperience || "").trim()) e.totalExperience = true;
+    if (!String(form.relevantExperience || "").trim())
+      e.relevantExperience = true;
+    if (typeof form.handsOnPrimarySkills !== "boolean")
+      e.handsOnPrimarySkills = true;
+    if (typeof form.workModeMatch !== "boolean") e.workModeMatch = true;
+    if (typeof form.interviewModeAvailable !== "boolean")
+      e.interviewModeAvailable = true;
+    if (!String(form.currentCTC || "").trim()) e.currentCTC = true;
+    if (!String(form.expectedCTC || "").trim()) e.expectedCTC = true;
+    if (!String(form.selectedResumeUrl || "").trim())
+      e.selectedResumeUrl = true;
+    if (!form.jdConfirmed) e.jdConfirmed = true;
     jobQuestions.forEach((q) => {
       const ans = answers[q.id];
       if (q.answer_type === "yesno") {
@@ -252,14 +346,20 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
 
   useEffect(() => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    if (!query.trim() || selectedStudent) { setSearchResults([]); return; }
+    if (!query.trim() || selectedStudent) {
+      setSearchResults([]);
+      return;
+    }
     setSearching(true);
     searchTimeout.current = setTimeout(async () => {
       try {
         const results = await searchStudents(query.trim());
         setSearchResults(results);
-      } catch { setSearchResults([]); }
-      finally   { setSearching(false); }
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
     }, 350);
     return () => clearTimeout(searchTimeout.current);
   }, [query, selectedStudent]);
@@ -277,25 +377,28 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
       setForm({
         isCurrentlyWorking:
           typeof profile?.is_currently_working === "boolean"
-            ? profile.is_currently_working : null,
-        noticePeriod:       "",
-        totalExperience:
-          profile?.total_experience
-            ? String(profile.total_experience)
-            : profile?.experience_years
-              ? String(profile.experience_years)
-              : "",
-        relevantExperience:     "",
-        handsOnPrimarySkills:   null,
-        workModeMatch:          null,
+            ? profile.is_currently_working
+            : null,
+        noticePeriod: "",
+        totalExperience: profile?.total_experience
+          ? String(profile.total_experience)
+          : profile?.experience_years
+            ? String(profile.experience_years)
+            : "",
+        relevantExperience: "",
+        handsOnPrimarySkills: null,
+        workModeMatch: null,
         interviewModeAvailable: null,
-        currentCTC:  profile?.current_ctc  ? String(profile.current_ctc)  : "",
+        currentCTC: profile?.current_ctc ? String(profile.current_ctc) : "",
         expectedCTC: profile?.expected_ctc ? String(profile.expected_ctc) : "",
-        selectedResumeUrl: safeResumes.length === 1 ? (safeResumes[0]?.file_url || "") : "",
+        selectedResumeUrl:
+          safeResumes.length === 1 ? safeResumes[0]?.file_url || "" : "",
         jdConfirmed: false,
       });
     } catch (err) {
-      setResumeFetchError(err?.message || "Failed to load student data. Please try again.");
+      setResumeFetchError(
+        err?.message || "Failed to load student data. Please try again.",
+      );
       setResumes([]);
     } finally {
       setLoadingProfile(false);
@@ -333,11 +436,14 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     if (!files?.length || !selectedStudent) return;
     if (resumes.length >= MAX_RESUMES) return;
     const remaining = MAX_RESUMES - resumes.length;
-    const accepted  = Array.from(files).slice(0, remaining);
+    const accepted = Array.from(files).slice(0, remaining);
     setUploading(true);
     setResumeFetchError("");
     try {
-      const updated = await uploadResumesForStudent(selectedStudent.id, accepted);
+      const updated = await uploadResumesForStudent(
+        selectedStudent.id,
+        accepted,
+      );
       const safeResumes = Array.isArray(updated) ? updated : [];
       setResumes(safeResumes);
       if (!form.selectedResumeUrl && safeResumes.length > 0) {
@@ -373,28 +479,34 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
     e.preventDefault();
     setSubmitError("");
     setSubmitted(true);
-    if (!selectedStudent)               { setSubmitError("Please select a student."); return; }
-    if (Object.keys(errors).length > 0) { setSubmitError("Please fill all required fields highlighted below."); return; }
+    if (!selectedStudent) {
+      setSubmitError("Please select a student.");
+      return;
+    }
+    if (Object.keys(errors).length > 0) {
+      setSubmitError("Please fill all required fields highlighted below.");
+      return;
+    }
 
     const answersPayload = jobQuestions.map((q) => ({
       questionId: q.id,
       answerType: q.answer_type,
-      answer:     answers[q.id] ?? null,
+      answer: answers[q.id] ?? null,
     }));
 
     setSubmitting(true);
     try {
       await applyOnBehalf({
-        studentId:              selectedStudent.id,
+        studentId: selectedStudent.id,
         jobId,
-        noticePeriod:           form.noticePeriod           || null,
-        relevantExperience:     form.relevantExperience     || null,
-        handsOnPrimarySkills:   form.handsOnPrimarySkills,
-        workModeMatch:          form.workModeMatch,
+        noticePeriod: form.noticePeriod || null,
+        relevantExperience: form.relevantExperience || null,
+        handsOnPrimarySkills: form.handsOnPrimarySkills,
+        workModeMatch: form.workModeMatch,
         interviewModeAvailable: form.interviewModeAvailable,
-        selectedResumeUrl:      form.selectedResumeUrl      || null,
-        hrNote:                 hrNote                      || null,
-        answers:                answersPayload,
+        selectedResumeUrl: form.selectedResumeUrl || null,
+        hrNote: hrNote || null,
+        answers: answersPayload,
       });
       onSuccess();
       onClose();
@@ -407,16 +519,25 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
           <div>
-            <div className="text-base font-semibold text-slate-900">Apply on Behalf</div>
-            <div className="mt-0.5 max-w-sm truncate text-xs text-slate-500">Job: {jobTitle}</div>
+            <div className="text-base font-semibold text-slate-900">
+              Apply on Behalf
+            </div>
+            <div className="mt-0.5 max-w-sm truncate text-xs text-slate-500">
+              Job: {jobTitle}
+            </div>
           </div>
-          <button type="button" onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
             <FiX className="h-5 w-5" />
           </button>
         </div>
@@ -428,15 +549,23 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
             </div>
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input type="text"
+              <input
+                type="text"
                 placeholder="Search by name, email or phone..."
                 className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-primary"
-                value={query} autoFocus
-                onChange={(e) => { setQuery(e.target.value); if (selectedStudent) clearStudent(); }}
+                value={query}
+                autoFocus
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (selectedStudent) clearStudent();
+                }}
               />
               {selectedStudent && (
-                <button type="button" onClick={clearStudent}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:text-slate-600">
+                <button
+                  type="button"
+                  onClick={clearStudent}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:text-slate-600"
+                >
                   <FiX className="h-4 w-4" />
                 </button>
               )}
@@ -444,21 +573,37 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
 
             {!selectedStudent && (searchResults.length > 0 || searching) && (
               <div className="mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                {searching && <div className="px-4 py-3 text-sm text-slate-500">Searching...</div>}
-                {!searching && searchResults.map((s) => (
-                  <button key={s.id} type="button" onClick={() => selectStudent(s)}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-slate-50">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
-                      {(s.full_name || s.email || "?")[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-slate-900">{s.full_name || "—"}</div>
-                      <div className="text-xs text-slate-500">{s.email}{s.phone ? ` · ${s.phone}` : ""}</div>
-                    </div>
-                  </button>
-                ))}
+                {searching && (
+                  <div className="px-4 py-3 text-sm text-slate-500">
+                    Searching...
+                  </div>
+                )}
+                {!searching &&
+                  searchResults.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => selectStudent(s)}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-slate-50"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {(s.full_name || s.email || "?")[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-slate-900">
+                          {s.full_name || "—"}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {s.email}
+                          {s.phone ? ` · ${s.phone}` : ""}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 {!searching && searchResults.length === 0 && query.trim() && (
-                  <div className="px-4 py-3 text-sm text-slate-500">No students found.</div>
+                  <div className="px-4 py-3 text-sm text-slate-500">
+                    No students found.
+                  </div>
                 )}
               </div>
             )}
@@ -466,11 +611,17 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
             {selectedStudent && (
               <div className="mt-2 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-xs font-bold text-emerald-700">
-                  {(selectedStudent.full_name || selectedStudent.email || "?")[0].toUpperCase()}
+                  {(selectedStudent.full_name ||
+                    selectedStudent.email ||
+                    "?")[0].toUpperCase()}
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-emerald-900">{selectedStudent.full_name}</div>
-                  <div className="text-xs text-emerald-700">{selectedStudent.email}</div>
+                  <div className="text-sm font-semibold text-emerald-900">
+                    {selectedStudent.full_name}
+                  </div>
+                  <div className="text-xs text-emerald-700">
+                    {selectedStudent.email}
+                  </div>
                 </div>
               </div>
             )}
@@ -488,8 +639,11 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 <FiAlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                 <span>{resumeFetchError}</span>
               </div>
-              <button type="button" onClick={() => fetchStudentData(selectedStudent)}
-                className="shrink-0 rounded-lg border border-amber-300 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+              <button
+                type="button"
+                onClick={() => fetchStudentData(selectedStudent)}
+                className="shrink-0 rounded-lg border border-amber-300 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
                 Retry
               </button>
             </div>
@@ -499,13 +653,36 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
             <>
               <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
                 <div className="grid grid-cols-1 gap-2 text-slate-700 md:grid-cols-2">
-                  <div><span className="font-semibold text-slate-900">Company:</span> {job?.company || "—"}</div>
-                  <div><span className="font-semibold text-slate-900">Work Mode:</span> {jobWorkMode || "—"}</div>
-                  <div><span className="font-semibold text-slate-900">Experience:</span> {jobExperience || "—"}</div>
-                  <div><span className="font-semibold text-slate-900">Interview:</span> {interviewModeDisplay || "—"}</div>
+                  <div>
+                    <span className="font-semibold text-slate-900">
+                      Company:
+                    </span>{" "}
+                    {job?.company || "—"}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">
+                      Work Mode:
+                    </span>{" "}
+                    {jobWorkMode || "—"}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">
+                      Experience:
+                    </span>{" "}
+                    {jobExperience || "—"}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-slate-900">
+                      Interview:
+                    </span>{" "}
+                    {interviewModeDisplay || "—"}
+                  </div>
                   {selectedSkills && (
                     <div className="md:col-span-2">
-                      <span className="font-semibold text-slate-900">Skills:</span> {selectedSkills}
+                      <span className="font-semibold text-slate-900">
+                        Skills:
+                      </span>{" "}
+                      {selectedSkills}
                     </div>
                   )}
                 </div>
@@ -515,90 +692,156 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 <QuestionToggle
                   label="Is the student currently working?"
                   value={form.isCurrentlyWorking}
-                  onChange={(v) => update({ isCurrentlyWorking: v, noticePeriod: v ? form.noticePeriod : "" })}
+                  onChange={(v) =>
+                    update({
+                      isCurrentlyWorking: v,
+                      noticePeriod: v ? form.noticePeriod : "",
+                    })
+                  }
                   error={show() && errors.isCurrentlyWorking}
                 />
                 {form.isCurrentlyWorking ? (
-                  <FieldInput label="Notice Period" value={form.noticePeriod}
+                  <FieldInput
+                    label="Notice Period"
+                    value={form.noticePeriod}
                     onChange={(v) => update({ noticePeriod: v })}
                     placeholder="e.g. 30 days / Immediate"
-                    error={show() && errors.noticePeriod} required
+                    error={show() && errors.noticePeriod}
+                    required
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                    Notice period field appears only for currently working candidates.
+                    Notice period field appears only for currently working
+                    candidates.
                   </div>
                 )}
 
                 <div>
-                  <div className={`mb-1.5 text-sm font-medium ${show() && errors.totalExperience ? "text-red-600" : "text-slate-700"}`}>
+                  <div
+                    className={`mb-1.5 text-sm font-medium ${show() && errors.totalExperience ? "text-red-600" : "text-slate-700"}`}
+                  >
                     Total Experience <span className="text-red-500">*</span>
-                    {show() && errors.totalExperience && <span className="ml-2 text-xs font-normal text-red-500">— Required</span>}
+                    {show() && errors.totalExperience && (
+                      <span className="ml-2 text-xs font-normal text-red-500">
+                        — Required
+                      </span>
+                    )}
                   </div>
-                  <div className={`rounded-xl border px-4 py-3 ${show() && errors.totalExperience ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"}`}>
+                  <div
+                    className={`rounded-xl border px-4 py-3 ${show() && errors.totalExperience ? "border-red-400 bg-red-50" : "border-slate-200 bg-slate-50"}`}
+                  >
                     <div className="mb-2 flex items-center justify-between text-sm">
                       <span className="text-slate-500">Years</span>
                       <span className="font-semibold text-slate-900">
-                        {form.totalExperience ? `${form.totalExperience} yr${Number(form.totalExperience) === 1 ? "" : "s"}` : "Select"}
+                        {form.totalExperience
+                          ? `${form.totalExperience} yr${Number(form.totalExperience) === 1 ? "" : "s"}`
+                          : "Select"}
                       </span>
                     </div>
-                    <input type="range" min={1} max={20} step={1}
+                    <input
+                      type="range"
+                      min={1}
+                      max={20}
+                      step={1}
                       value={form.totalExperience || 1}
-                      onChange={(e) => update({ totalExperience: e.target.value })}
+                      onChange={(e) =>
+                        update({ totalExperience: e.target.value })
+                      }
                       className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-primary"
                     />
                     <div className="mt-1 flex justify-between text-[11px] text-slate-400">
-                      <span>1 yr</span><span>20 yrs</span>
+                      <span>1 yr</span>
+                      <span>20 yrs</span>
                     </div>
                   </div>
                 </div>
 
-                <FieldInput label="Relevant Experience as per JD" value={form.relevantExperience}
+                <FieldInput
+                  label="Relevant Experience as per JD"
+                  value={form.relevantExperience}
                   onChange={(v) => update({ relevantExperience: v })}
                   placeholder="e.g. 2 years in React / AWS"
-                  error={show() && errors.relevantExperience} required
+                  error={show() && errors.relevantExperience}
+                  required
                 />
 
                 <QuestionToggle
-                  label={selectedSkills ? `Hands-on with: ${selectedSkills}?` : "Hands-on with required skills?"}
-                  sublabel={selectedSkills ? "Skills listed in the JD" : undefined}
+                  label={
+                    selectedSkills
+                      ? `Hands-on with: ${selectedSkills}?`
+                      : "Hands-on with required skills?"
+                  }
+                  sublabel={
+                    selectedSkills ? "Skills listed in the JD" : undefined
+                  }
                   value={form.handsOnPrimarySkills}
                   onChange={(v) => update({ handsOnPrimarySkills: v })}
                   error={show() && errors.handsOnPrimarySkills}
                 />
                 <QuestionToggle
-                  label={jobWorkMode ? `Comfortable with ${jobWorkMode} work mode?` : "Work mode match?"}
-                  sublabel={jobWorkMode ? `This role requires ${jobWorkMode}` : undefined}
+                  label={
+                    jobWorkMode
+                      ? `Comfortable with ${jobWorkMode} work mode?`
+                      : "Work mode match?"
+                  }
+                  sublabel={
+                    jobWorkMode
+                      ? `This role requires ${jobWorkMode}`
+                      : undefined
+                  }
                   value={form.workModeMatch}
                   onChange={(v) => update({ workModeMatch: v })}
                   error={show() && errors.workModeMatch}
                 />
                 <QuestionToggle
-                  label={interviewModeDisplay ? `Available for ${interviewModeDisplay} interview?` : "Available for interview?"}
-                  sublabel={interviewModeDisplay ? `Interview mode: ${interviewModeDisplay}` : undefined}
+                  label={
+                    interviewModeDisplay
+                      ? `Available for ${interviewModeDisplay} interview?`
+                      : "Available for interview?"
+                  }
+                  sublabel={
+                    interviewModeDisplay
+                      ? `Interview mode: ${interviewModeDisplay}`
+                      : undefined
+                  }
                   value={form.interviewModeAvailable}
                   onChange={(v) => update({ interviewModeAvailable: v })}
                   error={show() && errors.interviewModeAvailable}
                 />
                 <div className="hidden md:block" />
 
-                <FieldInput label="Current CTC (in LPA)" value={form.currentCTC}
-                  onChange={(v) => update({ currentCTC: v })} placeholder="e.g. 4.5 LPA"
-                  error={show() && errors.currentCTC} required
+                <FieldInput
+                  label="Current CTC (in LPA)"
+                  value={form.currentCTC}
+                  onChange={(v) => update({ currentCTC: v })}
+                  placeholder="e.g. 4.5 LPA"
+                  error={show() && errors.currentCTC}
+                  required
                 />
-                <FieldInput label="Expected CTC (in LPA)" value={form.expectedCTC}
-                  onChange={(v) => update({ expectedCTC: v })} placeholder="e.g. 6.5 LPA"
-                  error={show() && errors.expectedCTC} required
+                <FieldInput
+                  label="Expected CTC (in LPA)"
+                  value={form.expectedCTC}
+                  onChange={(v) => update({ expectedCTC: v })}
+                  placeholder="e.g. 6.5 LPA"
+                  error={show() && errors.expectedCTC}
+                  required
                 />
 
                 {jobQuestions.length > 0 && (
                   <>
                     <div className="col-span-2 border-t border-slate-200 pt-3">
-                      <p className="text-sm font-semibold text-slate-800">Additional Questions</p>
-                      <p className="text-xs text-slate-500">All questions below are required.</p>
+                      <p className="text-sm font-semibold text-slate-800">
+                        Additional Questions
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        All questions below are required.
+                      </p>
                     </div>
                     {jobQuestions.map((q, i) => (
-                      <CustomQuestionField key={q.id} question={q} index={i}
+                      <CustomQuestionField
+                        key={q.id}
+                        question={q}
+                        index={i}
                         value={answers[q.id]}
                         onChange={(val) => updateAnswer(q.id, val)}
                         error={show() && errors[`answer_${q.id}`]}
@@ -608,40 +851,63 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                 )}
               </section>
 
-              <section className={`rounded-xl border p-4 ${show() && errors.selectedResumeUrl ? "border-red-400 bg-red-50" : "border-slate-200"}`}>
+              <section
+                className={`rounded-xl border p-4 ${show() && errors.selectedResumeUrl ? "border-red-400 bg-red-50" : "border-slate-200"}`}
+              >
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <div className={`text-sm font-semibold ${show() && errors.selectedResumeUrl ? "text-red-700" : "text-slate-900"}`}>
+                    <div
+                      className={`text-sm font-semibold ${show() && errors.selectedResumeUrl ? "text-red-700" : "text-slate-900"}`}
+                    >
                       Resume Selector
-                      {show() && errors.selectedResumeUrl && <span className="ml-2 text-xs font-normal text-red-600">— Please select a resume</span>}
+                      {show() && errors.selectedResumeUrl && (
+                        <span className="ml-2 text-xs font-normal text-red-600">
+                          — Please select a resume
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs text-slate-500">
-                      {resumes.length >= MAX_RESUMES
-                        ? <span className="font-semibold text-amber-600">Limit reached (3/3) — delete one to upload a new resume.</span>
-                        : resumes.length > 0
-                          ? `${resumes.length}/3 resume${resumes.length === 1 ? "" : "s"} — choose one to submit.`
-                          : "No resumes yet — upload one below."}
+                      {resumes.length >= MAX_RESUMES ? (
+                        <span className="font-semibold text-amber-600">
+                          Limit reached (3/3) — delete one to upload a new
+                          resume.
+                        </span>
+                      ) : resumes.length > 0 ? (
+                        `${resumes.length}/3 resume${resumes.length === 1 ? "" : "s"} — choose one to submit.`
+                      ) : (
+                        "No resumes yet — upload one below."
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-                      resumes.length >= MAX_RESUMES || uploading
-                        ? "cursor-not-allowed border-slate-200 text-slate-400"
-                        : "border-slate-300 text-slate-700 hover:border-primary hover:text-primary"
-                    }`}>
+                    <label
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
+                        resumes.length >= MAX_RESUMES || uploading
+                          ? "cursor-not-allowed border-slate-200 text-slate-400"
+                          : "border-slate-300 text-slate-700 hover:border-primary hover:text-primary"
+                      }`}
+                    >
                       <FiUpload className="h-3.5 w-3.5" />
                       {uploading ? "Uploading..." : "Upload Resume"}
-                      <input type="file" className="hidden" multiple accept=".pdf,.doc,.docx"
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        accept=".pdf,.doc,.docx"
                         disabled={uploading || resumes.length >= MAX_RESUMES}
                         onChange={(e) => handleUploadResumes(e.target.files)}
                       />
                     </label>
-                    <button type="button"
+                    <button
+                      type="button"
                       onClick={() => fetchStudentData(selectedStudent)}
                       disabled={loadingProfile || uploading}
                       className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:border-primary hover:text-primary disabled:opacity-50"
-                      title="Reload resumes from database">
-                      <FiRefreshCw className={`h-3.5 w-3.5 ${loadingProfile ? "animate-spin" : ""}`} />
+                      title="Reload resumes from database"
+                    >
+                      <FiRefreshCw
+                        className={`h-3.5 w-3.5 ${loadingProfile ? "animate-spin" : ""}`}
+                      />
                     </button>
                   </div>
                 </div>
@@ -654,33 +920,55 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
 
                 {resumes.length === 0 ? (
                   <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                    No resumes uploaded yet. Use the <strong>Upload Resume</strong> button above to add one on behalf of the student — it will be saved to their profile.
+                    No resumes uploaded yet. Use the{" "}
+                    <strong>Upload Resume</strong> button above to add one on
+                    behalf of the student — it will be saved to their profile.
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {resumes.map((resume) => (
-                      <label key={resume.id || resume.file_url}
+                      <label
+                        key={resume.id || resume.file_url}
                         className={`flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 transition ${
-                          form.selectedResumeUrl === resume.file_url ? "border-primary bg-primary/5" : "border-slate-200 bg-white hover:border-slate-300"
-                        }`}>
+                          form.selectedResumeUrl === resume.file_url
+                            ? "border-primary bg-primary/5"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
+                      >
                         <div className="flex min-w-0 items-center gap-2">
-                          <input type="radio" name="hr_selectedResume"
+                          <input
+                            type="radio"
+                            name="hr_selectedResume"
                             checked={form.selectedResumeUrl === resume.file_url}
-                            onChange={() => update({ selectedResumeUrl: resume.file_url })}
+                            onChange={() =>
+                              update({ selectedResumeUrl: resume.file_url })
+                            }
                           />
-                          <span className="truncate text-sm text-slate-800">{resume.file_name || "Resume"}</span>
+                          <span className="truncate text-sm text-slate-800">
+                            {resume.file_name || "Resume"}
+                          </span>
                         </div>
                         <div className="flex items-center gap-3">
                           {(resume.signed_url || resume.file_url) && (
-                            <a href={resume.signed_url || resume.file_url} target="_blank" rel="noreferrer"
+                            <a
+                              href={resume.signed_url || resume.file_url}
+                              target="_blank"
+                              rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="text-xs font-semibold text-primary hover:text-primary/80">
+                              className="text-xs font-semibold text-primary hover:text-primary/80"
+                            >
                               View
                             </a>
                           )}
-                          <button type="button" disabled={uploading}
-                            onClick={(e) => { e.preventDefault(); handleDeleteResume(resume); }}
-                            className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50">
+                          <button
+                            type="button"
+                            disabled={uploading}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleDeleteResume(resume);
+                            }}
+                            className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-50"
+                          >
                             Delete
                           </button>
                         </div>
@@ -691,15 +979,22 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
               </section>
 
               <section>
-                <label className={`flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${
-                  show() && errors.jdConfirmed ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 bg-slate-50 text-slate-700"
-                }`}>
-                  <input type="checkbox" className="mt-1"
+                <label
+                  className={`flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${
+                    show() && errors.jdConfirmed
+                      ? "border-red-400 bg-red-50 text-red-700"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-1"
                     checked={form.jdConfirmed}
                     onChange={(e) => update({ jdConfirmed: e.target.checked })}
                   />
                   <span>
-                    Confirmed that the student has read the Job Description fully.
+                    Confirmed that the student has read the Job Description
+                    fully.
                     {show() && errors.jdConfirmed && (
                       <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-red-600">
                         <FiAlertCircle className="h-3 w-3" /> Required
@@ -710,11 +1005,15 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
               </section>
 
               <label className="block">
-                <div className="mb-1 text-sm font-medium text-slate-700">HR Note (optional)</div>
-                <textarea rows={2}
+                <div className="mb-1 text-sm font-medium text-slate-700">
+                  HR Note (optional)
+                </div>
+                <textarea
+                  rows={2}
                   className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
                   placeholder="e.g. Applied on behalf — student contacted via phone"
-                  value={hrNote} onChange={(e) => setHrNote(e.target.value)}
+                  value={hrNote}
+                  onChange={(e) => setHrNote(e.target.value)}
                 />
               </label>
             </>
@@ -727,13 +1026,24 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
           )}
 
           <div className="flex gap-2 pt-1">
-            <button type="submit"
-              disabled={submitting || uploading || !selectedStudent || loadingProfile}
-              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60">
-              {submitting ? "Submitting..." : uploading ? "Uploading..." : "Apply on Behalf"}
+            <button
+              type="submit"
+              disabled={
+                submitting || uploading || !selectedStudent || loadingProfile
+              }
+              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting
+                ? "Submitting..."
+                : uploading
+                  ? "Uploading..."
+                  : "Apply on Behalf"}
             </button>
-            <button type="button" onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
               Cancel
             </button>
           </div>
@@ -747,23 +1057,29 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
 // Main view
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ManageApplicationsByJobView({ basePath, selectedJobId }) {
-  const [rows,      setRows]      = useState([]);
-  const [jobs,      setJobs]      = useState([]);
+export default function ManageApplicationsByJobView({
+  basePath,
+  selectedJobId,
+}) {
+  const [rows, setRows] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [showApplyModal, setShowApplyModal] = useState(false);
 
   // ── Search + Sort (jobs grid only) ────────────────────────────────────────
-  const [search,    setSearch]    = useState("");
+  const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
 
   const refresh = async () => {
     setIsLoading(true);
     setLoadError("");
     try {
-      const [all, allJobs] = await Promise.all([listAllApplications(), listJobs()]);
-      setRows(Array.isArray(all)     ? all     : []);
+      const [all, allJobs] = await Promise.all([
+        listAllApplications(),
+        listJobs(),
+      ]);
+      setRows(Array.isArray(all) ? all : []);
       setJobs(Array.isArray(allJobs) ? allJobs : []);
     } catch (error) {
       setRows([]);
@@ -774,17 +1090,33 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
     }
   };
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
 
   const onStatusChange = async (id, status) => {
-    await updateApplicationStatus(id, status);
-    await refresh();
+    const prevStatus = rows.find((r) => r.id === id)?.status;
+    setRows((cur) => cur.map((r) => (r.id === id ? { ...r, status } : r)));
+    try {
+      await updateApplicationStatus(id, status);
+    } catch (err) {
+      setRows((cur) =>
+        cur.map((r) => (r.id === id ? { ...r, status: prevStatus } : r)),
+      );
+      await showError(err?.message || "Failed to update status");
+    }
   };
   const onCommentChange = async (id, comment) => {
     try {
       await updateApplicationComment(id, comment);
-      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, hr_comment: comment || null } : r)));
-    } catch { /* silent */ }
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...r, hr_comment: comment || null } : r,
+        ),
+      );
+    } catch {
+      /* silent */
+    }
   };
 
   const jobsById = useMemo(
@@ -805,15 +1137,21 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
       const existing = jobsMap.get(jobId);
       if (!existing) {
         jobsMap.set(jobId, {
-          id: jobId, title: getJobTitle(row),
-          company:   row.jobs?.company || row.company || "-",
+          id: jobId,
+          title: getJobTitle(row),
+          company: row.jobs?.company || row.company || "-",
           createdAt: row.jobs?.created_at || row.job?.created_at || null,
-          status:    normalizeJobStatus(row.jobs?.status || row.job?.status),
+          status: normalizeJobStatus(row.jobs?.status || row.job?.status),
           applicationsCount: 1,
         });
       } else {
-        if (!existing.createdAt) existing.createdAt = row.jobs?.created_at || row.job?.created_at || null;
-        if (existing.status === "unknown") existing.status = normalizeJobStatus(row.jobs?.status || row.job?.status);
+        if (!existing.createdAt)
+          existing.createdAt =
+            row.jobs?.created_at || row.job?.created_at || null;
+        if (existing.status === "unknown")
+          existing.status = normalizeJobStatus(
+            row.jobs?.status || row.job?.status,
+          );
         existing.applicationsCount += 1;
       }
     }
@@ -839,15 +1177,24 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
   }, [jobCards, search, sortOrder]);
 
   if (isLoading) {
-    return <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">Loading applications...</div>;
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+        Loading applications...
+      </div>
+    );
   }
   if (loadError) {
     return (
       <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
-        <div className="text-sm font-semibold text-rose-700">Could not load manage applications.</div>
+        <div className="text-sm font-semibold text-rose-700">
+          Could not load manage applications.
+        </div>
         <div className="text-sm text-rose-700">{loadError}</div>
-        <button type="button" onClick={refresh}
-          className="rounded-lg border border-rose-300 px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-100">
+        <button
+          type="button"
+          onClick={refresh}
+          className="rounded-lg border border-rose-300 px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+        >
           Retry
         </button>
       </div>
@@ -860,10 +1207,18 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
       <div className="space-y-4">
         {/* Top row: title + refresh */}
         <div className="flex items-center justify-between gap-3">
-          <div className="text-base font-semibold text-slate-900">Posted Jobs</div>
-          <button type="button" onClick={refresh} disabled={isLoading}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50">
-            <FiRefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          <div className="text-base font-semibold text-slate-900">
+            Posted Jobs
+          </div>
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FiRefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
           </button>
         </div>
 
@@ -879,8 +1234,11 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
               className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-9 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
             />
             {search && (
-              <button type="button" onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
                 <FiX className="h-4 w-4" />
               </button>
             )}
@@ -888,12 +1246,18 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
 
           {/* Sort toggle */}
           <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-            <button type="button" onClick={() => setSortOrder("newest")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${sortOrder === "newest" ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}>
+            <button
+              type="button"
+              onClick={() => setSortOrder("newest")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${sortOrder === "newest" ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}
+            >
               Newest First
             </button>
-            <button type="button" onClick={() => setSortOrder("oldest")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${sortOrder === "oldest" ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}>
+            <button
+              type="button"
+              onClick={() => setSortOrder("oldest")}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${sortOrder === "oldest" ? "bg-primary text-white shadow-sm" : "text-slate-600 hover:bg-white"}`}
+            >
               Oldest First
             </button>
           </div>
@@ -913,9 +1277,13 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
           <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
             {search ? (
               <span>
-                No jobs found for "<span className="font-medium">{search}</span>".{" "}
-                <button type="button" onClick={() => setSearch("")}
-                  className="font-semibold text-primary hover:underline">
+                No jobs found for "<span className="font-medium">{search}</span>
+                ".{" "}
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="font-semibold text-primary hover:underline"
+                >
                   Clear search
                 </button>
               </span>
@@ -926,16 +1294,25 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filteredJobCards.map((job) => (
-              <Link key={job.id} to={`${basePath}/${job.id}`}
-                className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary">
+              <Link
+                key={job.id}
+                to={`${basePath}/${job.id}`}
+                className="rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary"
+              >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="text-base font-semibold text-slate-900">{job.title}</div>
-                  <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${getJobStatusChipClasses(job.status)}`}>
+                  <div className="text-base font-semibold text-slate-900">
+                    {job.title}
+                  </div>
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${getJobStatusChipClasses(job.status)}`}
+                  >
                     {job.status}
                   </span>
                 </div>
                 <div className="mt-1 text-sm text-slate-600">{job.company}</div>
-                <div className="mt-1 text-xs font-medium text-slate-500">Posted: {formatPostedDate(job.createdAt)}</div>
+                <div className="mt-1 text-xs font-medium text-slate-500">
+                  Posted: {formatPostedDate(job.createdAt)}
+                </div>
                 <div className="mt-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                   {job.applicationsCount} Applied
                 </div>
@@ -948,9 +1325,12 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
   }
 
   // ── Single job: applicants view ───────────────────────────────────────────
-  const filteredRows     = normalizedRows.filter((row) => String(getJobId(row)) === String(selectedJobId));
-  const selectedJob      = jobs.find((j) => String(j.id) === String(selectedJobId));
-  const selectedJobTitle = filteredRows[0]?.jobTitle || selectedJob?.title || "Job";
+  const filteredRows = normalizedRows.filter(
+    (row) => String(getJobId(row)) === String(selectedJobId),
+  );
+  const selectedJob = jobs.find((j) => String(j.id) === String(selectedJobId));
+  const selectedJobTitle =
+    filteredRows[0]?.jobTitle || selectedJob?.title || "Job";
 
   return (
     <div className="space-y-4">
@@ -962,7 +1342,10 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
         />
       )}
       <div>
-        <Link to={basePath} className="text-sm font-semibold text-primary hover:underline">
+        <Link
+          to={basePath}
+          className="text-sm font-semibold text-primary hover:underline"
+        >
           ← Back to jobs
         </Link>
       </div>
@@ -971,14 +1354,23 @@ export default function ManageApplicationsByJobView({ basePath, selectedJobId })
           Applied Candidates: {selectedJobTitle}
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setShowApplyModal(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90">
+          <button
+            type="button"
+            onClick={() => setShowApplyModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90"
+          >
             <FiUserPlus className="h-4 w-4" />
             Apply on Behalf
           </button>
-          <button type="button" onClick={refresh} disabled={isLoading}
-            className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50">
-            <FiRefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center rounded-lg border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FiRefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
           </button>
         </div>
       </div>

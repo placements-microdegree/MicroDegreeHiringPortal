@@ -9,7 +9,10 @@ const APPLICATION_STATUSES = [
   "Shortlisted",
   "Interview",
   "Selected",
-  "Rejected",
+  "Resume Screening Rejected", // For applications rejected by the system (e.g., ineligible) but not by the admin
+  "Profile Mapped for client",
+  "Client Rejected", // For applications rejected by the client
+  "Rejected", // For applications rejected by the admin
 ];
 
 module.exports = {

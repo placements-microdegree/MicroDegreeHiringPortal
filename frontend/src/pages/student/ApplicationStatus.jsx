@@ -9,6 +9,9 @@ const statusClassMap = {
   Interview: "bg-orange-100 text-orange-700",
   Selected: "bg-emerald-100 text-emerald-700",
   Rejected: "bg-red-100 text-red-700",
+  "Resume Screening Rejected": "bg-rose-100 text-rose-700",
+  "Profile Mapped for client": "bg-yellow-100 text-yellow-700",
+  "Client Rejected": "bg-rose-100 text-rose-700",
 };
 
 function formatDate(dateInput) {
@@ -57,7 +60,9 @@ export default function ApplicationStatus() {
           title="Refresh"
           className="inline-flex items-center justify-center rounded-xl border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <FiRefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          <FiRefreshCw
+            className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+          />
         </button>
       </div>
 
@@ -80,7 +85,10 @@ export default function ApplicationStatus() {
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-5 text-center text-slate-600" colSpan={4}>
+                <td
+                  className="px-4 py-5 text-center text-slate-600"
+                  colSpan={4}
+                >
                   No applications yet.
                 </td>
               </tr>
