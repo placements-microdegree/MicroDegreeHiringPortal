@@ -1,6 +1,8 @@
 // FILE: src/services/externalJobService.js
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { resolveApiBaseUrl } from "../utils/apiBaseUrl";
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 async function request(path, { method = "GET", body } = {}) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
