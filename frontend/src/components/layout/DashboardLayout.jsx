@@ -248,7 +248,7 @@ function StudentDashboardHome({ profile }) {
     setIsLoading(true);
     try {
       const [jobRows, appRows] = await Promise.all([
-        listJobs(),
+        listJobs({ includeClosed: true }),
         listApplicationsByStudent(),
       ]);
       setJobs(Array.isArray(jobRows) ? jobRows : []);
@@ -322,15 +322,15 @@ function StudentDashboardHome({ profile }) {
           {/* Stats */}
           <StatsBar jobs={safeJobs} apps={safeApps} />
 
-          {/* Open Jobs */}
+          {/* Recent Jobs */}
           <section>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-slate-900">
-                  Open Jobs
+                  Recent Jobs
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Latest opportunities for you
+                  Latest opportunities for you (closed jobs cannot be applied)
                 </p>
               </div>
               {safeJobs.length > 3 && (
