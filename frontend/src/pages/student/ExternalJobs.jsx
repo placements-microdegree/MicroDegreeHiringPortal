@@ -8,7 +8,6 @@ import {
   FiBriefcase,
   FiMapPin,
   FiClock,
-  FiChevronDown,
 } from "react-icons/fi";
 import {
   listActiveExternalJobs,
@@ -20,21 +19,61 @@ import Loader from "../../components/common/Loader";
 export default function ExternalJobs() {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [experienceFilter, setExperienceFilter] = useState("all");
+  const [experienceRange, setExperienceRange] = useState({ min: "", max: "" });
 
-  const experienceOptions = useMemo(() => {
-    const values = new Set(
-      jobs.map((job) => String(job?.experience || "").trim()).filter(Boolean),
-    );
-    return ["all", ...Array.from(values)];
-  }, [jobs]);
+  const parseExperienceRange = (value) => {
+    const text = String(value || "")
+      .trim()
+      .toLowerCase();
+    if (!text) return null;
+
+    const matches = text.match(/\d+(?:\.\d+)?/g);
+    if (!matches || matches.length === 0) return null;
+
+    const numbers = matches.map(Number).filter((num) => Number.isFinite(num));
+    if (numbers.length === 0) return null;
+
+    if (numbers.length === 1) {
+      const min = numbers[0];
+      const max = text.includes("+") ? Number.POSITIVE_INFINITY : min;
+      return { min, max };
+    }
+
+    const [first, second] = numbers;
+    return first <= second
+      ? { min: first, max: second }
+      : { min: second, max: first };
+  };
 
   const filteredJobs = useMemo(() => {
-    if (experienceFilter === "all") return jobs;
-    return jobs.filter(
-      (job) => String(job?.experience || "").trim() === experienceFilter,
-    );
-  }, [jobs, experienceFilter]);
+    const parsedMin = Number(experienceRange.min);
+    const parsedMax = Number(experienceRange.max);
+
+    const hasMin = experienceRange.min !== "" && Number.isFinite(parsedMin);
+    const hasMax = experienceRange.max !== "" && Number.isFinite(parsedMax);
+
+    if (!hasMin && !hasMax) return jobs;
+
+    const effectiveMin = hasMin ? parsedMin : Number.NEGATIVE_INFINITY;
+    const effectiveMax = hasMax ? parsedMax : Number.POSITIVE_INFINITY;
+    const [queryMin, queryMax] =
+      effectiveMin <= effectiveMax
+        ? [effectiveMin, effectiveMax]
+        : [effectiveMax, effectiveMin];
+
+    return jobs.filter((job) => {
+      const rawExperience = String(job?.experience || "")
+        .trim()
+        .toLowerCase();
+      if (["na", "n/a", "n.a", "not applicable"].includes(rawExperience)) {
+        return true;
+      }
+
+      const parsed = parseExperienceRange(job?.experience);
+      if (!parsed) return false;
+      return parsed.max >= queryMin && parsed.min <= queryMax;
+    });
+  }, [jobs, experienceRange]);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -86,7 +125,7 @@ export default function ExternalJobs() {
                 <th className="px-4 py-3">Company Name</th>
                 <th className="px-4 py-3">Job Title</th>
                 <th className="px-4 py-3">Location</th>
-                <th className="px-4 py-3">Experience</th>
+                <th className="px-4 py-3">Min Experience</th>
                 <th className="px-4 py-3">Apply</th>
               </tr>
             </thead>
@@ -175,29 +214,35 @@ export default function ExternalJobs() {
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center gap-2">
           <FiClock className="h-4 w-4 text-violet-500" />
-          <label
-            htmlFor="experienceFilter"
-            className="text-sm font-semibold text-slate-700"
-          >
-            Filter by Experience
-          </label>
+          <span className="text-sm font-semibold text-slate-700">
+            Experience Range
+          </span>
         </div>
 
-        <div className="relative min-w-52">
-          <select
-            id="experienceFilter"
-            value={experienceFilter}
-            onChange={(e) => setExperienceFilter(e.target.value)}
-            className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-9 text-sm font-medium text-slate-700 outline-none transition duration-200 hover:border-slate-300 hover:bg-white focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
-          >
-            {experienceOptions.map((option) => (
-              <option key={option} value={option}>
-                {option === "all" ? "All Experience" : option}
-              </option>
-            ))}
-          </select>
-
-          <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <div className="flex min-w-52 items-center gap-2">
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            value={experienceRange.min}
+            onChange={(e) =>
+              setExperienceRange((prev) => ({ ...prev, min: e.target.value }))
+            }
+            placeholder="Min yrs"
+            className="h-10 w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 outline-none transition duration-200 hover:border-slate-300 hover:bg-white focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+          />
+          <span className="text-sm font-semibold text-slate-500">to</span>
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            value={experienceRange.max}
+            onChange={(e) =>
+              setExperienceRange((prev) => ({ ...prev, max: e.target.value }))
+            }
+            placeholder="Max yrs"
+            className="h-10 w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 outline-none transition duration-200 hover:border-slate-300 hover:bg-white focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+          />
         </div>
       </section>
 
