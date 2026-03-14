@@ -1331,6 +1331,11 @@ export default function ManageApplicationsByJobView({
   const selectedJob = jobs.find((j) => String(j.id) === String(selectedJobId));
   const selectedJobTitle =
     filteredRows[0]?.jobTitle || selectedJob?.title || "Job";
+  const selectedJobCompany =
+    filteredRows[0]?.job?.company ||
+    filteredRows[0]?.jobs?.company ||
+    selectedJob?.company ||
+    "";
 
   return (
     <div className="space-y-4">
@@ -1352,6 +1357,7 @@ export default function ManageApplicationsByJobView({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-base font-semibold text-slate-900">
           Applied Candidates: {selectedJobTitle}
+          {selectedJobCompany ? ` @ ${selectedJobCompany}` : ""}
         </div>
         <div className="flex items-center gap-2">
           <button

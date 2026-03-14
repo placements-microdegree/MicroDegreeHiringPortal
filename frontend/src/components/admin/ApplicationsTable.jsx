@@ -1,6 +1,6 @@
 // FILE: src/components/admin/ApplicationsTable.jsx
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FiEdit2, FiCheck, FiX } from "react-icons/fi";
 import { APPLICATION_STATUSES } from "../../utils/constants";
 
@@ -8,8 +8,8 @@ import { APPLICATION_STATUSES } from "../../utils/constants";
 
 function CommentCell({ rowId, savedComment, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [draft,     setDraft]     = useState(savedComment ?? "");
-  const [saving,    setSaving]    = useState(false);
+  const [draft, setDraft] = useState(savedComment ?? "");
+  const [saving, setSaving] = useState(false);
 
   // Keep draft in sync if parent refreshes and savedComment changes
   // but only when we're NOT currently editing (don't overwrite user's typing)
@@ -79,7 +79,9 @@ function CommentCell({ rowId, savedComment, onSave }) {
   return (
     <div className="group flex min-w-[200px] items-start justify-between gap-2">
       {savedComment ? (
-        <p className="whitespace-pre-wrap text-sm text-slate-700">{savedComment}</p>
+        <p className="whitespace-pre-wrap text-sm text-slate-700">
+          {savedComment}
+        </p>
       ) : (
         <p className="text-sm italic text-slate-400">No comment</p>
       )}
@@ -97,9 +99,12 @@ function CommentCell({ rowId, savedComment, onSave }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function ApplicationsTable({ rows, onStatusChange, onCommentChange }) {
-
-  // ── CSV export (hr_comment intentionally excluded) ────────────────────────
+export default function ApplicationsTable({
+  rows,
+  onStatusChange,
+  onCommentChange,
+}) {
+  // ── CSV export ─────────────────────────────────────────────────────────────
 
   const escapeCsv = (value) => {
     const text = value == null ? "" : String(value);
@@ -107,8 +112,11 @@ export default function ApplicationsTable({ rows, onStatusChange, onCommentChang
   };
 
   const slugify = (value) =>
-    String(value || "").toLowerCase().trim()
-      .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    String(value || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
 
   const formatAppliedDate = (value) => {
     if (!value) return "";
@@ -118,18 +126,28 @@ export default function ApplicationsTable({ rows, onStatusChange, onCommentChang
   };
 
   const cleanResumeName = (value) =>
-    String(value || "").trim().replace(/\.[^/.]+$/, "");
+    String(value || "")
+      .trim()
+      .replace(/\.[^/.]+$/, "");
 
   const getResumeExportValue = (row) => {
-    const link = row?.resumeUrl || row?.selected_resume_url || row?.selectedResumeUrl || "";
+    const link =
+      row?.resumeUrl ||
+      row?.selected_resume_url ||
+      row?.selectedResumeUrl ||
+      "";
     if (link) return link;
     const byName = cleanResumeName(row?.resumeName);
     if (byName) return byName;
-    return cleanResumeName(String(row?.selected_resume_url || "").split("/").pop());
+    return cleanResumeName(
+      String(row?.selected_resume_url || "")
+        .split("/")
+        .pop(),
+    );
   };
 
   const boolLabel = (value) => {
-    if (value === true)  return "Yes";
+    if (value === true) return "Yes";
     if (value === false) return "No";
     return "";
   };
@@ -138,24 +156,33 @@ export default function ApplicationsTable({ rows, onStatusChange, onCommentChang
     if (!rows?.length) return;
 
     const firstRow = rows[0] || {};
-    const jobName  = firstRow.jobTitle || firstRow.jobs?.title || "job";
-    const company  = firstRow.jobs?.company || firstRow.company || "company";
+    const jobName = firstRow.jobTitle || firstRow.jobs?.title || "job";
+    const company = firstRow.jobs?.company || firstRow.company || "company";
     const fileName = `${slugify(jobName)}-${slugify(company)}.csv`;
 
-    // Collect all unique custom questions ordered by order_index
+    // Collect all unique custom questions ordered by order_index.
+    // Use question id when available to avoid collisions with repeated text.
     const questionMap = new Map();
     (rows || []).forEach((r) => {
       (r.answers || []).forEach((a) => {
-        if (!questionMap.has(a.question)) {
-          questionMap.set(a.question, { answerType: a.answer_type, orderIndex: a.order_index ?? 0 });
-        }
+        const questionId = a.question_id || a.questionId || a.id || "";
+        const questionText = String(a.question || "").trim();
+        if (!questionText) return;
+        const key = questionId
+          ? `${questionId}::${questionText}`
+          : questionText;
+        if (questionMap.has(key)) return;
+        questionMap.set(key, {
+          label: questionText,
+          answerType: a.answer_type,
+          orderIndex: a.order_index ?? 0,
+        });
       });
     });
     const customQuestions = [...questionMap.entries()]
       .sort((a, b) => (a[1].orderIndex ?? 0) - (b[1].orderIndex ?? 0))
-      .map(([q]) => q);
+      .map(([key, meta]) => ({ key, label: meta.label }));
 
-    // hr_comment is NOT included in the export
     const staticHeaders = [
       "Date",
       "Email ID",
@@ -170,45 +197,57 @@ export default function ApplicationsTable({ rows, onStatusChange, onCommentChang
       "Current CTC (in LPA)",
       "Expected CTC (in LPA)",
       "Notice Period",
+      "HR Comment",
       "Resume",
     ];
 
-    const headers = [...staticHeaders, ...customQuestions];
+    const headers = [...staticHeaders, ...customQuestions.map((q) => q.label)];
 
     const csvRows = rows.map((r) => {
       const answerByQuestion = {};
       (r.answers || []).forEach((a) => {
-        answerByQuestion[a.question] =
-          a.answer_type === "yesno" ? boolLabel(a.answer_bool) : (a.answer_text ?? "");
+        const questionText = String(a.question || "").trim();
+        if (!questionText) return;
+        const questionId = a.question_id || a.questionId || a.id || "";
+        const key = questionId
+          ? `${questionId}::${questionText}`
+          : questionText;
+        answerByQuestion[key] =
+          a.answer_type === "yesno"
+            ? boolLabel(a.answer_bool)
+            : (a.answer_text ?? "");
       });
 
       const staticValues = [
         formatAppliedDate(r.appliedAt),
-        r.studentEmail        || "",
-        r.studentName         || "",
-        r.studentPhone        || "",
-        r.studentLocation     || "",
-        r.totalExperience     || r.total_experience     || "",
-        r.relevantExperience  || r.relevant_experience  || "",
+        r.studentEmail || "",
+        r.studentName || "",
+        r.studentPhone || "",
+        r.studentLocation || "",
+        r.totalExperience || r.total_experience || "",
+        r.relevantExperience || r.relevant_experience || "",
         boolLabel(r.hands_on_primary_skills ?? r.handsOnPrimarySkills),
-        boolLabel(r.work_mode_match         ?? r.workModeMatch),
-        boolLabel(r.interview_mode_available?? r.interviewModeAvailable),
-        r.currentCTC          || "",
-        r.expectedCTC         || "",
-        r.noticePeriod        || "Not working / Immediately available",
+        boolLabel(r.work_mode_match ?? r.workModeMatch),
+        boolLabel(r.interview_mode_available ?? r.interviewModeAvailable),
+        r.currentCTC || "",
+        r.expectedCTC || "",
+        r.noticePeriod || "Not working / Immediately available",
+        r.hr_comment ?? "",
         getResumeExportValue(r),
       ];
 
-      const customValues = customQuestions.map((q) => answerByQuestion[q] ?? "");
+      const customValues = customQuestions.map(
+        (q) => answerByQuestion[q.key] ?? "",
+      );
 
       return [...staticValues, ...customValues].map(escapeCsv).join(",");
     });
 
     const csvContent = [headers.join(","), ...csvRows].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href     = url;
+    link.href = url;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
@@ -221,7 +260,9 @@ export default function ApplicationsTable({ rows, onStatusChange, onCommentChang
   return (
     <div className="rounded-xl bg-white p-5">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-base font-semibold text-slate-900">Applications</div>
+        <div className="text-base font-semibold text-slate-900">
+          Applications
+        </div>
         <button
           type="button"
           onClick={handleExport}
@@ -242,7 +283,9 @@ export default function ApplicationsTable({ rows, onStatusChange, onCommentChang
               <th className="px-4 py-3 whitespace-nowrap">Resume</th>
               <th className="px-4 py-3 whitespace-nowrap">Job</th>
               <th className="px-4 py-3 whitespace-nowrap">Status</th>
-              <th className="px-4 py-3 whitespace-nowrap min-w-[220px]">HR Comment</th>
+              <th className="px-4 py-3 whitespace-nowrap min-w-[220px]">
+                HR Comment
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -289,7 +332,9 @@ export default function ApplicationsTable({ rows, onStatusChange, onCommentChang
                       onChange={(e) => onStatusChange?.(r.id, e.target.value)}
                     >
                       {APPLICATION_STATUSES.map((s) => (
-                        <option key={s} value={s}>{s}</option>
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
                       ))}
                     </select>
                   </td>
