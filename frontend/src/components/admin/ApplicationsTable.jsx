@@ -274,10 +274,12 @@ export default function ApplicationsTable({
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="bg-bgLight text-xs uppercase text-slate-600">
             <tr>
-              <th className="px-4 py-3 whitespace-nowrap">Student Name</th>
+              <th className="w-[220px] px-4 py-3 whitespace-nowrap">
+                Student Name
+              </th>
               <th className="px-4 py-3 whitespace-nowrap">Phone</th>
               <th className="px-4 py-3 whitespace-nowrap">Email</th>
               <th className="px-4 py-3 whitespace-nowrap">Resume</th>
@@ -298,8 +300,10 @@ export default function ApplicationsTable({
             ) : (
               rows.map((r) => (
                 <tr key={r.id} className="border-t border-slate-200 align-top">
-                  <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">
-                    {r.studentName || "Student"}
+                  <td className="px-4 py-3 font-medium text-slate-900">
+                    <div className="max-w-[220px] whitespace-normal break-words">
+                      {r.studentName || "Student"}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
                     {r.studentPhone || "-"}
