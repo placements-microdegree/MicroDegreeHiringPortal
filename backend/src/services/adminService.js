@@ -246,7 +246,7 @@ async function findStudentWithApplications({ type, query }) {
   let profileQuery = supabase
     .from("profiles")
     .select(
-      "id, full_name, email, phone, role, location, is_eligible, eligible_until, updated_at",
+      "id, full_name, email, phone, role, location, is_eligible, eligible_until, updated_at, resume_url",
     )
     .eq("role", ROLES.STUDENT)
     .limit(1);
