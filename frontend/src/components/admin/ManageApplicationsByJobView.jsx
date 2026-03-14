@@ -11,9 +11,10 @@ import {
   FiAlertCircle,
   FiAlertTriangle,
 } from "react-icons/fi";
-import { showError } from "../../utils/alerts";
+import { confirmDanger, showError } from "../../utils/alerts";
 import ApplicationsTable from "./ApplicationsTable";
 import {
+  deleteApplication,
   listAllApplications,
   updateApplicationStatus,
   updateApplicationComment,
@@ -1119,6 +1120,24 @@ export default function ManageApplicationsByJobView({
     }
   };
 
+  const onDeleteApplication = async (id, studentName) => {
+    const confirmed = await confirmDanger({
+      title: "Delete this application?",
+      text: `${studentName || "This student"}'s application will be removed from admin and student views.`,
+      confirmButtonText: "Delete application",
+      cancelButtonText: "Keep",
+    });
+    if (!confirmed) return;
+
+    setRows((current) => current.filter((row) => row.id !== id));
+
+    try {
+      await deleteApplication(id);
+    } catch (err) {
+      await refresh();
+      await showError(err?.message || "Failed to delete application");
+    }
+  };
   const jobsById = useMemo(
     () => new Map((jobs || []).map((job) => [String(job.id), job])),
     [jobs],
@@ -1338,7 +1357,7 @@ export default function ManageApplicationsByJobView({
     "";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       {showApplyModal && (
         <ApplyOnBehalfModal
           job={selectedJob}
@@ -1384,6 +1403,7 @@ export default function ManageApplicationsByJobView({
         rows={filteredRows}
         onStatusChange={onStatusChange}
         onCommentChange={onCommentChange}
+        onDeleteApplication={onDeleteApplication}
       />
     </div>
   );

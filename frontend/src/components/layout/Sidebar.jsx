@@ -122,7 +122,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white p-4 transition-transform
+          fixed inset-y-0 left-0 z-50 flex w-72 shrink-0 flex-col border-r border-slate-200 bg-white p-4 transition-transform
           md:sticky md:top-0 md:z-auto md:h-screen md:translate-x-0 md:overflow-y-auto
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}

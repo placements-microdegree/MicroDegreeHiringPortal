@@ -1,9 +1,9 @@
 // FILE: routes/applicationRoutes.js
 
-const express    = require("express");
-const multer     = require("multer");
-const verifyToken      = require("../middleware/verifyToken");
-const authorizeRole    = require("../middleware/authorizeRole");
+const express = require("express");
+const multer = require("multer");
+const verifyToken = require("../middleware/verifyToken");
+const authorizeRole = require("../middleware/authorizeRole");
 const { cacheResponse, invalidateApiCache } = require("../middleware/apiCache");
 const applicationController = require("../controllers/applicationController");
 const { ROLES } = require("../utils/constants");
@@ -112,6 +112,13 @@ router.patch(
   verifyToken,
   authorizeRole(ADMIN_ROLES),
   applicationController.updateComment,
+);
+router.delete(
+  "/:id",
+  verifyToken,
+  authorizeRole(ADMIN_ROLES),
+  invalidateApiCache(["/api/applications"]),
+  applicationController.deleteOne,
 );
 
 module.exports = router;

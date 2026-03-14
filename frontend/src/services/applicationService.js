@@ -49,6 +49,12 @@ export async function updateApplicationComment(applicationId, comment) {
   return data.application;
 }
 
+export async function deleteApplication(applicationId) {
+  await request(`/api/applications/${applicationId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function applyOnBehalf(payload) {
   const data = await request("/api/applications/apply-on-behalf", {
     method: "POST",

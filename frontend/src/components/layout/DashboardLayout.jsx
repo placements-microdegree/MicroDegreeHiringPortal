@@ -494,7 +494,7 @@ export default function DashboardLayout({ role }) {
           onProfileClick={isStudent ? () => setDrawerOpen(true) : undefined}
         />
 
-        <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           {/* Navbar — fully unchanged except two new eligibility props */}
           <Navbar
             title={title}
