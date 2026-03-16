@@ -14,7 +14,9 @@ function formatDateTime(value) {
 }
 
 function parseExperienceBounds(value) {
-  const raw = String(value || "").toLowerCase().trim();
+  const raw = String(value || "")
+    .toLowerCase()
+    .trim();
   if (!raw) return null;
 
   const matchedNumbers = raw.match(/\d+(?:\.\d+)?/g);

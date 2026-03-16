@@ -37,9 +37,9 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async ({ email, password }) => {
     const session = await loginWithPassword({ email, password });
-    setUser(session);
     const p = await getProfile();
     setProfile(p);
+    setUser(session);
     return { session, profile: p };
   }, []);
 
@@ -58,9 +58,9 @@ export function AuthProvider({ children }) {
         return result;
       }
 
-      setUser(result.user);
       const p = await getProfile();
       setProfile(p);
+      setUser(result.user);
       return { ...result, profile: p };
     },
     [],
