@@ -437,7 +437,7 @@ function StudentDashboardHome({ profile }) {
 
 function EligibilityUnlockOverlay() {
   return (
-    <div className="fixed inset-y-0 left-0 right-0 z-20 flex items-center justify-center bg-white/40 p-4 backdrop-blur-sm md:left-72">
+    <div className="fixed bottom-0 left-0 right-0 top-15 z-20 flex items-center justify-center bg-white/40 p-4 backdrop-blur-sm md:top-0 md:left-72">
       <div className="w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-slate-200 bg-white/90 p-6 text-center shadow-xl">
         <h2 className="text-lg font-semibold text-slate-900">Access Locked</h2>
         <p className="mt-2 text-sm text-slate-600">
