@@ -1,6 +1,11 @@
 // FILE: src/pages/student/CloudDrive.jsx
 
-import { FiCloud, FiExternalLink, FiArrowRight, FiCheckCircle } from "react-icons/fi";
+import {
+  FiCloud,
+  FiExternalLink,
+  FiArrowRight,
+  FiCheckCircle,
+} from "react-icons/fi";
 
 const NOTION_URL =
   "https://career-assistance.notion.site/MicroDegree-Cloud-Drive-Process-23152af69e2c80bcb9a2e87d4bbc204b";
@@ -61,7 +66,6 @@ const benefits = [
 export default function CloudDrive() {
   return (
     <div className="space-y-4">
-
       {/* Header */}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -90,31 +94,41 @@ export default function CloudDrive() {
 
       {/* What is Cloud Drive */}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-900">What is the Cloud Drive?</h2>
+        <h2 className="text-sm font-semibold text-slate-900">
+          What is the Cloud Drive?
+        </h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          The Cloud Drive is MicroDegree's internal recurring placement screening process — a
-          mock industry hiring workflow. Clear all 4 rounds and get first preference for jobs
-          sourced by our Hiring Team, along with dedicated placement support.
+          The Cloud Drive is MicroDegree's internal recurring placement
+          screening process — a mock industry hiring workflow. Clear all 4
+          rounds and get first preference for jobs sourced by our Hiring Team,
+          along with dedicated placement support.
         </p>
 
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {benefits.map((b) => (
-            <div key={b} className="flex items-start gap-2 text-sm text-slate-700">
+            <div
+              key={b}
+              className="flex items-start gap-2 text-sm text-slate-700"
+            >
               <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
               {b}
             </div>
           ))}
         </div>
       </section>
-{/* Eligibility + Registration side by side */}
+      {/* Eligibility + Registration side by side */}
       <div className="grid gap-4 md:grid-cols-2">
-
         {/* Eligibility */}
         <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Eligibility Criteria</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Eligibility Criteria
+          </h2>
           <ul className="space-y-2">
             {eligibility.map((e) => (
-              <li key={e} className="flex items-start gap-2 text-sm text-slate-700">
+              <li
+                key={e}
+                className="flex items-start gap-2 text-sm text-slate-700"
+              >
                 <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                 {e}
               </li>
@@ -124,13 +138,24 @@ export default function CloudDrive() {
 
         {/* Registration */}
         <section className="rounded-xl border border-slate-200 bg-white p-5">
-          <h2 className="mb-3 text-sm font-semibold text-slate-900">Registration</h2>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Registration
+          </h2>
           <p className="text-sm text-slate-600">
-            Cloud Drives happen on the <span className="font-semibold text-slate-800">2nd and 4th Saturday</span> of every month.
-            Register before <span className="font-semibold text-slate-800">Friday 6 PM</span> of the drive week to receive your invite email.
+            Cloud Drives happen on the{" "}
+            <span className="font-semibold text-slate-800">
+              2nd and 4th Saturday
+            </span>{" "}
+            of every month. Register before{" "}
+            <span className="font-semibold text-slate-800">Friday 6 PM</span> of
+            the drive week to receive your invite email.
           </p>
           <p className="mt-2 text-sm text-slate-600">
-            Updates are also shared in the <span className="font-semibold text-slate-800">G101 Telegram Group</span>.
+            Updates are also shared in the{" "}
+            <span className="font-semibold text-slate-800">
+              G101 Telegram Group
+            </span>
+            .
           </p>
           <a
             href="https://tally.so/r/3xVJNk"
@@ -142,7 +167,6 @@ export default function CloudDrive() {
             Register for Next Drive
           </a>
         </section>
-
       </div>
 
       {/* 4 Rounds */}
@@ -159,10 +183,15 @@ export default function CloudDrive() {
               <div className="mb-1 inline-flex rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
                 {r.round}
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-900">{r.title}</div>
+              <div className="mt-1 text-sm font-semibold text-slate-900">
+                {r.title}
+              </div>
               <ul className="mt-2 space-y-1">
                 {r.points.map((p) => (
-                  <li key={p} className="flex items-start gap-1.5 text-xs text-slate-600">
+                  <li
+                    key={p}
+                    className="flex items-start gap-1.5 text-xs text-slate-600"
+                  >
                     <FiArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
                     {p}
                   </li>
@@ -176,11 +205,14 @@ export default function CloudDrive() {
       {/* Footer note */}
       <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <p className="text-sm text-slate-600">
-          🛑 Not shortlisted in a round? You can <span className="font-semibold text-slate-800">re-register for the next drive</span> and start from Round 1.
-          Clearing this process significantly improves your chances of getting placed faster.
+          🛑 Not shortlisted in a round? You can{" "}
+          <span className="font-semibold text-slate-800">
+            re-register for the next drive
+          </span>{" "}
+          and start from Round 1. Clearing this process significantly improves
+          your chances of getting placed faster.
         </p>
       </section>
-
     </div>
   );
 }

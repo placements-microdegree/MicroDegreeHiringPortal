@@ -435,6 +435,26 @@ function StudentDashboardHome({ profile }) {
   );
 }
 
+function EligibilityUnlockOverlay() {
+  return (
+    <div className="fixed inset-y-0 left-0 right-0 z-20 flex items-center justify-center bg-white/40 p-4 backdrop-blur-sm md:left-72">
+      <div className="w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-slate-200 bg-white/90 p-6 text-center shadow-xl">
+        <h2 className="text-lg font-semibold text-slate-900">Access Locked</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          To unlock, enroll in MicroDegree live classes. Please contact the
+          support team.
+        </p>
+        <a
+          href="tel:08047109999"
+          className="mt-5 inline-flex items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primaryDark"
+        >
+          Call 08047109999
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // ── DashboardLayout ───────────────────────────────────────────────────────────
 
 export default function DashboardLayout({ role }) {
@@ -483,6 +503,27 @@ export default function DashboardLayout({ role }) {
       location.pathname === "/student/" ||
       location.pathname.endsWith("/student/dashboard"));
 
+  const isNonEligible = profile?.isEligible !== true;
+  const shouldShowEligibilityOverlay =
+    isStudent &&
+    isNonEligible &&
+    [
+      "/student/external-jobs",
+      "/student/career-guide",
+      "/student/cloud-drive",
+    ].includes(location.pathname);
+
+  useEffect(() => {
+    if (!shouldShowEligibilityOverlay) return undefined;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [shouldShowEligibilityOverlay]);
+
   return (
     <div className="min-h-screen bg-bgLight">
       <div className="flex">
@@ -509,13 +550,14 @@ export default function DashboardLayout({ role }) {
           />
 
           <main
-            className={`flex-1 ${isStudent ? "bg-slate-50 p-6 lg:p-7" : "p-6"}`}
+            className={`relative flex-1 ${isStudent ? "bg-slate-50 p-6 lg:p-7" : "p-6"}`}
           >
             {isStudentHome ? (
               <StudentDashboardHome profile={profile} />
             ) : (
               <Outlet />
             )}
+            {shouldShowEligibilityOverlay ? <EligibilityUnlockOverlay /> : null}
           </main>
         </div>
       </div>

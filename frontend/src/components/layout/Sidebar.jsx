@@ -85,25 +85,21 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         label: "Application Status",
         icon: FiClipboard,
       },
-      ...(isEligible
-        ? [
-            {
-              to: "/student/external-jobs",
-              label: "External Jobs",
-              icon: FiBriefcase,
-            },
-            {
-              to: "/student/career-guide",
-              label: "Career Assistance Guide",
-              icon: FiBookOpen,
-            },
-            {
-              to: "/student/cloud-drive",
-              label: "Cloud Drive",
-              icon: FiCloud,
-            },
-          ]
-        : []),
+      {
+        to: "/student/external-jobs",
+        label: "External Jobs",
+        icon: FiBriefcase,
+      },
+      {
+        to: "/student/career-guide",
+        label: "Career Assistance Guide",
+        icon: FiBookOpen,
+      },
+      {
+        to: "/student/cloud-drive",
+        label: "Cloud Drive",
+        icon: FiCloud,
+      },
       { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
     ];
   }

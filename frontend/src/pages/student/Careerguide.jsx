@@ -1,6 +1,12 @@
 // FILE: src/pages/student/CareerGuide.jsx
 
-import { FiBookOpen, FiExternalLink, FiArrowRight, FiCheckCircle, FiMessageCircle } from "react-icons/fi";
+import {
+  FiBookOpen,
+  FiExternalLink,
+  FiArrowRight,
+  FiCheckCircle,
+  FiMessageCircle,
+} from "react-icons/fi";
 
 const NOTION_URL =
   "https://career-assistance.notion.site/Career-Assistance-Guide-21752af69e2c803f8024d55d973cd5bf";
@@ -124,7 +130,6 @@ function Section({ title, children }) {
 export default function CareerGuide() {
   return (
     <div className="space-y-4">
-
       {/* Header */}
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -193,8 +198,12 @@ export default function CareerGuide() {
               className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:border-primary hover:bg-primary/5"
             >
               <div>
-                <div className="text-xs font-semibold text-primary">{s.day}</div>
-                <div className="text-sm font-medium text-slate-800">{s.label}</div>
+                <div className="text-xs font-semibold text-primary">
+                  {s.day}
+                </div>
+                <div className="text-sm font-medium text-slate-800">
+                  {s.label}
+                </div>
               </div>
               <FiExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             </a>
@@ -242,7 +251,6 @@ export default function CareerGuide() {
           </a>
         </div>
       </section>
-
     </div>
   );
 }
