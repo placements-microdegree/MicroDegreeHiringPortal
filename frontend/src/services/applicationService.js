@@ -33,18 +33,27 @@ export async function listAllApplications() {
   return data.applications || [];
 }
 
-export async function updateApplicationStatus(applicationId, status) {
+export async function updateApplicationStatus(
+  applicationId,
+  status,
+  options = {},
+) {
+  const { stage, subStage } = options;
   const data = await request(`/api/applications/${applicationId}/status`, {
     method: "PATCH",
-    body: { status },
+    body: { status, stage, subStage },
   });
   return data.application;
 }
 
-export async function updateApplicationComment(applicationId, comment) {
+export async function updateApplicationComment(
+  applicationId,
+  comment,
+  comment2 = "",
+) {
   const data = await request(`/api/applications/${applicationId}/comment`, {
     method: "PATCH",
-    body: { comment },
+    body: { comment, comment2 },
   });
   return data.application;
 }

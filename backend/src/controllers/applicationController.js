@@ -63,6 +63,8 @@ async function updateStatus(req, res, next) {
     const updated = await applicationService.updateApplicationStatus({
       applicationId: req.params.id,
       status: req.body.status,
+      stage: req.body.stage,
+      subStage: req.body.subStage,
       actor: req.user,
       jwt: req.user.jwt,
     });
@@ -77,6 +79,7 @@ async function updateComment(req, res, next) {
     const updated = await applicationService.updateApplicationComment({
       applicationId: req.params.id,
       comment: req.body.comment,
+      comment2: req.body.comment2,
       jwt: req.user.jwt,
     });
     res.json({ success: true, application: updated });

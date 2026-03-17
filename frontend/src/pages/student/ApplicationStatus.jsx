@@ -7,7 +7,13 @@ const statusClassMap = {
   Applied: "bg-slate-100 text-slate-700",
   Shortlisted: "bg-blue-100 text-blue-700",
   Interview: "bg-orange-100 text-orange-700",
+  "Interview Scheduled": "bg-indigo-100 text-indigo-700",
+  "Interview Not Cleared": "bg-rose-100 text-rose-700",
+  "Technical Round": "bg-violet-100 text-violet-700",
+  "Final Round": "bg-fuchsia-100 text-fuchsia-700",
   Selected: "bg-emerald-100 text-emerald-700",
+  Placed: "bg-emerald-100 text-emerald-700",
+  "Position Closed": "bg-slate-200 text-slate-700",
   Rejected: "bg-red-100 text-red-700",
   "Resume Screening Rejected": "bg-rose-100 text-rose-700",
   "Profile Mapped for client": "bg-yellow-100 text-yellow-700",
@@ -40,6 +46,55 @@ export default function ApplicationStatus() {
   useEffect(() => {
     refresh();
   }, []);
+
+  let tableBodyContent;
+  if (isLoading) {
+    tableBodyContent = (
+      <tr>
+        <td className="px-4 py-4 text-slate-600" colSpan={5}>
+          Loading applications...
+        </td>
+      </tr>
+    );
+  } else if (rows.length === 0) {
+    tableBodyContent = (
+      <tr>
+        <td className="px-4 py-5 text-center text-slate-600" colSpan={5}>
+          No applications yet.
+        </td>
+      </tr>
+    );
+  } else {
+    tableBodyContent = rows.map((row) => {
+      const status = row?.sub_stage || row?.status || "Applied";
+      const statusClass =
+        statusClassMap[status] || "bg-slate-100 text-slate-700";
+
+      return (
+        <tr key={row.id} className="border-t border-slate-200">
+          <td className="px-4 py-3 font-medium text-slate-900">
+            {row?.jobs?.title || row?.jobTitle || "Job"}
+          </td>
+          <td className="px-4 py-3 text-slate-700">
+            {row?.jobs?.company || row?.company || "Company"}
+          </td>
+          <td className="px-4 py-3 text-slate-700">
+            {formatDate(row?.created_at || row?.createdAt)}
+          </td>
+          <td className="px-4 py-3">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
+            >
+              {status}
+            </span>
+          </td>
+          <td className="px-4 py-3 text-slate-700">
+            {row?.hr_comment_2 || "-"}
+          </td>
+        </tr>
+      );
+    });
+  }
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -74,53 +129,10 @@ export default function ApplicationStatus() {
               <th className="px-4 py-3 font-semibold">Company</th>
               <th className="px-4 py-3 font-semibold">Applied Date</th>
               <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Comment</th>
             </tr>
           </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td className="px-4 py-4 text-slate-600" colSpan={4}>
-                  Loading applications...
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td
-                  className="px-4 py-5 text-center text-slate-600"
-                  colSpan={4}
-                >
-                  No applications yet.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => {
-                const status = row?.status || "Applied";
-                const statusClass =
-                  statusClassMap[status] || "bg-slate-100 text-slate-700";
-
-                return (
-                  <tr key={row.id} className="border-t border-slate-200">
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {row?.jobs?.title || row?.jobTitle || "Job"}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {row?.jobs?.company || row?.company || "Company"}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {formatDate(row?.created_at || row?.createdAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
-                      >
-                        {status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
+          <tbody>{tableBodyContent}</tbody>
         </table>
       </div>
     </div>

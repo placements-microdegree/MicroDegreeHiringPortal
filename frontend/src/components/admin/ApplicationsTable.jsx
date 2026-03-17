@@ -6,9 +6,10 @@ import { APPLICATION_STATUSES } from "../../utils/constants";
 
 // ── Per-row HR Comment cell ───────────────────────────────────────────────────
 
-function CommentCell({ rowId, savedComment, onSave }) {
+function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(savedComment ?? "");
+  const [draft2, setDraft2] = useState(savedComment2 ?? "");
   const [saving, setSaving] = useState(false);
 
   // Keep draft in sync if parent refreshes and savedComment changes
@@ -16,23 +17,26 @@ function CommentCell({ rowId, savedComment, onSave }) {
   useEffect(() => {
     if (!isEditing) {
       setDraft(savedComment ?? "");
+      setDraft2(savedComment2 ?? "");
     }
-  }, [savedComment, isEditing]);
+  }, [savedComment, savedComment2, isEditing]);
 
   const handleEdit = () => {
     setDraft(savedComment ?? "");
+    setDraft2(savedComment2 ?? "");
     setIsEditing(true);
   };
 
   const handleCancel = () => {
     setDraft(savedComment ?? "");
+    setDraft2(savedComment2 ?? "");
     setIsEditing(false);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(rowId, draft);
+      await onSave(rowId, draft, draft2);
       setIsEditing(false);
     } finally {
       setSaving(false);
@@ -43,12 +47,24 @@ function CommentCell({ rowId, savedComment, onSave }) {
   if (isEditing) {
     return (
       <div className="flex min-w-[200px] flex-col gap-2">
+        <label className="space-y-1">
+          <span className="text-xs font-semibold text-slate-600">
+            HR Comment
+          </span>
+          <textarea
+            rows={2}
+            autoFocus
+            placeholder="Add HR comment..."
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="w-full resize-none rounded-xl border border-primary bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+          />
+        </label>
         <textarea
-          rows={3}
-          autoFocus
-          placeholder="Add a note..."
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          rows={2}
+          placeholder="Add comment for student..."
+          value={draft2}
+          onChange={(e) => setDraft2(e.target.value)}
           className="w-full resize-none rounded-xl border border-primary bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
         />
         <div className="flex gap-2">
@@ -78,13 +94,28 @@ function CommentCell({ rowId, savedComment, onSave }) {
   // ── Display mode ────────────────────────────────────────────────────────────
   return (
     <div className="group flex min-w-[200px] items-start justify-between gap-2">
-      {savedComment ? (
-        <p className="whitespace-pre-wrap text-sm text-slate-700">
-          {savedComment}
+      <div className="space-y-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          HR Comment
         </p>
-      ) : (
-        <p className="text-sm italic text-slate-400">No comment</p>
-      )}
+        {savedComment ? (
+          <p className="whitespace-pre-wrap text-sm text-slate-700">
+            {savedComment}
+          </p>
+        ) : (
+          <p className="text-sm italic text-slate-400">No comment</p>
+        )}
+        <p className="pt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Comment for student
+        </p>
+        {savedComment2 ? (
+          <p className="whitespace-pre-wrap text-sm text-slate-700">
+            {savedComment2}
+          </p>
+        ) : (
+          <p className="text-sm italic text-slate-400">No comment</p>
+        )}
+      </div>
       <button
         type="button"
         onClick={handleEdit}
@@ -199,6 +230,7 @@ export default function ApplicationsTable({
       "Expected CTC (in LPA)",
       "Notice Period",
       "HR Comment",
+      "Comment for student",
       "Resume",
     ];
 
@@ -234,6 +266,7 @@ export default function ApplicationsTable({
         r.expectedCTC || "",
         r.noticePeriod || "Not working / Immediately available",
         r.hr_comment ?? "",
+        r.hr_comment_2 ?? "",
         getResumeExportValue(r),
       ];
 
@@ -350,6 +383,7 @@ export default function ApplicationsTable({
                     <CommentCell
                       rowId={r.id}
                       savedComment={r.hr_comment ?? ""}
+                      savedComment2={r.hr_comment_2 ?? ""}
                       onSave={onCommentChange}
                     />
                   </td>

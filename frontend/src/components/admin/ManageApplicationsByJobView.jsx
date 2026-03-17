@@ -71,6 +71,30 @@ function formatPostedDate(value) {
     year: "numeric",
   });
 }
+
+function getStageFromStatus(status) {
+  const value = String(status || "").trim();
+  const stageByStatus = {
+    Applied: "Applied",
+    Shortlisted: "Screening",
+    "Resume Screening Rejected": "Screening",
+    "Profile Mapped for client": "Mapped",
+    "Interview Scheduled": "Interview",
+    "Interview Not Cleared": "Interview",
+    "Technical Round": "Interview",
+    "Final Round": "Final",
+    Placed: "Closed",
+    Rejected: "Closed",
+    "Position Closed": "Closed",
+    "Client Rejected": "Closed",
+    // Legacy compatibility
+    Interview: "Interview",
+    Selected: "Closed",
+  };
+
+  return stageByStatus[value] || "Applied";
+}
+
 function mapApplicationRow(row, jobsById) {
   const resumes =
     row.student?.resumes ||
@@ -127,6 +151,9 @@ function mapApplicationRow(row, jobsById) {
       row.resumeUrl,
     jobTitle,
     hr_comment: row.hr_comment ?? null,
+    hr_comment_2: row.hr_comment_2 ?? null,
+    stage: row.stage || getStageFromStatus(row.sub_stage || row.status),
+    sub_stage: row.sub_stage || row.status || "Applied",
   };
 }
 
@@ -1096,23 +1123,37 @@ export default function ManageApplicationsByJobView({
   }, []);
 
   const onStatusChange = async (id, status) => {
-    const prevStatus = rows.find((r) => r.id === id)?.status;
-    setRows((cur) => cur.map((r) => (r.id === id ? { ...r, status } : r)));
+    const prevRow = rows.find((r) => r.id === id) || null;
+    const nextStage = getStageFromStatus(status);
+    setRows((cur) =>
+      cur.map((r) =>
+        r.id === id ? { ...r, status, sub_stage: status, stage: nextStage } : r,
+      ),
+    );
     try {
-      await updateApplicationStatus(id, status);
+      await updateApplicationStatus(id, status, {
+        stage: nextStage,
+        subStage: status,
+      });
     } catch (err) {
       setRows((cur) =>
-        cur.map((r) => (r.id === id ? { ...r, status: prevStatus } : r)),
+        cur.map((r) => (r.id === id && prevRow ? { ...r, ...prevRow } : r)),
       );
       await showError(err?.message || "Failed to update status");
     }
   };
-  const onCommentChange = async (id, comment) => {
+  const onCommentChange = async (id, comment, comment2) => {
     try {
-      await updateApplicationComment(id, comment);
+      await updateApplicationComment(id, comment, comment2);
       setRows((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, hr_comment: comment || null } : r,
+          r.id === id
+            ? {
+                ...r,
+                hr_comment: comment || null,
+                hr_comment_2: comment2 || null,
+              }
+            : r,
         ),
       );
     } catch {

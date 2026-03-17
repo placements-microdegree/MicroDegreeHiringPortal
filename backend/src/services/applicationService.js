@@ -12,6 +12,9 @@ function getClient(jwt) {
 const APPLICATIONS_ADMIN_SELECT = `
   id,
   status,
+  stage,
+  sub_stage,
+  is_applied_on_behalf,
   created_at,
   updated_at,
   notice_period,
@@ -23,6 +26,8 @@ const APPLICATIONS_ADMIN_SELECT = `
   selected_resume_url,
   save_for_future,
   hr_comment,
+  hr_comment_2,
+  hr_comment_type,
   job_id,
   student_id,
   jobs!inner(
@@ -57,7 +62,44 @@ const APPLICATIONS_ADMIN_SELECT = `
   )
 `;
 
+function normalizePipelineFromStatus(inputStatus, inputStage, inputSubStage) {
+  const normalizedStatus = String(
+    inputSubStage || inputStatus || "Applied",
+  ).trim();
+
+  const stageByStatus = {
+    Applied: "Applied",
+    Shortlisted: "Screening",
+    "Resume Screening Rejected": "Screening",
+    "Profile Mapped for client": "Mapped",
+    "Interview Scheduled": "Interview",
+    "Interview Not Cleared": "Interview",
+    "Technical Round": "Interview",
+    "Final Round": "Final",
+    Placed: "Closed",
+    Rejected: "Closed",
+    "Position Closed": "Closed",
+    "Client Rejected": "Closed",
+    // Legacy compatibility
+    Interview: "Interview",
+    Selected: "Closed",
+  };
+
+  return {
+    status: normalizedStatus,
+    sub_stage: normalizedStatus,
+    stage: inputStage || stageByStatus[normalizedStatus] || "Applied",
+  };
+}
+
 function normalizeApplicationForAdminView(row) {
+  const hrComment = row.hr_comment ?? null;
+  const isAppliedOnBehalf =
+    row.is_applied_on_behalf === true ||
+    String(hrComment || "")
+      .toLowerCase()
+      .includes("applied by hr on behalf of student");
+
   const answers = Array.isArray(row.application_answers)
     ? row.application_answers
         .map((a) => ({
@@ -74,6 +116,8 @@ function normalizeApplicationForAdminView(row) {
   return {
     id: row.id,
     status: row.status,
+    stage: row.stage || null,
+    sub_stage: row.sub_stage || row.status,
     created_at: row.created_at,
     updated_at: row.updated_at,
     notice_period: row.notice_period,
@@ -84,7 +128,10 @@ function normalizeApplicationForAdminView(row) {
     jd_confirmed: row.jd_confirmed,
     selected_resume_url: row.selected_resume_url,
     save_for_future: row.save_for_future,
-    hr_comment: row.hr_comment ?? null,
+    hr_comment: hrComment,
+    hr_comment_2: row.hr_comment_2 ?? null,
+    hr_comment_type: row.hr_comment_type || "Internal",
+    is_applied_on_behalf: isAppliedOnBehalf,
     answers,
     job: row.jobs
       ? {
@@ -258,6 +305,8 @@ async function createApplication({ payload, jwt }) {
     throw err;
   }
 
+  const pipeline = normalizePipelineFromStatus(payload.status);
+
   let data;
   try {
     const { data: inserted, error } = await supabase
@@ -265,7 +314,9 @@ async function createApplication({ payload, jwt }) {
       .insert({
         student_id: payload.studentId,
         job_id: payload.jobId,
-        status: payload.status || "Applied",
+        status: pipeline.status,
+        stage: pipeline.stage,
+        sub_stage: pipeline.sub_stage,
         notice_period: toOptionalText(payload.noticePeriod),
         relevant_experience: toOptionalText(payload.relevantExperience),
         hands_on_primary_skills: toOptionalBoolean(
@@ -358,12 +409,17 @@ async function applyOnBehalf({ payload, jwt }) {
 
   const customAnswers = Array.isArray(payload.answers) ? payload.answers : [];
 
+  const pipeline = normalizePipelineFromStatus(payload.status || "Applied");
+
   const { data, error } = await supabase
     .from("applications")
     .insert({
       student_id: studentId,
       job_id: jobId,
-      status: "Applied",
+      status: pipeline.status,
+      stage: pipeline.stage,
+      sub_stage: pipeline.sub_stage,
+      is_applied_on_behalf: true,
       notice_period: toOptionalText(payload.noticePeriod),
       relevant_experience: toOptionalText(payload.relevantExperience),
       hands_on_primary_skills: toOptionalBoolean(
@@ -381,6 +437,7 @@ async function applyOnBehalf({ payload, jwt }) {
       jd_confirmed: true, // HR confirms on behalf
       selected_resume_url: toOptionalText(payload.selectedResumeUrl) || null,
       save_for_future: false,
+      hr_comment_type: "Internal",
       hr_comment:
         toOptionalText(payload.hrNote) || "Applied by HR on behalf of student",
     })
@@ -416,11 +473,24 @@ async function listAllApplications({ actor, jwt }) {
   return (data || []).map(normalizeApplicationForAdminView);
 }
 
-async function updateApplicationStatus({ applicationId, status, actor, jwt }) {
+async function updateApplicationStatus({
+  applicationId,
+  status,
+  stage,
+  subStage,
+  actor,
+  jwt,
+}) {
   const supabase = getClient(jwt);
+  const pipeline = normalizePipelineFromStatus(status, stage, subStage);
   const { data, error } = await supabase
     .from("applications")
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({
+      status: pipeline.status,
+      stage: pipeline.stage,
+      sub_stage: pipeline.sub_stage,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", applicationId)
     .select("*")
     .single();
@@ -428,16 +498,22 @@ async function updateApplicationStatus({ applicationId, status, actor, jwt }) {
   return data;
 }
 
-async function updateApplicationComment({ applicationId, comment, jwt }) {
+async function updateApplicationComment({
+  applicationId,
+  comment,
+  comment2,
+  jwt,
+}) {
   const supabase = getClient(jwt);
   const { data, error } = await supabase
     .from("applications")
     .update({
       hr_comment: toOptionalText(comment),
+      hr_comment_2: toOptionalText(comment2),
       updated_at: new Date().toISOString(),
     })
     .eq("id", applicationId)
-    .select("id, hr_comment")
+    .select("id, hr_comment, hr_comment_2")
     .single();
   if (error) throw error;
   return data;
@@ -488,7 +564,10 @@ async function getStudentAnalytics({ studentId, jwt }) {
       .select("id", { count: "exact", head: true })
       .eq("status", "active")
       .gte("valid_till", today),
-    supabase.from("applications").select("status").eq("student_id", studentId),
+    supabase
+      .from("applications")
+      .select("status, sub_stage")
+      .eq("student_id", studentId),
     supabase
       .from("profiles")
       .select("is_eligible, eligible_until, application_quota")
@@ -505,7 +584,7 @@ async function getStudentAnalytics({ studentId, jwt }) {
     return acc;
   }, {});
   (apps || []).forEach((a) => {
-    const s = String(a?.status || "").trim();
+    const s = String(a?.sub_stage || a?.status || "").trim();
     if (!s) return;
     if (!Object.hasOwn(statusCounts, s)) statusCounts[s] = 0;
     statusCounts[s] += 1;

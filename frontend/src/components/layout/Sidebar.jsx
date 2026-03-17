@@ -1,7 +1,7 @@
 // FILE: src/components/student/Sidebar.jsx
 
 import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   FiX,
   FiClipboard,
@@ -11,6 +11,8 @@ import {
   FiLogOut,
   FiCloud,
   FiBriefcase,
+  FiChevronDown,
+  FiChevronRight,
 } from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
@@ -22,9 +24,23 @@ const linkBase =
 
 export default function Sidebar({ role, isOpen = false, onClose }) {
   const { logout, profile } = useAuth();
+  const location = useLocation();
   const isStudent = role === ROLES.STUDENT;
   const isEligible = profile?.isEligible === true;
+  const isAdmin = role === ROLES.ADMIN;
   const [externalJobsCount, setExternalJobsCount] = useState(0);
+  const isPlacementSectionActive = location.pathname.includes(
+    "/admin/placement-status-pipeline",
+  );
+  const [placementSectionOpen, setPlacementSectionOpen] = useState(
+    isPlacementSectionActive,
+  );
+
+  useEffect(() => {
+    if (isPlacementSectionActive) {
+      setPlacementSectionOpen(true);
+    }
+  }, [isPlacementSectionActive]);
 
   useEffect(() => {
     if (!isStudent || !isEligible) {
@@ -183,6 +199,58 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
               </NavLink>
             );
           })}
+
+          {isAdmin ? (
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => setPlacementSectionOpen((prev) => !prev)}
+                className={`${linkBase} justify-between text-slate-700 hover:bg-slate-100 hover:text-slate-900`}
+              >
+                <span className="inline-flex items-center gap-3">
+                  <FiBriefcase className="h-4 w-4 text-slate-500" />
+                  <span>Placement Status Pipeline</span>
+                </span>
+                {placementSectionOpen ? (
+                  <FiChevronDown className="h-4 w-4 text-slate-500" />
+                ) : (
+                  <FiChevronRight className="h-4 w-4 text-slate-500" />
+                )}
+              </button>
+
+              {placementSectionOpen ? (
+                <div className="space-y-1 pl-6">
+                  <NavLink
+                    to="/admin/placement-status-pipeline/master-dashboard"
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `${linkBase} py-2 ${
+                        isActive
+                          ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      }`
+                    }
+                  >
+                    Master Dashboard
+                  </NavLink>
+
+                  <NavLink
+                    to="/admin/placement-status-pipeline/interview-mapped-candidates"
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `${linkBase} py-2 ${
+                        isActive
+                          ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      }`
+                    }
+                  >
+                    Interview Mapped Candidates
+                  </NavLink>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </nav>
 
         {/* Logout */}

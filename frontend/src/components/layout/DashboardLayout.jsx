@@ -64,10 +64,40 @@ const STATUS_META = {
     Icon: FiCalendar,
     cls: "bg-indigo-50  text-indigo-700  border-indigo-200",
   },
+  "Interview Scheduled": {
+    label: "Interview Scheduled",
+    Icon: FiCalendar,
+    cls: "bg-indigo-50  text-indigo-700  border-indigo-200",
+  },
+  "Interview Not Cleared": {
+    label: "Interview Not Cleared",
+    Icon: FiXCircle,
+    cls: "bg-rose-50 text-rose-700 border-rose-200",
+  },
+  "Technical Round": {
+    label: "Technical Round",
+    Icon: FiAlertCircle,
+    cls: "bg-violet-50 text-violet-700 border-violet-200",
+  },
+  "Final Round": {
+    label: "Final Round",
+    Icon: FiAward,
+    cls: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+  },
   Selected: {
     label: "Selected",
     Icon: FiAward,
     cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  Placed: {
+    label: "Placed",
+    Icon: FiCheckCircle,
+    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  "Position Closed": {
+    label: "Position Closed",
+    Icon: FiXCircle,
+    cls: "bg-slate-100 text-slate-700 border-slate-200",
   },
   "Resume Screening Rejected": {
     label: "Resume Screening Rejected",
@@ -96,7 +126,15 @@ function normalizeApplicationStatus(status) {
   if (value.toLowerCase() === "rejected") return "Rejected";
   if (value.toLowerCase() === "shortlisted") return "Shortlisted";
   if (value.toLowerCase() === "interview") return "Interview";
+  if (value.toLowerCase() === "interview scheduled")
+    return "Interview Scheduled";
+  if (value.toLowerCase() === "interview not cleared")
+    return "Interview Not Cleared";
+  if (value.toLowerCase() === "technical round") return "Technical Round";
+  if (value.toLowerCase() === "final round") return "Final Round";
   if (value.toLowerCase() === "selected") return "Selected";
+  if (value.toLowerCase() === "placed") return "Placed";
+  if (value.toLowerCase() === "position closed") return "Position Closed";
 
   return value;
 }
@@ -106,7 +144,9 @@ function normalizeApplicationStatus(status) {
 function StatsBar({ jobs, apps }) {
   const safeJobs = Array.isArray(jobs) ? jobs : [];
   const safeApps = Array.isArray(apps) ? apps : [];
-  const statuses = safeApps.map((a) => (a?.status || "Applied").toLowerCase());
+  const statuses = safeApps.map((a) =>
+    (a?.sub_stage || a?.status || "Applied").toLowerCase(),
+  );
   const activeJobsCount = safeJobs.filter(
     (job) =>
       String(job?.status || "")
@@ -138,15 +178,14 @@ function StatsBar({ jobs, apps }) {
     },
     {
       label: "Interview Scheduled",
-      value: statuses.filter((s) => s === "interview").length,
+      value: statuses.filter((s) => s === "interview scheduled").length,
       icon: FiCalendar,
       color: "text-indigo-600",
       bg: "bg-indigo-50",
     },
     {
       label: "Selected",
-      value: statuses.filter((s) => s === "selected" || s === "accepted")
-        .length,
+      value: statuses.filter((s) => s === "selected" || s === "placed").length,
       icon: FiAward,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
@@ -183,7 +222,9 @@ function StatsBar({ jobs, apps }) {
 function ApplicationCard({ application, jobs }) {
   const jobId = String(application?.job_id || application?.jobId || "");
   const job = jobs.find((j) => String(j.id) === jobId);
-  const status = normalizeApplicationStatus(application?.status);
+  const status = normalizeApplicationStatus(
+    application?.sub_stage || application?.status,
+  );
   const meta = STATUS_META[status] || STATUS_META.Applied;
   const { Icon } = meta;
 
@@ -486,6 +527,20 @@ export default function DashboardLayout({ role }) {
       if (location.pathname.includes("post-jd")) return "Post JD";
       if (location.pathname.includes("manage-applications"))
         return "Manage Applications";
+      if (
+        location.pathname.includes(
+          "/admin/placement-status-pipeline/master-dashboard",
+        )
+      ) {
+        return "Placement Status Pipeline - Master Dashboard";
+      }
+      if (
+        location.pathname.includes(
+          "/admin/placement-status-pipeline/interview-mapped-candidates",
+        )
+      ) {
+        return "Placement Status Pipeline - Interview Mapped Candidates";
+      }
       return "Admin Dashboard";
     }
     if (location.pathname.includes("/student/jobs")) return "Jobs (JD)";

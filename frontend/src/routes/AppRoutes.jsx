@@ -20,6 +20,8 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import PostJD from "../pages/admin/PostJD";
 import ManageApplications from "../pages/admin/ManageApplications";
 import PostExternalJob from "../pages/admin/PostExternalJob"; // ← NEW
+import PlacementMasterDashboard from "../pages/admin/PlacementMasterDashboard";
+import InterviewMappedCandidates from "../pages/admin/InterviewMappedCandidates";
 
 import SuperAdminDashboard from "../pages/superadmin/SuperAdminDashboard";
 import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
@@ -111,6 +113,14 @@ export default function AppRoutes() {
           />
           <Route path="/admin/external-jobs" element={<PostExternalJob />} />{" "}
           {/* ← NEW */}
+          <Route
+            path="/admin/placement-status-pipeline/master-dashboard"
+            element={<PlacementMasterDashboard />}
+          />
+          <Route
+            path="/admin/placement-status-pipeline/interview-mapped-candidates"
+            element={<InterviewMappedCandidates />}
+          />
         </Route>
       </Route>
 
