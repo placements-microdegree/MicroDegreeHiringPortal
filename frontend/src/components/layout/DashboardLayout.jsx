@@ -107,11 +107,17 @@ function StatsBar({ jobs, apps }) {
   const safeJobs = Array.isArray(jobs) ? jobs : [];
   const safeApps = Array.isArray(apps) ? apps : [];
   const statuses = safeApps.map((a) => (a?.status || "Applied").toLowerCase());
+  const activeJobsCount = safeJobs.filter(
+    (job) =>
+      String(job?.status || "")
+        .trim()
+        .toLowerCase() === "active",
+  ).length;
 
   const stats = [
     {
       label: "Total Jobs Available",
-      value: safeJobs.length,
+      value: activeJobsCount,
       icon: FiBriefcase,
       color: "text-blue-600",
       bg: "bg-blue-50",
