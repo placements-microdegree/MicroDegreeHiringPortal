@@ -548,24 +548,33 @@ export default function ApplyJobModal({
         maxWidthClass="max-w-[1000px]"
         scrollable
         footer={
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
             <Button
               type="submit"
               form="apply-job-form"
               disabled={submitting || uploading}
-              className="min-w-40"
+              className="w-full sm:min-w-40 sm:w-auto"
             >
               {submitting ? "Submitting..." : "Submit Application"}
             </Button>
           </div>
         }
       >
-        <form id="apply-job-form" onSubmit={handleSubmit} className="space-y-5">
+        <form
+          id="apply-job-form"
+          onSubmit={handleSubmit}
+          className="space-y-4 sm:space-y-5"
+        >
           {/* Job details */}
-          <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
             <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 md:grid-cols-2">
               <div>
                 <span className="font-semibold text-slate-900">Company:</span>{" "}
@@ -595,7 +604,7 @@ export default function ApplyJobModal({
           </section>
 
           {/* Form fields */}
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <section className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
             <QuestionToggle
               label="Are you currently working?"
               value={form.isCurrentlyWorking}
@@ -623,9 +632,8 @@ export default function ApplyJobModal({
                 }
               />
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                Notice period field appears only for currently working
-                candidates.
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600 sm:rounded-xl sm:px-4 sm:py-3 sm:text-sm">
+                Notice period is required only if currently working.
               </div>
             )}
 
@@ -687,16 +695,8 @@ export default function ApplyJobModal({
             />
 
             <QuestionToggle
-              label={
-                selectedSkills
-                  ? `Are you hands-on with: ${selectedSkills}?`
-                  : "Are you hands-on with the required skills?"
-              }
-              sublabel={
-                selectedSkills
-                  ? "Skills listed in the Job Description"
-                  : undefined
-              }
+              label="Are you hands-on with JD skills?"
+              sublabel="Skills listed in the Job Description"
               value={form.handsOnPrimarySkills}
               onChange={(value) => {
                 setTouched((p) => ({ ...p, handsOnPrimarySkills: true }));
@@ -745,7 +745,7 @@ export default function ApplyJobModal({
               }
             />
 
-            <div className="hidden md:block" />
+            <div className="hidden lg:block" />
 
             <Input
               label="Current CTC (in LPA)"
@@ -773,7 +773,7 @@ export default function ApplyJobModal({
             {/* Custom questions from HR — rendered only when job has them */}
             {jobQuestions.length > 0 && (
               <>
-                <div className="col-span-2 border-t border-slate-200 pt-3">
+                <div className="border-t border-slate-200 pt-3 lg:col-span-2">
                   <p className="text-sm font-semibold text-slate-800">
                     Additional Questions
                   </p>
@@ -799,7 +799,7 @@ export default function ApplyJobModal({
           </section>
 
           {/* Optional student concern */}
-          <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <section className="rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
             <label className="block">
               <div className="mb-1 text-sm font-medium text-slate-700">
                 Any Concern(optional)
@@ -816,7 +816,7 @@ export default function ApplyJobModal({
 
           {/* Resume selector */}
           <section
-            className={`rounded-xl border p-4 ${show("selectedResumeUrl") && errors.selectedResumeUrl ? "border-red-400 bg-red-50" : "border-slate-200"}`}
+            className={`rounded-xl border p-3 sm:p-4 ${show("selectedResumeUrl") && errors.selectedResumeUrl ? "border-red-400 bg-red-50" : "border-slate-200"}`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -911,7 +911,7 @@ export default function ApplyJobModal({
           {/* JD confirmed */}
           <section className="space-y-2">
             <label
-              className={`flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${show("jdConfirmed") && errors.jdConfirmed ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 bg-slate-50 text-slate-700"}`}
+              className={`flex cursor-pointer items-start gap-2 rounded-xl border px-3 py-2 text-sm transition sm:py-2.5 ${show("jdConfirmed") && errors.jdConfirmed ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 bg-slate-50 text-slate-700"}`}
             >
               <input
                 type="checkbox"
