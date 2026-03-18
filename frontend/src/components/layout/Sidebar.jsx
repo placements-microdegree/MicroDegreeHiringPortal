@@ -73,6 +73,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       { to: "/superadmin/dashboard", label: "Dashboard" },
       { to: "/superadmin/manage-hr", label: "Manage HR Admins" },
       { to: "/superadmin/students", label: "View Students" },
+      { to: "/superadmin/favourites", label: "Favourites" },
       { to: "/superadmin/jobs", label: "View Jobs" },
       { to: "/superadmin/applications", label: "Applications" },
       {

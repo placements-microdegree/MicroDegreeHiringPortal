@@ -27,6 +27,27 @@ export async function listStudents() {
   return data.students || [];
 }
 
+export async function listFavoriteStudents() {
+  const data = await request("/api/admin/favorites/students");
+  return data.favoriteStudentIds || [];
+}
+
+export async function addFavoriteStudents(studentIds) {
+  const data = await request("/api/admin/favorites/students", {
+    method: "POST",
+    body: { studentIds },
+  });
+  return data.favoriteStudentIds || [];
+}
+
+export async function removeFavoriteStudents(studentIds) {
+  const data = await request("/api/admin/favorites/students", {
+    method: "DELETE",
+    body: { studentIds },
+  });
+  return data.favoriteStudentIds || [];
+}
+
 export async function listAdmins() {
   const data = await request("/api/admin/admins");
   return data.admins || [];

@@ -189,6 +189,166 @@ async function listProfiles({ role } = {}) {
   return data;
 }
 
+async function listStudentsWithLatestApplication() {
+  const supabase = requireAdminClient();
+
+  let students = [];
+  {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select(
+        "id, full_name, email, phone, role, location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, current_ctc, expected_ctc, total_experience",
+      )
+      .eq("role", ROLES.STUDENT)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("profiles")
+        .select(
+          "id, full_name, email, phone, role, location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url",
+        )
+        .eq("role", ROLES.STUDENT)
+        .order("updated_at", { ascending: false });
+
+      if (fallbackError) throw fallbackError;
+      students = fallbackData || [];
+    } else {
+      students = data || [];
+    }
+  }
+
+  if (!Array.isArray(students) || students.length === 0) return [];
+
+  const studentIds = students.map((student) => student?.id).filter(Boolean);
+
+  if (studentIds.length === 0) return students;
+
+  // Some DB deployments do not have current_ctc / expected_ctc / total_experience on applications.
+  // Try the rich select first, then gracefully fall back to schema-safe columns.
+  let applications = [];
+  {
+    const { data, error } = await supabase
+      .from("applications")
+      .select(
+        "id, student_id, current_ctc, expected_ctc, total_experience, relevant_experience, selected_resume_url, created_at, updated_at",
+      )
+      .in("student_id", studentIds)
+      .order("created_at", { ascending: false })
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("applications")
+        .select(
+          "id, student_id, relevant_experience, selected_resume_url, created_at, updated_at",
+        )
+        .in("student_id", studentIds)
+        .order("created_at", { ascending: false })
+        .order("updated_at", { ascending: false });
+
+      if (fallbackError) throw fallbackError;
+      applications = fallbackData || [];
+    } else {
+      applications = data || [];
+    }
+  }
+
+  const latestByStudentId = new Map();
+  (applications || []).forEach((application) => {
+    const studentId = application?.student_id;
+    if (!studentId || latestByStudentId.has(studentId)) return;
+    latestByStudentId.set(studentId, application);
+  });
+
+  return students.map((student) => {
+    const latest = latestByStudentId.get(student.id) || null;
+
+    return {
+      ...student,
+      recent_application_current_ctc:
+        latest?.current_ctc ?? student?.current_ctc ?? null,
+      recent_application_expected_ctc:
+        latest?.expected_ctc ?? student?.expected_ctc ?? null,
+      recent_application_total_experience:
+        latest?.total_experience ??
+        latest?.relevant_experience ??
+        student?.total_experience ??
+        null,
+      recent_application_resume_url:
+        latest?.selected_resume_url ?? student?.resume_url ?? null,
+      recent_application_created_at: latest?.created_at ?? null,
+    };
+  });
+}
+
+function normalizeUuidList(values) {
+  if (!Array.isArray(values)) return [];
+  return values.map((value) => String(value || "").trim()).filter(Boolean);
+}
+
+async function listFavoriteStudentIds({ superadminId }) {
+  const supabase = requireAdminClient();
+
+  const { data, error } = await supabase
+    .from("superadmin_favorite_students")
+    .select("student_id")
+    .eq("superadmin_id", superadminId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row) => row.student_id).filter(Boolean);
+}
+
+async function addFavoriteStudents({ superadminId, studentIds }) {
+  const supabase = requireAdminClient();
+  const normalizedIds = normalizeUuidList(studentIds);
+
+  if (normalizedIds.length === 0) {
+    const err = new Error("studentIds is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const rows = normalizedIds.map((studentId) => ({
+    superadmin_id: superadminId,
+    student_id: studentId,
+  }));
+
+  const { error } = await supabase
+    .from("superadmin_favorite_students")
+    .upsert(rows, {
+      onConflict: "superadmin_id,student_id",
+      ignoreDuplicates: true,
+    });
+
+  if (error) throw error;
+
+  return listFavoriteStudentIds({ superadminId });
+}
+
+async function removeFavoriteStudents({ superadminId, studentIds }) {
+  const supabase = requireAdminClient();
+  const normalizedIds = normalizeUuidList(studentIds);
+
+  if (normalizedIds.length === 0) {
+    const err = new Error("studentIds is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const { error } = await supabase
+    .from("superadmin_favorite_students")
+    .delete()
+    .eq("superadmin_id", superadminId)
+    .in("student_id", normalizedIds);
+
+  if (error) throw error;
+
+  return listFavoriteStudentIds({ superadminId });
+}
+
 async function analytics() {
   const supabase = requireAdminClient();
 
@@ -323,6 +483,10 @@ async function findStudentWithApplications({ type, query }) {
 module.exports = {
   promoteByEmail,
   listProfiles,
+  listStudentsWithLatestApplication,
+  listFavoriteStudentIds,
+  addFavoriteStudents,
+  removeFavoriteStudents,
   analytics,
   findStudentWithApplications,
 };

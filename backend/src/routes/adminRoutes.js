@@ -16,6 +16,21 @@ router.get(
   adminController.listStudents,
 );
 router.get(
+  "/favorites/students",
+  cacheResponse({ ttlSeconds: 20 }),
+  adminController.listFavoriteStudents,
+);
+router.post(
+  "/favorites/students",
+  invalidateApiCache(["/api/admin/favorites/students"]),
+  adminController.addFavoriteStudents,
+);
+router.delete(
+  "/favorites/students",
+  invalidateApiCache(["/api/admin/favorites/students"]),
+  adminController.removeFavoriteStudents,
+);
+router.get(
   "/admins",
   cacheResponse({ ttlSeconds: 45 }),
   adminController.listAdmins,

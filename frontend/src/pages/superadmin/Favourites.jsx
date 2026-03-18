@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiDownload, FiHeart } from "react-icons/fi";
 import StudentsTable from "../../components/admin/StudentsTable";
-import { addFavoriteStudents, listStudents } from "../../services/adminService";
+import {
+  listFavoriteStudents,
+  listStudents,
+  removeFavoriteStudents,
+} from "../../services/adminService";
 import { showError } from "../../utils/alerts";
 
 function normalizeCtc(value) {
@@ -9,20 +13,25 @@ function normalizeCtc(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export default function Students() {
+export default function Favourites() {
   const [rows, setRows] = useState([]);
+  const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
+  const [selectedFavoriteStudentIds, setSelectedFavoriteStudentIds] = useState(
+    [],
+  );
   const [currentCtcFilter, setCurrentCtcFilter] = useState("");
   const [totalExperienceFilter, setTotalExperienceFilter] = useState("");
-  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
 
   useEffect(() => {
-    listStudents()
-      .then((students) => {
+    Promise.all([listStudents(), listFavoriteStudents()])
+      .then(([students, favoriteIds]) => {
         setRows(Array.isArray(students) ? students : []);
+        setFavoriteStudentIds(Array.isArray(favoriteIds) ? favoriteIds : []);
       })
       .catch(async (error) => {
         setRows([]);
-        await showError(error?.message || "Failed to load students");
+        setFavoriteStudentIds([]);
+        await showError(error?.message || "Failed to load favourite students");
       });
   }, []);
 
@@ -61,28 +70,33 @@ export default function Students() {
     [rows],
   );
 
+  const favoriteRows = useMemo(() => {
+    const favoriteSet = new Set(favoriteStudentIds);
+    return mapped.filter((row) => favoriteSet.has(row.id));
+  }, [mapped, favoriteStudentIds]);
+
   const currentCtcOptions = useMemo(() => {
     const values = new Set();
-    mapped.forEach((row) => {
+    favoriteRows.forEach((row) => {
       const value = normalizeCtc(row.currentCtc);
       if (value !== null) values.add(value);
     });
     return [...values].sort((a, b) => a - b);
-  }, [mapped]);
+  }, [favoriteRows]);
 
   const totalExperienceOptions = useMemo(() => {
     const values = new Set();
-    mapped.forEach((row) => {
+    favoriteRows.forEach((row) => {
       const value = String(row.totalExperience ?? "").trim();
       if (value) values.add(value);
     });
     return [...values].sort((a, b) =>
       a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
     );
-  }, [mapped]);
+  }, [favoriteRows]);
 
-  const filteredRows = useMemo(() => {
-    return mapped.filter((row) => {
+  const filteredFavoriteRows = useMemo(() => {
+    return favoriteRows.filter((row) => {
       const rowCurrent = normalizeCtc(row.currentCtc);
       const rowTotalExperience = String(row.totalExperience ?? "").trim();
 
@@ -99,10 +113,10 @@ export default function Students() {
 
       return true;
     });
-  }, [mapped, currentCtcFilter, totalExperienceFilter]);
+  }, [favoriteRows, currentCtcFilter, totalExperienceFilter]);
 
-  const toggleRowSelection = (id, checked) => {
-    setSelectedStudentIds((prev) => {
+  const toggleFavoriteSelection = (id, checked) => {
+    setSelectedFavoriteStudentIds((prev) => {
       const next = new Set(prev);
       if (checked) {
         next.add(id);
@@ -113,32 +127,39 @@ export default function Students() {
     });
   };
 
-  const toggleAllRows = (checked) => {
+  const toggleAllFavorites = (checked) => {
     if (!checked) {
-      setSelectedStudentIds([]);
+      setSelectedFavoriteStudentIds([]);
       return;
     }
 
-    setSelectedStudentIds(filteredRows.map((row) => row.id).filter(Boolean));
+    setSelectedFavoriteStudentIds(
+      filteredFavoriteRows.map((row) => row.id).filter(Boolean),
+    );
   };
 
-  const addSelectedToFavorites = async () => {
-    if (selectedStudentIds.length === 0) {
-      await showError("Select at least one student to add to favourites");
+  const removeSelectedFromFavorites = async () => {
+    if (selectedFavoriteStudentIds.length === 0) {
+      await showError("Select at least one favourite student to remove");
       return;
     }
 
     try {
-      await addFavoriteStudents(selectedStudentIds);
-      setSelectedStudentIds([]);
+      const nextFavoriteIds = await removeFavoriteStudents(
+        selectedFavoriteStudentIds,
+      );
+      setFavoriteStudentIds(
+        Array.isArray(nextFavoriteIds) ? nextFavoriteIds : [],
+      );
+      setSelectedFavoriteStudentIds([]);
     } catch (error) {
-      await showError(error?.message || "Failed to add favourite students");
+      await showError(error?.message || "Failed to remove favourite students");
     }
   };
 
   const exportFilteredCsv = () => {
-    if (filteredRows.length === 0) {
-      showError("No filtered students available to export");
+    if (filteredFavoriteRows.length === 0) {
+      showError("No favourite students available to export");
       return;
     }
 
@@ -164,7 +185,7 @@ export default function Students() {
 
     const lines = [headers.map(csvEscape).join(",")];
 
-    filteredRows.forEach((row) => {
+    filteredFavoriteRows.forEach((row) => {
       let eligibility = "Not eligible";
       if (row.isEligible) {
         const eligibleUntilText = row.eligibleUntil
@@ -196,7 +217,7 @@ export default function Students() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "superadmin-students-filtered.csv";
+    link.download = "superadmin-favourite-students.csv";
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -247,17 +268,17 @@ export default function Students() {
             <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2">
               <button
                 type="button"
-                onClick={addSelectedToFavorites}
-                disabled={selectedStudentIds.length === 0}
+                onClick={removeSelectedFromFavorites}
+                disabled={selectedFavoriteStudentIds.length === 0}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FiHeart className="h-4 w-4" />
-                Add Selected to Favourite
+                Remove Selected
               </button>
               <button
                 type="button"
                 onClick={exportFilteredCsv}
-                disabled={filteredRows.length === 0}
+                disabled={filteredFavoriteRows.length === 0}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FiDownload className="h-4 w-4" />
@@ -269,11 +290,12 @@ export default function Students() {
       </section>
 
       <StudentsTable
-        rows={filteredRows}
+        rows={filteredFavoriteRows}
+        title={`Favourite Students (${filteredFavoriteRows.length})`}
         selectable
-        selectedRowIds={selectedStudentIds}
-        onToggleRow={toggleRowSelection}
-        onToggleAll={toggleAllRows}
+        selectedRowIds={selectedFavoriteStudentIds}
+        onToggleRow={toggleFavoriteSelection}
+        onToggleAll={toggleAllFavorites}
       />
     </div>
   );

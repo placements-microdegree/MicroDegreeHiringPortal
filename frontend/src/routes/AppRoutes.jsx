@@ -26,6 +26,7 @@ import InterviewMappedCandidates from "../pages/admin/InterviewMappedCandidates"
 import SuperAdminDashboard from "../pages/superadmin/SuperAdminDashboard";
 import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
 import Students from "../pages/superadmin/Students";
+import Favourites from "../pages/superadmin/Favourites";
 import SuperAdminJobs from "../pages/superadmin/SuperAdminJobs";
 import SuperAdminApplications from "../pages/superadmin/SuperAdminApplications";
 import SuperAdminChecker from "../pages/superadmin/SuperAdminChecker";
@@ -133,6 +134,7 @@ export default function AppRoutes() {
           />
           <Route path="/superadmin/manage-hr" element={<ManageHRAdmins />} />
           <Route path="/superadmin/students" element={<Students />} />
+          <Route path="/superadmin/favourites" element={<Favourites />} />
           <Route path="/superadmin/jobs" element={<SuperAdminJobs />} />
           <Route
             path="/superadmin/applications"
