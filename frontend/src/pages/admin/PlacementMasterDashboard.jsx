@@ -38,7 +38,16 @@ function normalizeDateOnly(value) {
 }
 
 const STATUS_ALIASES = {
-  Interview: "Interview Scheduled",
+  Shortlisted: "Screening call Received",
+  "Resume Screening Rejected": "Resume Not Matched",
+  "Profile Mapped for client": "Mapped to Client",
+  "Interview Scheduled": "Interview scheduled",
+  Interview: "Interview scheduled",
+  "Final Round": "final Round",
+  "Client Rejected": "screening Discolified",
+  Rejected: "screening Discolified",
+  "Position Closed": "Position closed",
+  "Job on hold/ position closed": "Position closed",
   Selected: "Placed",
 };
 
@@ -48,40 +57,64 @@ const STATUS_COLUMNS = APPLICATION_STATUSES.map(
 
 const STATUS_LABELS = {
   Applied: "Applied",
+  "Resume Not Matched": "Resume Not Matched",
+  "Mapped to Client": "Mapped to Client",
   "Screening call Received": "Screening call Received",
-  Shortlisted: "Shortlisted",
-  "Resume Screening Rejected": "Screening Rejected",
-  "Profile Mapped for client": "Mapped to Client",
-  "Interview Scheduled": "Interview Scheduled",
+  "screening Discolified": "screening Discolified",
+  "Interview scheduled": "Interview scheduled",
   "Interview Not Cleared": "Interview Not Cleared",
   "Technical Round": "Technical Round",
-  "Final Round": "Final Round",
+  "final Round": "final Round",
   Placed: "Placed",
-  Rejected: "Rejected",
-  "Position Closed": "Position Closed",
-  "Client Rejected": "Client Rejected",
+  "Job on hold": "Job on hold",
+  "Position closed": "Position closed",
 };
 
+const STATUS_COLORS = {
+  Applied: "#2563eb",
+  "Resume Not Matched": "#dc2626",
+  "Mapped to Client": "#f59e0b",
+  "Screening call Received": "#f59e0b",
+  "screening Discolified": "#dc2626",
+  "Interview scheduled": "#f59e0b",
+  "Technical Round": "#f59e0b",
+  "final Round": "#f59e0b",
+  "Interview Not Cleared": "#dc2626",
+  Placed: "#16a34a",
+  "Job on hold": "#eab308",
+  "Position closed": "#6b7280",
+};
+
+const FUNNEL_FLOW_ORDER = [
+  "Applied",
+  "Resume Not Matched",
+  "Mapped to Client",
+  "Screening call Received",
+  "screening Discolified",
+  "Interview scheduled",
+  "Technical Round",
+  "final Round",
+  "Interview Not Cleared",
+  "Placed",
+];
+
 function getStatusHeaderClasses(status) {
-  const greenStatuses = new Set(["Shortlisted", "Placed"]);
-  const yellowStatuses = new Set([
-    "Applied",
-    "Screening call Received",
-    "Profile Mapped for client",
-    "Interview Scheduled",
-    "Technical Round",
-    "Final Round",
-  ]);
+  const classByStatus = {
+    Applied: "bg-blue-100 text-blue-900",
+    "Resume Not Matched": "bg-red-100 text-red-900",
+    "Mapped to Client": "bg-orange-100 text-orange-900",
+    "Screening call Received": "bg-orange-100 text-orange-900",
+    "screening Discolified": "bg-red-100 text-red-900",
+    "Interview scheduled": "bg-orange-100 text-orange-900",
+    "Technical Round": "bg-orange-100 text-orange-900",
+    "final Round": "bg-orange-100 text-orange-900",
+    "Interview Not Cleared": "bg-red-100 text-red-900",
+    Placed: "bg-green-100 text-green-900",
+    "Job on hold": "bg-yellow-100 text-yellow-900",
+    "Position closed": "bg-slate-200 text-slate-800",
+  };
 
-  if (greenStatuses.has(status)) {
-    return "bg-green-100 text-green-900";
-  }
-
-  if (yellowStatuses.has(status)) {
-    return "bg-yellow-100 text-yellow-900";
-  }
-
-  return "bg-red-100 text-red-900";
+  return classByStatus[status] || "bg-slate-100 text-slate-800";
 }
 
 function createEmptyStatusCounts() {
@@ -90,25 +123,6 @@ function createEmptyStatusCounts() {
     counts[status] = 0;
   });
   return counts;
-}
-
-function buildPieGradient(data) {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
-  if (!total) return "conic-gradient(#e2e8f0 0deg 360deg)";
-
-  let cumulative = 0;
-  const segments = data
-    .filter((item) => item.value > 0)
-    .map((item) => {
-      const start = cumulative;
-      const sweep = (item.value / total) * 360;
-      const end = start + sweep;
-      cumulative = end;
-      return `${item.color} ${start}deg ${end}deg`;
-    });
-
-  if (segments.length === 0) return "conic-gradient(#e2e8f0 0deg 360deg)";
-  return `conic-gradient(${segments.join(", ")})`;
 }
 
 export default function PlacementMasterDashboard() {
@@ -181,7 +195,7 @@ export default function PlacementMasterDashboard() {
         }
 
         if (
-          subStage === "profile mapped for client" ||
+          subStage === "mapped to client" ||
           ["mapped", "interview", "final", "closed"].includes(stage)
         ) {
           row.sharedWithClient += 1;
@@ -244,92 +258,27 @@ export default function PlacementMasterDashboard() {
     );
   }, [filteredRows]);
 
-  const chartData = useMemo(() => {
-    const values = [
-      {
-        label: "Total Applications",
-        value: Number(totals.totalApplications || 0),
-        color: "#f59e0b",
-      },
-      {
-        label: "Applied by Students",
-        value: Number(totals.appliedByStudents || 0),
-        color: "#14b8a6",
-      },
-      {
-        label: "Mapped via Dashboard",
-        value: Number(totals.mappedFromDashboard || 0),
-        color: "#6366f1",
-      },
-      {
-        label: "Shared with Client",
-        value: Number(totals.sharedWithClient || 0),
-        color: "#166534",
-      },
-      {
-        label: "Applied",
-        value: Number(totals.statusTotals?.Applied || 0),
-        color: "#facc15",
-      },
-      {
-        label: "Screening call Received",
-        value: Number(totals.statusTotals?.["Screening call Received"] || 0),
-        color: "#f59e0b",
-      },
-      {
-        label: "Shortlisted",
-        value: Number(totals.statusTotals?.Shortlisted || 0),
-        color: "#22c55e",
-      },
-      {
-        label: "Screening Rejected",
-        value: Number(totals.statusTotals?.["Resume Screening Rejected"] || 0),
-        color: "#f97316",
-      },
-      {
-        label: "Mapped to Client",
-        value: Number(totals.statusTotals?.["Profile Mapped for client"] || 0),
-        color: "#eab308",
-      },
-      {
-        label: "Interview Scheduled",
-        value: Number(totals.statusTotals?.["Interview Scheduled"] || 0),
-        color: "#0ea5e9",
-      },
-      {
-        label: "Interview Not Cleared",
-        value: Number(totals.statusTotals?.["Interview Not Cleared"] || 0),
-        color: "#ef4444",
-      },
-      {
-        label: "Technical Round",
-        value: Number(totals.statusTotals?.["Technical Round"] || 0),
-        color: "#3b82f6",
-      },
-      {
-        label: "Final Round",
-        value: Number(totals.statusTotals?.["Final Round"] || 0),
-        color: "#8b5cf6",
-      },
-      {
-        label: "Placed",
-        value: Number(totals.statusTotals?.Placed || 0),
-        color: "#16a34a",
-      },
-      {
-        label: "Rejected",
-        value: Number(totals.statusTotals?.Rejected || 0),
-        color: "#dc2626",
-      },
-    ];
+  const funnelData = useMemo(() => {
+    const statusTotals = totals.statusTotals || {};
 
-    return values;
+    return FUNNEL_FLOW_ORDER.map((status) => ({
+      label: STATUS_LABELS[status] || status,
+      value:
+        status === "Applied"
+          ? Number(totals.totalApplications || 0)
+          : Number(statusTotals[status] || 0),
+      color: STATUS_COLORS[status] || "#2563eb",
+    }));
   }, [totals]);
 
-  const pieGradient = useMemo(() => buildPieGradient(chartData), [chartData]);
-  const pieTotalValue = useMemo(
-    () => chartData.reduce((sum, item) => sum + item.value, 0),
-    [chartData],
+  const funnelMaxValue = useMemo(
+    () => Math.max(...funnelData.map((item) => item.value), 0),
+    [funnelData],
+  );
+
+  const funnelTotalValue = useMemo(
+    () => funnelData.reduce((sum, item) => sum + item.value, 0),
+    [funnelData],
   );
 
   const exportFilteredTable = () => {
@@ -393,7 +342,7 @@ export default function PlacementMasterDashboard() {
 
     const reportDate = new Date().toLocaleString("en-IN");
     const dateRangeLabel = `${fromDate || "Start"} to ${toDate || "End"}`;
-    const rowsHtml = chartData
+    const rowsHtml = funnelData
       .map(
         (item) => `
           <tr>
@@ -423,7 +372,7 @@ export default function PlacementMasterDashboard() {
       <h1>Placement Distribution Report</h1>
       <p><strong>Generated At:</strong> ${reportDate}</p>
       <p><strong>Date Filter:</strong> ${dateRangeLabel}</p>
-      <p><strong>Scope:</strong> Totals from Total Applications to Rejected</p>
+      <p><strong>Scope:</strong> Pipeline status totals for the current filtered data.</p>
 
       <table>
         <thead>
@@ -436,7 +385,7 @@ export default function PlacementMasterDashboard() {
           ${rowsHtml}
           <tr class="total-row">
             <td>Total Value</td>
-            <td style="text-align:right;">${pieTotalValue}</td>
+            <td style="text-align:right;">${funnelTotalValue}</td>
           </tr>
         </tbody>
       </table>
@@ -683,7 +632,7 @@ export default function PlacementMasterDashboard() {
           <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">
-                Placement Distribution Pie Chart
+                Placement Distribution Funnel Chart
               </h3>
               <div className="flex items-center gap-2">
                 <button
@@ -705,31 +654,50 @@ export default function PlacementMasterDashboard() {
             </div>
 
             <p className="mb-4 text-sm text-slate-600">
-              Data source: filtered totals from Total Applications to Rejected.
+              Data source: filtered pipeline status totals.
             </p>
 
-            <div className="grid gap-6 md:grid-cols-[240px_1fr] md:items-start">
-              <div className="mx-auto">
-                <div
-                  className="relative h-56 w-56 rounded-full"
-                  style={{ background: pieGradient }}
-                >
-                  <div className="absolute inset-10 flex items-center justify-center rounded-full bg-white text-center">
-                    <div>
-                      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Total Value
-                      </div>
-                      <div className="text-2xl font-bold text-slate-900">
-                        {pieTotalValue}
-                      </div>
-                    </div>
+            <div className="grid gap-6 md:grid-cols-[1.1fr_1fr] md:items-start">
+              <div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Total Value: {funnelTotalValue}
+                  </div>
+                  <div className="space-y-2">
+                    {funnelData.map((item) => {
+                      const widthPercent =
+                        funnelMaxValue > 0
+                          ? Math.max(
+                              10,
+                              Math.round((item.value / funnelMaxValue) * 100),
+                            )
+                          : 10;
+
+                      return (
+                        <div key={item.label}>
+                          <div className="mb-1 flex items-center justify-between text-xs font-semibold text-slate-700">
+                            <span>{item.label}</span>
+                            <span>{item.value}</span>
+                          </div>
+                          <div className="flex justify-center">
+                            <div
+                              className="h-7 rounded-md"
+                              style={{
+                                width: `${widthPercent}%`,
+                                backgroundColor: item.color,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
 
               <div className="max-h-72 overflow-y-auto pr-1">
                 <ul className="space-y-2">
-                  {chartData.map((item) => (
+                  {funnelData.map((item) => (
                     <li
                       key={item.label}
                       className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2"

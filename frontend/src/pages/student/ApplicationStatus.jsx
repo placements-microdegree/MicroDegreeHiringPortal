@@ -5,20 +5,28 @@ import { showError } from "../../utils/alerts";
 
 const statusClassMap = {
   Applied: "bg-slate-100 text-slate-700",
+  "Resume Not Matched": "bg-red-100 text-red-700",
+  "Mapped to Client": "bg-blue-100 text-blue-700",
   "Screening call Received": "bg-amber-100 text-amber-700",
-  Shortlisted: "bg-blue-100 text-blue-700",
-  Interview: "bg-orange-100 text-orange-700",
-  "Interview Scheduled": "bg-indigo-100 text-indigo-700",
+  "screening Discolified": "bg-red-100 text-red-700",
+  "Interview scheduled": "bg-blue-100 text-blue-700",
   "Interview Not Cleared": "bg-rose-100 text-rose-700",
-  "Technical Round": "bg-violet-100 text-violet-700",
-  "Final Round": "bg-fuchsia-100 text-fuchsia-700",
-  Selected: "bg-emerald-100 text-emerald-700",
+  "Technical Round": "bg-blue-100 text-blue-700",
+  "final Round": "bg-blue-100 text-blue-700",
   Placed: "bg-emerald-100 text-emerald-700",
-  "Position Closed": "bg-slate-200 text-slate-700",
+  "Job on hold": "bg-red-100 text-red-700",
+  "Position closed": "bg-red-100 text-red-700",
+  // Legacy values rendered in their new equivalents.
+  Shortlisted: "bg-amber-100 text-amber-700",
+  Interview: "bg-blue-100 text-blue-700",
+  "Interview Scheduled": "bg-blue-100 text-blue-700",
+  "Final Round": "bg-blue-100 text-blue-700",
+  Selected: "bg-emerald-100 text-emerald-700",
+  "Position Closed": "bg-red-100 text-red-700",
   Rejected: "bg-red-100 text-red-700",
-  "Resume Screening Rejected": "bg-rose-100 text-rose-700",
-  "Profile Mapped for client": "bg-yellow-100 text-yellow-700",
-  "Client Rejected": "bg-rose-100 text-rose-700",
+  "Resume Screening Rejected": "bg-red-100 text-red-700",
+  "Profile Mapped for client": "bg-blue-100 text-blue-700",
+  "Client Rejected": "bg-red-100 text-red-700",
 };
 
 function formatDate(dateInput) {

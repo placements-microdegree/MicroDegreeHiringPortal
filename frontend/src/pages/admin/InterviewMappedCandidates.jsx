@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiRefreshCw } from "react-icons/fi";
+import { FiDownload, FiRefreshCw } from "react-icons/fi";
 import Loader from "../../components/common/Loader";
 import { listAllApplications } from "../../services/applicationService";
 import { showError } from "../../utils/alerts";
@@ -38,7 +38,7 @@ export default function InterviewMappedCandidates() {
         const status = normalizeLower(app?.sub_stage || app?.status);
         const stage = normalizeLower(app?.stage);
 
-        if (status !== "profile mapped for client" && stage !== "mapped") {
+        if (status !== "mapped to client" && stage !== "mapped") {
           return;
         }
 
@@ -141,6 +141,57 @@ export default function InterviewMappedCandidates() {
     [filteredRows],
   );
 
+  const exportFilteredCsv = () => {
+    if (filteredRows.length === 0) {
+      showError("No filtered data available to export");
+      return;
+    }
+
+    const csvEscape = (value) => {
+      const text = String(value ?? "");
+      if (text.includes('"') || text.includes(",") || text.includes("\n")) {
+        return `"${text.replaceAll('"', '""')}"`;
+      }
+      return text;
+    };
+
+    const headers = [
+      "Email ID",
+      "Student Name",
+      "Contact Number",
+      "Company Name (Mapped to Client)",
+      "Company Count (No. of jobs mapped to client)",
+      "Mapped Dates",
+    ];
+
+    const lines = [headers.map(csvEscape).join(",")];
+
+    filteredRows.forEach((row) => {
+      const values = [
+        row.email || "-",
+        row.studentName || "-",
+        row.contactNumber || "-",
+        Array.isArray(row.companyNames) ? row.companyNames.join(", ") : "-",
+        Number(row.companyCount || 0),
+        Array.isArray(row.mappedDates) ? row.mappedDates.join(", ") : "",
+      ];
+      lines.push(values.map(csvEscape).join(","));
+    });
+
+    const csvContent = `${lines.join("\n")}\n`;
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `interview-mapped-candidates-${fromDate || "all"}-to-${toDate || "all"}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
@@ -162,17 +213,28 @@ export default function InterviewMappedCandidates() {
               and mapped job count.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <FiRefreshCw
-              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={exportFilteredCsv}
+              disabled={filteredRows.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FiDownload className="h-4 w-4" />
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FiRefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </button>
+          </div>
         </div>
       </section>
 
@@ -218,10 +280,10 @@ export default function InterviewMappedCandidates() {
                   Contact Number
                 </th>
                 <th className="border border-slate-300 px-3 py-2 text-left">
-                  Company Name (Profile mapped for client)
+                  Company Name (Mapped to Client)
                 </th>
                 <th className="border border-slate-300 px-3 py-2 text-center">
-                  Company Count (No. of jobs mapped for client)
+                  Company Count (No. of jobs mapped to client)
                 </th>
               </tr>
             </thead>

@@ -6,21 +6,17 @@ const ROLES = {
 
 const APPLICATION_STATUSES = [
   "Applied",
+  "Resume Not Matched",
+  "Mapped to Client",
   "Screening call Received",
-  "Shortlisted",
-  "Interview Scheduled",
-  "Interview Not Cleared",
+  "screening Discolified",
+  "Interview scheduled",
   "Technical Round",
-  "Final Round",
+  "final Round",
+  "Interview Not Cleared",
   "Placed",
-  "Position Closed",
-  "Resume Screening Rejected", // For applications rejected by the system (e.g., ineligible) but not by the admin
-  "Profile Mapped for client",
-  "Client Rejected", // For applications rejected by the client
-  "Rejected", // For applications rejected by the admin
-  // Legacy values kept for backward compatibility with existing rows
-  "Interview",
-  "Selected",
+  "Job on hold",
+  "Position closed",
 ];
 
 module.exports = {

@@ -11,35 +11,41 @@ import { listJobs } from "../../services/jobService";
 const analyticsMeta = [
   { key: "totalJobs", label: "Total Jobs Available" },
   { key: "totalApplications", label: "Applications Submitted" },
-  { key: "shortlisted", label: "Shortlisted" },
-  { key: "interview", label: "Interview Scheduled" },
-  { key: "selected", label: "Selected" },
+  { key: "mappedToClient", label: "Mapped to Client" },
+  { key: "interviewScheduled", label: "Interview scheduled" },
+  { key: "placed", label: "Placed" },
 ];
 
 const statusClass = {
   Applied: "bg-slate-100 text-slate-700",
+  "Resume Not Matched": "bg-red-100 text-red-700",
+  "Mapped to Client": "bg-blue-100 text-blue-700",
   "Screening call Received": "bg-amber-100 text-amber-700",
-  Shortlisted: "bg-blue-100 text-blue-700",
-  Interview: "bg-orange-100 text-orange-700",
-  "Interview Scheduled": "bg-indigo-100 text-indigo-700",
+  "screening Discolified": "bg-red-100 text-red-700",
+  "Interview scheduled": "bg-blue-100 text-blue-700",
   "Interview Not Cleared": "bg-rose-100 text-rose-700",
-  "Technical Round": "bg-violet-100 text-violet-700",
-  "Final Round": "bg-fuchsia-100 text-fuchsia-700",
-  Selected: "bg-emerald-100 text-emerald-700",
+  "Technical Round": "bg-blue-100 text-blue-700",
+  "final Round": "bg-blue-100 text-blue-700",
   Placed: "bg-emerald-100 text-emerald-700",
-  "Position Closed": "bg-slate-200 text-slate-700",
-  Rejected: "bg-red-100 text-red-700",
-  "Resume Screening Rejected": "bg-rose-100 text-rose-700",
-  "Profile Mapped for client": "bg-yellow-100 text-yellow-700",
-  "Client Rejected": "bg-rose-100 text-rose-700",
+  "Job on hold": "bg-red-100 text-red-700",
+  "Position closed": "bg-red-100 text-red-700",
 };
 
 function normalizeApplicationStatus(status) {
   const value = String(status || "").trim();
   if (!value) return "Applied";
-  if (value === "ResumeScreeningRejected") return "Resume Screening Rejected";
+  if (value === "ResumeScreeningRejected") return "Resume Not Matched";
   if (value === "Selected") return "Placed";
-  if (value === "Interview") return "Interview Scheduled";
+  if (value === "Interview") return "Interview scheduled";
+  if (value === "Shortlisted") return "Screening call Received";
+  if (value === "Resume Screening Rejected") return "Resume Not Matched";
+  if (value === "Profile Mapped for client") return "Mapped to Client";
+  if (value === "Interview Scheduled") return "Interview scheduled";
+  if (value === "Final Round") return "final Round";
+  if (value === "Client Rejected") return "screening Discolified";
+  if (value === "Rejected") return "screening Discolified";
+  if (value === "Position Closed") return "Position closed";
+  if (value === "Job on hold/ position closed") return "Position closed";
   return value;
 }
 
@@ -130,14 +136,18 @@ export default function StudentDashboard() {
     () => ({
       totalJobs: analytics.totalJobs,
       totalApplications: analytics.totalApplications,
-      shortlisted: Number(analytics.statusCounts?.Shortlisted || 0),
-      interview: Number(
-        (analytics.statusCounts?.Interview || 0) +
+      mappedToClient: Number(
+        (analytics.statusCounts?.["Mapped to Client"] || 0) +
+          (analytics.statusCounts?.["Profile Mapped for client"] || 0),
+      ),
+      interviewScheduled: Number(
+        (analytics.statusCounts?.["Interview scheduled"] || 0) +
+          (analytics.statusCounts?.Interview || 0) +
           (analytics.statusCounts?.["Interview Scheduled"] || 0),
       ),
-      selected: Number(
-        (analytics.statusCounts?.Selected || 0) +
-          (analytics.statusCounts?.Placed || 0),
+      placed: Number(
+        (analytics.statusCounts?.Placed || 0) +
+          (analytics.statusCounts?.Selected || 0),
       ),
     }),
     [analytics],

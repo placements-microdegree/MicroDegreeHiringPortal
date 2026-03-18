@@ -73,24 +73,34 @@ function formatPostedDate(value) {
 }
 
 function getStageFromStatus(status) {
-  const value = String(status || "").trim();
+  const rawValue = String(status || "").trim();
+  const statusAliases = {
+    Shortlisted: "Screening call Received",
+    "Resume Screening Rejected": "Resume Not Matched",
+    "Profile Mapped for client": "Mapped to Client",
+    "Interview Scheduled": "Interview scheduled",
+    Interview: "Interview scheduled",
+    "Final Round": "final Round",
+    "Client Rejected": "screening Discolified",
+    Rejected: "screening Discolified",
+    "Position Closed": "Position closed",
+    "Job on hold/ position closed": "Position closed",
+    Selected: "Placed",
+  };
+  const value = statusAliases[rawValue] || rawValue;
   const stageByStatus = {
     Applied: "Applied",
+    "Resume Not Matched": "Screening",
+    "Mapped to Client": "Mapped",
     "Screening call Received": "Screening",
-    Shortlisted: "Screening",
-    "Resume Screening Rejected": "Screening",
-    "Profile Mapped for client": "Mapped",
-    "Interview Scheduled": "Interview",
+    "screening Discolified": "Screening",
+    "Interview scheduled": "Interview",
     "Interview Not Cleared": "Interview",
     "Technical Round": "Interview",
-    "Final Round": "Final",
+    "final Round": "Final",
     Placed: "Closed",
-    Rejected: "Closed",
-    "Position Closed": "Closed",
-    "Client Rejected": "Closed",
-    // Legacy compatibility
-    Interview: "Interview",
-    Selected: "Closed",
+    "Job on hold": "Closed",
+    "Position closed": "Closed",
   };
 
   return stageByStatus[value] || "Applied";

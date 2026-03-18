@@ -39,55 +39,50 @@ const STATUS_META = {
     Icon: FiClock,
     cls: "bg-amber-50   text-amber-700   border-amber-200",
   },
+  "Resume Not Matched": {
+    label: "Resume Not Matched",
+    Icon: FiXCircle,
+    cls: "bg-red-50 text-red-700 border-red-200",
+  },
+  "Mapped to Client": {
+    label: "Mapped to Client",
+    Icon: FiAlertCircle,
+    cls: "bg-blue-50 text-blue-700 border-blue-200",
+  },
   "Screening call Received": {
     label: "Screening call Received",
     Icon: FiAlertCircle,
-    cls: "bg-amber-50 text-amber-700 border-amber-200",
+    cls: "bg-orange-50 text-orange-700 border-orange-200",
   },
-  Reviewed: {
-    label: "Reviewed",
-    Icon: FiAlertCircle,
-    cls: "bg-blue-50    text-blue-700    border-blue-200",
-  },
-  Accepted: {
-    label: "Accepted",
-    Icon: FiCheckCircle,
-    cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
-  Rejected: {
-    label: "Rejected",
+  "screening Discolified": {
+    label: "screening Discolified",
     Icon: FiXCircle,
-    cls: "bg-red-50     text-red-700     border-red-200",
-  },
-  Shortlisted: {
-    label: "Shortlisted",
-    Icon: FiStar,
-    cls: "bg-purple-50  text-purple-700  border-purple-200",
+    cls: "bg-red-50 text-red-700 border-red-200",
   },
   Interview: {
-    label: "Interview Scheduled",
+    label: "Interview scheduled",
     Icon: FiCalendar,
-    cls: "bg-indigo-50  text-indigo-700  border-indigo-200",
+    cls: "bg-blue-50 text-blue-700 border-blue-200",
   },
-  "Interview Scheduled": {
-    label: "Interview Scheduled",
+  "Interview scheduled": {
+    label: "Interview scheduled",
     Icon: FiCalendar,
-    cls: "bg-indigo-50  text-indigo-700  border-indigo-200",
+    cls: "bg-blue-50 text-blue-700 border-blue-200",
   },
   "Interview Not Cleared": {
     label: "Interview Not Cleared",
     Icon: FiXCircle,
-    cls: "bg-rose-50 text-rose-700 border-rose-200",
+    cls: "bg-red-50 text-red-700 border-red-200",
   },
   "Technical Round": {
     label: "Technical Round",
     Icon: FiAlertCircle,
-    cls: "bg-violet-50 text-violet-700 border-violet-200",
+    cls: "bg-blue-50 text-blue-700 border-blue-200",
   },
-  "Final Round": {
-    label: "Final Round",
+  "final Round": {
+    label: "final Round",
     Icon: FiAward,
-    cls: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200",
+    cls: "bg-blue-50 text-blue-700 border-blue-200",
   },
   Selected: {
     label: "Selected",
@@ -99,25 +94,15 @@ const STATUS_META = {
     Icon: FiCheckCircle,
     cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
-  "Position Closed": {
-    label: "Position Closed",
+  "Job on hold": {
+    label: "Job on hold",
     Icon: FiXCircle,
-    cls: "bg-slate-100 text-slate-700 border-slate-200",
+    cls: "bg-red-50 text-red-700 border-red-200",
   },
-  "Resume Screening Rejected": {
-    label: "Resume Screening Rejected",
+  "Position closed": {
+    label: "Position closed",
     Icon: FiXCircle,
-    cls: "bg-rose-50 text-rose-700 border-rose-200",
-  },
-  "Profile Mapped for client": {
-    label: "Profile Mapped for client",
-    Icon: FiAlertCircle,
-    cls: "bg-yellow-50 text-yellow-700 border-yellow-200",
-  },
-  "Client Rejected": {
-    label: "Client Rejected",
-    Icon: FiXCircle,
-    cls: "bg-rose-50 text-rose-700 border-rose-200",
+    cls: "bg-red-50 text-red-700 border-red-200",
   },
 };
 
@@ -125,23 +110,37 @@ function normalizeApplicationStatus(status) {
   const value = String(status || "").trim();
   if (!value) return "Applied";
 
-  if (value === "ResumeScreeningRejected") return "Resume Screening Rejected";
-  if (value.toLowerCase() === "screening call received")
-    return "Screening call Received";
-  if (value.toLowerCase() === "reviewed") return "Reviewed";
-  if (value.toLowerCase() === "accepted") return "Accepted";
-  if (value.toLowerCase() === "rejected") return "Rejected";
-  if (value.toLowerCase() === "shortlisted") return "Shortlisted";
-  if (value.toLowerCase() === "interview") return "Interview";
-  if (value.toLowerCase() === "interview scheduled")
-    return "Interview Scheduled";
-  if (value.toLowerCase() === "interview not cleared")
-    return "Interview Not Cleared";
-  if (value.toLowerCase() === "technical round") return "Technical Round";
-  if (value.toLowerCase() === "final round") return "Final Round";
-  if (value.toLowerCase() === "selected") return "Selected";
-  if (value.toLowerCase() === "placed") return "Placed";
-  if (value.toLowerCase() === "position closed") return "Position Closed";
+  const aliases = {
+    ResumeScreeningRejected: "Resume Not Matched",
+    Shortlisted: "Screening call Received",
+    "Resume Screening Rejected": "Resume Not Matched",
+    "Profile Mapped for client": "Mapped to Client",
+    "Interview Scheduled": "Interview scheduled",
+    Interview: "Interview scheduled",
+    "Final Round": "final Round",
+    "Client Rejected": "screening Discolified",
+    Rejected: "screening Discolified",
+    "Position Closed": "Position closed",
+    "Job on hold/ position closed": "Position closed",
+    Selected: "Placed",
+  };
+
+  if (aliases[value]) return aliases[value];
+
+  const lowered = value.toLowerCase();
+  if (lowered === "screening call received") return "Screening call Received";
+  if (lowered === "resume not matched") return "Resume Not Matched";
+  if (lowered === "mapped to client") return "Mapped to Client";
+  if (lowered === "screeing discolified") return "screening Discolified";
+  if (lowered === "screening discolified") return "screening Discolified";
+  if (lowered === "interview scheduled") return "Interview scheduled";
+  if (lowered === "interview not cleared") return "Interview Not Cleared";
+  if (lowered === "technical round") return "Technical Round";
+  if (lowered === "final round") return "final Round";
+  if (lowered === "placed") return "Placed";
+  if (lowered === "job on hold") return "Job on hold";
+  if (lowered === "position closed") return "Position closed";
+  if (lowered === "job on hold/ position closed") return "Position closed";
 
   return value;
 }
@@ -177,22 +176,22 @@ function StatsBar({ jobs, apps }) {
       bg: "bg-violet-50",
     },
     {
-      label: "Shortlisted",
-      value: statuses.filter((s) => s === "shortlisted").length,
+      label: "Mapped to Client",
+      value: statuses.filter((s) => s === "mapped to client").length,
       icon: FiStar,
       color: "text-amber-600",
       bg: "bg-amber-50",
     },
     {
-      label: "Interview Scheduled",
+      label: "Interview scheduled",
       value: statuses.filter((s) => s === "interview scheduled").length,
       icon: FiCalendar,
       color: "text-indigo-600",
       bg: "bg-indigo-50",
     },
     {
-      label: "Selected",
-      value: statuses.filter((s) => s === "selected" || s === "placed").length,
+      label: "Placed",
+      value: statuses.filter((s) => s === "placed" || s === "selected").length,
       icon: FiAward,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
