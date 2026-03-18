@@ -11,6 +11,8 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
   const [draft, setDraft] = useState(savedComment ?? "");
   const [draft2, setDraft2] = useState(savedComment2 ?? "");
   const [saving, setSaving] = useState(false);
+  const [expandHrComment, setExpandHrComment] = useState(false);
+  const [expandStudentComment, setExpandStudentComment] = useState(false);
 
   // Keep draft in sync if parent refreshes and savedComment changes
   // but only when we're NOT currently editing (don't overwrite user's typing)
@@ -18,6 +20,8 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
     if (!isEditing) {
       setDraft(savedComment ?? "");
       setDraft2(savedComment2 ?? "");
+      setExpandHrComment(false);
+      setExpandStudentComment(false);
     }
   }, [savedComment, savedComment2, isEditing]);
 
@@ -91,6 +95,48 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
     );
   }
 
+  const renderTextBlock = ({
+    value,
+    expanded,
+    onToggle,
+    emptyLabel = "No comment",
+  }) => {
+    const text = String(value || "").trim();
+    if (!text) {
+      return <p className="text-sm italic text-slate-400">{emptyLabel}</p>;
+    }
+
+    const showToggle = text.length > 140 || text.includes("\n");
+
+    return (
+      <div className="space-y-1">
+        <p
+          className={`whitespace-pre-wrap text-sm text-slate-700 ${expanded ? "" : "overflow-hidden"}`}
+          style={
+            expanded
+              ? undefined
+              : {
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                }
+          }
+        >
+          {text}
+        </p>
+        {showToggle ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            className="text-xs font-semibold text-primary hover:text-primary/80"
+          >
+            {expanded ? "Read less" : "Read more"}
+          </button>
+        ) : null}
+      </div>
+    );
+  };
+
   // ── Display mode ────────────────────────────────────────────────────────────
   return (
     <div className="group flex min-w-[200px] items-start justify-between gap-2">
@@ -98,23 +144,19 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           HR Comment
         </p>
-        {savedComment ? (
-          <p className="whitespace-pre-wrap text-sm text-slate-700">
-            {savedComment}
-          </p>
-        ) : (
-          <p className="text-sm italic text-slate-400">No comment</p>
-        )}
+        {renderTextBlock({
+          value: savedComment,
+          expanded: expandHrComment,
+          onToggle: () => setExpandHrComment((prev) => !prev),
+        })}
         <p className="pt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Comment for student
         </p>
-        {savedComment2 ? (
-          <p className="whitespace-pre-wrap text-sm text-slate-700">
-            {savedComment2}
-          </p>
-        ) : (
-          <p className="text-sm italic text-slate-400">No comment</p>
-        )}
+        {renderTextBlock({
+          value: savedComment2,
+          expanded: expandStudentComment,
+          onToggle: () => setExpandStudentComment((prev) => !prev),
+        })}
       </div>
       <button
         type="button"

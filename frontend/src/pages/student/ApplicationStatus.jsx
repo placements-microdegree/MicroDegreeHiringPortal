@@ -31,6 +31,7 @@ function formatDate(dateInput) {
 export default function ApplicationStatus() {
   const [rows, setRows] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedComments, setExpandedComments] = useState({});
 
   const refresh = async () => {
     setIsLoading(true);
@@ -70,6 +71,10 @@ export default function ApplicationStatus() {
       const status = row?.sub_stage || row?.status || "Applied";
       const statusClass =
         statusClassMap[status] || "bg-slate-100 text-slate-700";
+      const commentText = String(row?.hr_comment_2 || "").trim();
+      const isExpanded = Boolean(expandedComments[row.id]);
+      const showCommentToggle =
+        commentText.length > 140 || commentText.includes("\n");
 
       return (
         <tr key={row.id} className="border-t border-slate-200">
@@ -90,7 +95,40 @@ export default function ApplicationStatus() {
             </span>
           </td>
           <td className="px-4 py-3 text-slate-700">
-            {row?.hr_comment_2 || "-"}
+            {commentText ? (
+              <div className="space-y-1">
+                <p
+                  className={`whitespace-pre-wrap ${isExpanded ? "" : "overflow-hidden"}`}
+                  style={
+                    isExpanded
+                      ? undefined
+                      : {
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                        }
+                  }
+                >
+                  {commentText}
+                </p>
+                {showCommentToggle ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedComments((prev) => ({
+                        ...prev,
+                        [row.id]: !prev[row.id],
+                      }))
+                    }
+                    className="text-xs font-semibold text-primary hover:text-primary/80"
+                  >
+                    {isExpanded ? "Read less" : "Read more"}
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              "-"
+            )}
           </td>
         </tr>
       );

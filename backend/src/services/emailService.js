@@ -151,11 +151,7 @@ function buildJobEmailHtml(job) {
                   <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">${skills}</p>
                 </div>
 
-                <!-- Description -->
-                <div style="margin-bottom:28px;">
-                  <p style="margin:0 0 8px;font-size:13px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Job Description</p>
-                  <p style="margin:0;font-size:14px;color:#374151;line-height:1.6;">${job.description}</p>
-                </div>
+                
 
                 <!-- CTA Button -->
                 <table width="100%" cellpadding="0" cellspacing="0">
