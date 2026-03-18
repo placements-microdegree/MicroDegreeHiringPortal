@@ -18,6 +18,7 @@ const analyticsMeta = [
 
 const statusClass = {
   Applied: "bg-slate-100 text-slate-700",
+  "Screening call Received": "bg-amber-100 text-amber-700",
   Shortlisted: "bg-blue-100 text-blue-700",
   Interview: "bg-orange-100 text-orange-700",
   "Interview Scheduled": "bg-indigo-100 text-indigo-700",

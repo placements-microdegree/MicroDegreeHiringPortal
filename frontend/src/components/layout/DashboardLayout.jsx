@@ -39,6 +39,11 @@ const STATUS_META = {
     Icon: FiClock,
     cls: "bg-amber-50   text-amber-700   border-amber-200",
   },
+  "Screening call Received": {
+    label: "Screening call Received",
+    Icon: FiAlertCircle,
+    cls: "bg-amber-50 text-amber-700 border-amber-200",
+  },
   Reviewed: {
     label: "Reviewed",
     Icon: FiAlertCircle,
@@ -121,6 +126,8 @@ function normalizeApplicationStatus(status) {
   if (!value) return "Applied";
 
   if (value === "ResumeScreeningRejected") return "Resume Screening Rejected";
+  if (value.toLowerCase() === "screening call received")
+    return "Screening call Received";
   if (value.toLowerCase() === "reviewed") return "Reviewed";
   if (value.toLowerCase() === "accepted") return "Accepted";
   if (value.toLowerCase() === "rejected") return "Rejected";

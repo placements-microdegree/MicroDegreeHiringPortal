@@ -25,6 +25,7 @@ const APPLICATIONS_ADMIN_SELECT = `
   jd_confirmed,
   selected_resume_url,
   save_for_future,
+  student_concern,
   hr_comment,
   hr_comment_2,
   hr_comment_type,
@@ -69,6 +70,7 @@ function normalizePipelineFromStatus(inputStatus, inputStage, inputSubStage) {
 
   const stageByStatus = {
     Applied: "Applied",
+    "Screening call Received": "Screening",
     Shortlisted: "Screening",
     "Resume Screening Rejected": "Screening",
     "Profile Mapped for client": "Mapped",
@@ -85,10 +87,13 @@ function normalizePipelineFromStatus(inputStatus, inputStage, inputSubStage) {
     Selected: "Closed",
   };
 
+  const mappedStage = stageByStatus[normalizedStatus] || null;
+
   return {
     status: normalizedStatus,
     sub_stage: normalizedStatus,
-    stage: inputStage || stageByStatus[normalizedStatus] || "Applied",
+    // Prefer canonical stage from status to satisfy DB stage/sub_stage constraints.
+    stage: mappedStage || inputStage || "Applied",
   };
 }
 
@@ -128,6 +133,7 @@ function normalizeApplicationForAdminView(row) {
     jd_confirmed: row.jd_confirmed,
     selected_resume_url: row.selected_resume_url,
     save_for_future: row.save_for_future,
+    student_concern: row.student_concern ?? null,
     hr_comment: hrComment,
     hr_comment_2: row.hr_comment_2 ?? null,
     hr_comment_type: row.hr_comment_type || "Internal",
@@ -334,6 +340,7 @@ async function createApplication({ payload, jwt }) {
         jd_confirmed: jdConfirmed,
         selected_resume_url: selectedResumeUrl,
         save_for_future: saveForFuture,
+        student_concern: toOptionalText(payload.studentConcern),
       })
       .select("*")
       .single();

@@ -48,6 +48,7 @@ const STATUS_COLUMNS = APPLICATION_STATUSES.map(
 
 const STATUS_LABELS = {
   Applied: "Applied",
+  "Screening call Received": "Screening call Received",
   Shortlisted: "Shortlisted",
   "Resume Screening Rejected": "Screening Rejected",
   "Profile Mapped for client": "Mapped to Client",
@@ -65,6 +66,7 @@ function getStatusHeaderClasses(status) {
   const greenStatuses = new Set(["Shortlisted", "Placed"]);
   const yellowStatuses = new Set([
     "Applied",
+    "Screening call Received",
     "Profile Mapped for client",
     "Interview Scheduled",
     "Technical Round",
@@ -268,6 +270,11 @@ export default function PlacementMasterDashboard() {
         label: "Applied",
         value: Number(totals.statusTotals?.Applied || 0),
         color: "#facc15",
+      },
+      {
+        label: "Screening call Received",
+        value: Number(totals.statusTotals?.["Screening call Received"] || 0),
+        color: "#f59e0b",
       },
       {
         label: "Shortlisted",

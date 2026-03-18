@@ -76,6 +76,7 @@ function getStageFromStatus(status) {
   const value = String(status || "").trim();
   const stageByStatus = {
     Applied: "Applied",
+    "Screening call Received": "Screening",
     Shortlisted: "Screening",
     "Resume Screening Rejected": "Screening",
     "Profile Mapped for client": "Mapped",
@@ -152,6 +153,7 @@ function mapApplicationRow(row, jobsById) {
     jobTitle,
     hr_comment: row.hr_comment ?? null,
     hr_comment_2: row.hr_comment_2 ?? null,
+    student_concern: row.student_concern ?? null,
     stage: row.stage || getStageFromStatus(row.sub_stage || row.status),
     sub_stage: row.sub_stage || row.status || "Applied",
   };

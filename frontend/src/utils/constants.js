@@ -8,6 +8,7 @@ export const SKILLS = ["DevOps", "AWS", "Azure", "React", "Node", "MongoDB"];
 
 export const APPLICATION_STATUSES = [
   "Applied",
+  "Screening call Received",
   "Shortlisted",
   "Interview Scheduled",
   "Interview Not Cleared",

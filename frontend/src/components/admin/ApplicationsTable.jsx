@@ -231,6 +231,7 @@ export default function ApplicationsTable({
       "Notice Period",
       "HR Comment",
       "Comment for student",
+      "Student Concern",
       "Resume",
     ];
 
@@ -267,6 +268,7 @@ export default function ApplicationsTable({
         r.noticePeriod || "Not working / Immediately available",
         r.hr_comment ?? "",
         r.hr_comment_2 ?? "",
+        r.student_concern ?? "",
         getResumeExportValue(r),
       ];
 
@@ -322,13 +324,16 @@ export default function ApplicationsTable({
               <th className="px-4 py-3 whitespace-nowrap min-w-[220px]">
                 HR Comment
               </th>
+              <th className="px-4 py-3 whitespace-nowrap min-w-[220px]">
+                Student Concern
+              </th>
               <th className="px-4 py-3 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-slate-600" colSpan={8}>
+                <td className="px-4 py-4 text-slate-600" colSpan={9}>
                   No applications yet.
                 </td>
               </tr>
@@ -386,6 +391,15 @@ export default function ApplicationsTable({
                       savedComment2={r.hr_comment_2 ?? ""}
                       onSave={onCommentChange}
                     />
+                  </td>
+                  <td className="px-4 py-3 text-slate-700">
+                    {r.student_concern ? (
+                      <p className="min-w-[220px] whitespace-pre-wrap break-words text-sm text-slate-700">
+                        {r.student_concern}
+                      </p>
+                    ) : (
+                      <span className="text-sm italic text-slate-400">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <button

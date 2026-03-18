@@ -6,6 +6,7 @@ const ROLES = {
 
 const APPLICATION_STATUSES = [
   "Applied",
+  "Screening call Received",
   "Shortlisted",
   "Interview Scheduled",
   "Interview Not Cleared",
