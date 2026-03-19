@@ -316,7 +316,11 @@ async function createJob({ payload, actor, jwt }) {
 
   await notificationService.createBroadcastNotification({
     title: "New Job Posted",
-    message: `New job "${data.title}" has been posted`,
+    message:
+      `New job "${data.title}" has been posted. ` +
+      `Company: ${data.company || "N/A"}. ` +
+      `Role: ${data.title || "N/A"}. ` +
+      `Experience: ${data.experience || "N/A"}.`,
     type: "job_posted",
     jwt,
   });

@@ -26,3 +26,9 @@ export async function markNotificationRead(notificationId) {
   });
   return data.notification || null;
 }
+
+export async function markAllNotificationsRead() {
+  await request("/api/notifications/read-all", {
+    method: "PATCH",
+  });
+}

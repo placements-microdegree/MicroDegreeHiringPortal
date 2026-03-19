@@ -20,4 +20,11 @@ router.patch(
   notificationController.markRead,
 );
 
+router.patch(
+  "/read-all",
+  verifyToken,
+  authorizeRole([ROLES.STUDENT]),
+  notificationController.markAllRead,
+);
+
 module.exports = router;

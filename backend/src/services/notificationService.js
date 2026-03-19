@@ -88,7 +88,54 @@ async function listNotificationsByUser({ userId, jwt, limit = 50 }) {
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, safeLimit);
 
-  return merged;
+  const jobTitleRegex = /"([^"]+)"/;
+  const jobTitles = [
+    ...new Set(
+      merged
+        .filter(
+          (item) => String(item?.type || "").toLowerCase() === "job_posted",
+        )
+        .map((item) => {
+          const message = String(item?.message || "");
+          const match = jobTitleRegex.exec(message);
+          return String(match?.[1] || "").trim();
+        })
+        .filter(Boolean),
+    ),
+  ];
+
+  let jobByTitle = new Map();
+  if (jobTitles.length > 0) {
+    const { data: jobs, error: jobsError } = await supabase
+      .from("jobs")
+      .select("title, company, experience, created_at")
+      .in("title", jobTitles)
+      .order("created_at", { ascending: false });
+
+    if (jobsError) throw jobsError;
+
+    jobByTitle = new Map(
+      (jobs || []).map((job) => [String(job.title || "").trim(), job]),
+    );
+  }
+
+  return merged.map((item) => {
+    if (String(item?.type || "").toLowerCase() !== "job_posted") {
+      return item;
+    }
+
+    const message = String(item?.message || "");
+    const match = jobTitleRegex.exec(message);
+    const inferredRole = String(match?.[1] || "").trim() || null;
+    const job = inferredRole ? jobByTitle.get(inferredRole) : null;
+
+    return {
+      ...item,
+      job_role: inferredRole || null,
+      job_company: job?.company || null,
+      job_experience: job?.experience || null,
+    };
+  });
 }
 
 /**
@@ -144,8 +191,46 @@ async function markNotificationAsRead({ notificationId, userId, jwt }) {
   return data;
 }
 
+async function markAllNotificationsAsRead({ userId, jwt }) {
+  const supabase = getWriteClient(jwt);
+
+  const { data: broadcastRows, error: broadcastError } = await supabase
+    .from("notifications")
+    .select("id")
+    .is("user_id", null);
+  if (broadcastError) throw broadcastError;
+
+  const broadcastIds = (broadcastRows || [])
+    .map((row) => row.id)
+    .filter(Boolean);
+  if (broadcastIds.length > 0) {
+    const readRows = broadcastIds.map((notificationId) => ({
+      notification_id: notificationId,
+      user_id: userId,
+    }));
+
+    const { error: readInsertError } = await supabase
+      .from("notification_reads")
+      .upsert(readRows, {
+        onConflict: "notification_id,user_id",
+        ignoreDuplicates: true,
+      });
+    if (readInsertError) throw readInsertError;
+  }
+
+  const { error: personalUpdateError } = await supabase
+    .from("notifications")
+    .update({ is_read: true })
+    .eq("user_id", userId)
+    .eq("is_read", false);
+  if (personalUpdateError) throw personalUpdateError;
+
+  return { success: true };
+}
+
 module.exports = {
   createBroadcastNotification,
   listNotificationsByUser,
   markNotificationAsRead,
+  markAllNotificationsAsRead,
 };

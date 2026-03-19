@@ -26,7 +26,21 @@ async function markRead(req, res, next) {
   }
 }
 
+async function markAllRead(req, res, next) {
+  try {
+    const result = await notificationService.markAllNotificationsAsRead({
+      userId: req.user.id,
+      jwt: req.user.jwt,
+    });
+
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   myNotifications,
   markRead,
+  markAllRead,
 };

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { FiBell } from "react-icons/fi";
 import {
   listNotifications,
+  markAllNotificationsRead,
   markNotificationRead,
 } from "../../services/notificationService";
 
@@ -29,6 +30,30 @@ function isRead(notification) {
   return Boolean(notification?.isRead);
 }
 
+function parseJobInfo(notification) {
+  const message = String(notification?.message || "");
+  const roleRegex = /Role:\s*([^.]+)/i;
+  const companyRegex = /Company:\s*([^.]+)/i;
+  const experienceRegex = /Experience:\s*([^.]+)/i;
+
+  const roleFromMessage = (roleRegex.exec(message)?.[1] || "").trim();
+  const companyFromMessage = (companyRegex.exec(message)?.[1] || "").trim();
+  const expFromMessage = (experienceRegex.exec(message)?.[1] || "").trim();
+
+  return {
+    role:
+      String(notification?.job_role || "").trim() || roleFromMessage || null,
+    company:
+      String(notification?.job_company || "").trim() ||
+      companyFromMessage ||
+      null,
+    experience:
+      String(notification?.job_experience || "").trim() ||
+      expFromMessage ||
+      null,
+  };
+}
+
 export default function NotificationBell() {
   const navigate = useNavigate();
   const rootRef = useRef(null);
@@ -37,6 +62,7 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [markingId, setMarkingId] = useState("");
+  const [markingAll, setMarkingAll] = useState(false);
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !isRead(item)).length,
@@ -114,6 +140,110 @@ export default function NotificationBell() {
     navigate("/student/jobs");
   };
 
+  const onMarkAllRead = async () => {
+    if (unreadCount === 0 || markingAll) return;
+
+    setMarkingAll(true);
+    setNotifications((prev) =>
+      prev.map((item) => ({ ...item, is_read: true, isRead: true })),
+    );
+
+    try {
+      await markAllNotificationsRead();
+    } catch {
+      refreshNotifications({ silent: true });
+    } finally {
+      setMarkingAll(false);
+    }
+  };
+
+  let dropdownBody = (
+    <ul className="space-y-2">
+      {notifications.map((notification) => {
+        const rowRead = isRead(notification);
+        const jobInfo = parseJobInfo(notification);
+        return (
+          <li key={notification.id}>
+            <button
+              type="button"
+              onClick={() => onNotificationClick(notification)}
+              className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                rowRead
+                  ? "border-slate-200 bg-white hover:bg-slate-50"
+                  : "border-blue-100 bg-blue-50/70 hover:bg-blue-50"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="text-sm font-semibold text-slate-900">
+                  {notification.title || "Notification"}
+                </div>
+                <span className="shrink-0 text-[11px] text-slate-500">
+                  {formatRelativeTime(notification.created_at)}
+                </span>
+              </div>
+              <div className="mt-1 text-sm text-slate-600">
+                {notification.message || "You have a new update."}
+              </div>
+              {(jobInfo.company || jobInfo.role || jobInfo.experience) && (
+                <div className="mt-2 rounded-lg bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
+                  {jobInfo.company ? (
+                    <div>
+                      <span className="font-semibold text-slate-900">
+                        Company:
+                      </span>{" "}
+                      {jobInfo.company}
+                    </div>
+                  ) : null}
+                  {jobInfo.role ? (
+                    <div>
+                      <span className="font-semibold text-slate-900">
+                        Role:
+                      </span>{" "}
+                      {jobInfo.role}
+                    </div>
+                  ) : null}
+                  {jobInfo.experience ? (
+                    <div>
+                      <span className="font-semibold text-slate-900">
+                        Experience:
+                      </span>{" "}
+                      {jobInfo.experience}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+              {markingId === notification.id && (
+                <div className="mt-1 text-xs text-primary">
+                  Marking as read...
+                </div>
+              )}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  if (loading) {
+    dropdownBody = (
+      <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-600">
+        Loading notifications...
+      </div>
+    );
+  } else if (errorMessage) {
+    dropdownBody = (
+      <div className="rounded-xl bg-red-50 px-3 py-4 text-sm text-red-700">
+        {errorMessage}
+      </div>
+    );
+  } else if (notifications.length === 0) {
+    dropdownBody = (
+      <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-600">
+        No notifications yet.
+      </div>
+    );
+  }
+
   return (
     <div ref={rootRef} className="relative">
       {/* Bell button */}
@@ -156,64 +286,24 @@ export default function NotificationBell() {
           <h3 className="text-sm font-semibold text-slate-900">
             Notifications
           </h3>
-          {unreadCount > 0 && (
-            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-              {unreadCount} unread
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                {unreadCount} unread
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onMarkAllRead}
+              disabled={unreadCount === 0 || markingAll}
+              className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {markingAll ? "Marking..." : "Mark all as read"}
+            </button>
+          </div>
         </div>
 
-        <div className="max-h-80 overflow-y-auto pr-1">
-          {loading ? (
-            <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-600">
-              Loading notifications...
-            </div>
-          ) : errorMessage ? (
-            <div className="rounded-xl bg-red-50 px-3 py-4 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="rounded-xl bg-slate-50 px-3 py-4 text-sm text-slate-600">
-              No notifications yet.
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {notifications.map((notification) => {
-                const rowRead = isRead(notification);
-                return (
-                  <li key={notification.id}>
-                    <button
-                      type="button"
-                      onClick={() => onNotificationClick(notification)}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
-                        rowRead
-                          ? "border-slate-200 bg-white hover:bg-slate-50"
-                          : "border-blue-100 bg-blue-50/70 hover:bg-blue-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-sm font-semibold text-slate-900">
-                          {notification.title || "Notification"}
-                        </div>
-                        <span className="shrink-0 text-[11px] text-slate-500">
-                          {formatRelativeTime(notification.created_at)}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-sm text-slate-600">
-                        {notification.message || "You have a new update."}
-                      </div>
-                      {markingId === notification.id && (
-                        <div className="mt-1 text-xs text-primary">
-                          Marking as read...
-                        </div>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <div className="max-h-80 overflow-y-auto pr-1">{dropdownBody}</div>
       </div>
     </div>
   );
