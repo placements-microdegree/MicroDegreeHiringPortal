@@ -7,14 +7,15 @@ const cookieParser = require("cookie-parser");
 
 const errorHandler = require("./middleware/errorHandler");
 
-const authRoutes        = require("./routes/authRoutes");
-const profileRoutes     = require("./routes/profileRoutes");
-const jobRoutes         = require("./routes/jobRoutes");
+const authRoutes = require("./routes/authRoutes");
+const profileRoutes = require("./routes/profileRoutes");
+const jobRoutes = require("./routes/jobRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
-const resumeRoutes      = require("./routes/resumeRoutes");
-const adminRoutes       = require("./routes/adminRoutes");
+const resumeRoutes = require("./routes/resumeRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
-const externalJobRoutes = require("./routes/externalJobRoutes");  // ← moved here
+const externalJobRoutes = require("./routes/externalJobRoutes"); // ← moved here
+const referralRoutes = require("./routes/referralRoutes");
 
 const app = express();
 
@@ -25,7 +26,10 @@ function parseAllowedOrigins() {
     process.env.FRONTEND_ORIGINS ||
     process.env.FRONTEND_ORIGIN ||
     "http://localhost:5173";
-  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 const allowedOrigins = parseAllowedOrigins();
@@ -46,14 +50,15 @@ app.use(morgan("dev"));
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 
-app.use("/api/auth",          authRoutes);
-app.use("/api/profile",       profileRoutes);
-app.use("/api/jobs",          jobRoutes);
-app.use("/api/applications",  applicationRoutes);
-app.use("/api/resumes",       resumeRoutes);
-app.use("/api/admin",         adminRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/jobs", jobRoutes);
+app.use("/api/applications", applicationRoutes);
+app.use("/api/resumes", resumeRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/external-jobs", externalJobRoutes);  // ← moved here
+app.use("/api/external-jobs", externalJobRoutes); // ← moved here
+app.use("/api/referrals", referralRoutes);
 
 app.use(errorHandler);
 

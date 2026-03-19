@@ -15,6 +15,8 @@ import HelpCenter from "../pages/student/HelpCenter";
 import CareerGuide from "../pages/student/Careerguide";
 import CloudDrive from "../pages/student/Clouddrive";
 import ExternalJobs from "../pages/student/ExternalJobs"; // ← NEW
+import ReferJobOpening from "../pages/student/ReferJobOpening";
+import ReferJobOpeningFollowUp from "../pages/student/ReferJobOpeningFollowUp";
 
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import PostJD from "../pages/admin/PostJD";
@@ -22,6 +24,7 @@ import ManageApplications from "../pages/admin/ManageApplications";
 import PostExternalJob from "../pages/admin/PostExternalJob"; // ← NEW
 import PlacementMasterDashboard from "../pages/admin/PlacementMasterDashboard";
 import InterviewMappedCandidates from "../pages/admin/InterviewMappedCandidates";
+import ReferredData from "../pages/admin/ReferredData";
 
 import SuperAdminDashboard from "../pages/superadmin/SuperAdminDashboard";
 import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
@@ -96,6 +99,14 @@ export default function AppRoutes() {
             element={<ExternalJobs />}
           />{" "}
           {/* ← NEW */}
+          <Route
+            path="/student/refer-job-opening"
+            element={<ReferJobOpening />}
+          />
+          <Route
+            path="/student/refer-job-opening/follow-up/:referralId"
+            element={<ReferJobOpeningFollowUp />}
+          />
         </Route>
       </Route>
 
@@ -114,6 +125,7 @@ export default function AppRoutes() {
           />
           <Route path="/admin/external-jobs" element={<PostExternalJob />} />{" "}
           {/* ← NEW */}
+          <Route path="/admin/referred-data" element={<ReferredData />} />
           <Route
             path="/admin/placement-status-pipeline/master-dashboard"
             element={<PlacementMasterDashboard />}

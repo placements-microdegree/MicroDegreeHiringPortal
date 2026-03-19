@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import PropTypes from "prop-types";
 import {
   FiX,
   FiClipboard,
@@ -13,11 +14,13 @@ import {
   FiBriefcase,
   FiChevronDown,
   FiChevronRight,
+  FiSend,
 } from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
 import { useAuth } from "../../context/authStore";
 import { listActiveExternalJobs } from "../../services/externalJobService";
+import { listReferredDataForAdmin } from "../../services/referralService";
 
 const linkBase =
   "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
@@ -29,6 +32,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   const isEligible = profile?.isEligible === true;
   const isAdmin = role === ROLES.ADMIN;
   const [externalJobsCount, setExternalJobsCount] = useState(0);
+  const [referredDataCount, setReferredDataCount] = useState(0);
   const isPlacementSectionActive = location.pathname.includes(
     "/admin/placement-status-pipeline",
   );
@@ -67,6 +71,32 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     };
   }, [isStudent, isEligible]);
 
+  useEffect(() => {
+    if (!isAdmin) {
+      setReferredDataCount(0);
+      return;
+    }
+
+    let mounted = true;
+    const fetchCount = async () => {
+      try {
+        const referrals = await listReferredDataForAdmin();
+        if (mounted) {
+          setReferredDataCount(Array.isArray(referrals) ? referrals.length : 0);
+        }
+      } catch {
+        if (mounted) setReferredDataCount(0);
+      }
+    };
+
+    fetchCount();
+    const timer = setInterval(fetchCount, 60 * 1000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, [isAdmin]);
+
   let links = [];
   if (role === ROLES.SUPER_ADMIN) {
     links = [
@@ -92,6 +122,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         label: "External Jobs",
         icon: FiBriefcase,
       },
+      {
+        to: "/admin/referred-data",
+        label: "Referred Data",
+        icon: FiSend,
+      },
     ];
   } else {
     links = [
@@ -106,6 +141,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         to: "/student/external-jobs",
         label: "External Jobs",
         icon: FiBriefcase,
+      },
+      {
+        to: "/student/refer-job-opening",
+        label: "Refer a Job Opening",
+        icon: FiSend,
       },
       {
         to: "/student/career-guide",
@@ -195,6 +235,13 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                           {externalJobsCount > 99 ? "99+" : externalJobsCount}
                         </span>
                       )}
+                    {isAdmin &&
+                      l.to === "/admin/referred-data" &&
+                      referredDataCount > 0 && (
+                        <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-rose-100 px-1.5 py-0.5 text-[11px] font-semibold text-rose-700">
+                          {referredDataCount > 99 ? "99+" : referredDataCount}
+                        </span>
+                      )}
                   </>
                 )}
               </NavLink>
@@ -265,3 +312,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     </>
   );
 }
+
+Sidebar.propTypes = {
+  role: PropTypes.string,
+  isOpen: PropTypes.bool,
+  onClose: PropTypes.func,
+};
