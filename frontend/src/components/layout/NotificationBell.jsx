@@ -54,6 +54,19 @@ function parseJobInfo(notification) {
   };
 }
 
+function getNotificationMessage(notification) {
+  const message = String(notification?.message || "").trim();
+  if (!message) return "";
+
+  if (String(notification?.type || "").toLowerCase() === "job_posted") {
+    return message
+      .replace(/New job\s+"[^"]+"\s+has been posted\.?\s*/i, "")
+      .trim();
+  }
+
+  return message;
+}
+
 export default function NotificationBell() {
   const navigate = useNavigate();
   const rootRef = useRef(null);
@@ -162,6 +175,7 @@ export default function NotificationBell() {
       {notifications.map((notification) => {
         const rowRead = isRead(notification);
         const jobInfo = parseJobInfo(notification);
+        const messageText = getNotificationMessage(notification);
         return (
           <li key={notification.id}>
             <button
@@ -181,9 +195,9 @@ export default function NotificationBell() {
                   {formatRelativeTime(notification.created_at)}
                 </span>
               </div>
-              <div className="mt-1 text-sm text-slate-600">
-                {notification.message || "You have a new update."}
-              </div>
+              {messageText ? (
+                <div className="mt-1 text-sm text-slate-600">{messageText}</div>
+              ) : null}
               {(jobInfo.company || jobInfo.role || jobInfo.experience) && (
                 <div className="mt-2 rounded-lg bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
                   {jobInfo.company ? (
