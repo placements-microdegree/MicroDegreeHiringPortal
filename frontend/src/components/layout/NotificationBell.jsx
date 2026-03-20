@@ -67,6 +67,22 @@ function getNotificationMessage(notification) {
   return message;
 }
 
+function stripJobDetailsFromMessage(message) {
+  return String(message || "")
+    .replaceAll(/\bCompany:\s*[^.]+\.?/gi, "")
+    .replaceAll(/\bRole:\s*[^.]+\.?/gi, "")
+    .replaceAll(/\bExperience:\s*[^.]+\.?/gi, "")
+    .replaceAll(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .replaceAll(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 export default function NotificationBell() {
   const navigate = useNavigate();
   const rootRef = useRef(null);
@@ -175,7 +191,17 @@ export default function NotificationBell() {
       {notifications.map((notification) => {
         const rowRead = isRead(notification);
         const jobInfo = parseJobInfo(notification);
-        const messageText = getNotificationMessage(notification);
+        const titleText = String(notification?.title || "Notification").trim();
+        const rawMessageText = getNotificationMessage(notification);
+        const hasStructuredJobInfo = Boolean(
+          jobInfo.company || jobInfo.role || jobInfo.experience,
+        );
+        const messageText = hasStructuredJobInfo
+          ? stripJobDetailsFromMessage(rawMessageText)
+          : rawMessageText;
+        const showMessage =
+          Boolean(messageText) &&
+          normalizeText(messageText) !== normalizeText(titleText);
         return (
           <li key={notification.id}>
             <button
@@ -189,13 +215,13 @@ export default function NotificationBell() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="text-sm font-semibold text-slate-900">
-                  {notification.title || "Notification"}
+                  {titleText}
                 </div>
                 <span className="shrink-0 text-[11px] text-slate-500">
                   {formatRelativeTime(notification.created_at)}
                 </span>
               </div>
-              {messageText ? (
+              {showMessage ? (
                 <div className="mt-1 text-sm text-slate-600">{messageText}</div>
               ) : null}
               {(jobInfo.company || jobInfo.role || jobInfo.experience) && (

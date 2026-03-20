@@ -73,6 +73,62 @@ export default function JobListings() {
   };
 
   const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const sortedJobs = useMemo(() => {
+    return [...safeJobs].sort((a, b) => {
+      const aIsActive =
+        String(a?.status || "")
+          .trim()
+          .toLowerCase() === "active";
+      const bIsActive =
+        String(b?.status || "")
+          .trim()
+          .toLowerCase() === "active";
+
+      // Keep active jobs above closed jobs for student listings.
+      if (aIsActive !== bIsActive) return bIsActive ? 1 : -1;
+
+      // Within the same status, prefer latest activity timestamp.
+      const aTime = new Date(a?.updated_at || a?.created_at || 0).getTime();
+      const bTime = new Date(b?.updated_at || b?.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+  }, [safeJobs]);
+
+  let jobsContent;
+  if (isLoading) {
+    jobsContent = (
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+        <Loader label="Loading jobs..." />
+      </div>
+    );
+  } else if (sortedJobs.length === 0) {
+    jobsContent = (
+      <div className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center shadow-sm">
+        <p className="text-base text-slate-600">No jobs posted at the moment</p>
+        <button
+          type="button"
+          onClick={refresh}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary hover:text-primary"
+        >
+          <FiRefreshCw className="h-4 w-4" />
+          Check again
+        </button>
+      </div>
+    );
+  } else {
+    jobsContent = (
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {sortedJobs.map((job) => (
+          <JobCard
+            key={job.id}
+            job={job}
+            onApply={apply}
+            applied={appliedJobIds.has(String(job?.id))}
+          />
+        ))}
+      </section>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -99,36 +155,7 @@ export default function JobListings() {
       </section>
 
       {/* Jobs grid */}
-      {isLoading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <Loader label="Loading jobs..." />
-        </div>
-      ) : safeJobs.length === 0 ? (
-        <div className="flex min-h-72 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-slate-300 bg-white px-6 text-center shadow-sm">
-          <p className="text-base text-slate-600">
-            No jobs posted at the moment
-          </p>
-          <button
-            type="button"
-            onClick={refresh}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary hover:text-primary"
-          >
-            <FiRefreshCw className="h-4 w-4" />
-            Check again
-          </button>
-        </div>
-      ) : (
-        <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {safeJobs.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onApply={apply}
-              applied={appliedJobIds.has(String(job?.id))}
-            />
-          ))}
-        </section>
-      )}
+      {jobsContent}
 
       <ApplyJobModal
         open={applyOpen}
