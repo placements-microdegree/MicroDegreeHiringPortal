@@ -146,6 +146,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         to: "/student/refer-job-opening",
         label: "Refer a Job Opening",
         icon: FiSend,
+        imageBadge: "/sign.png",
       },
       {
         to: "/student/career-guide",
@@ -228,6 +229,13 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                       />
                     )}
                     <span>{l.label}</span>
+                    {l.imageBadge ? (
+                      <img
+                        src={l.imageBadge}
+                        alt="New"
+                        className="h-4 w-auto"
+                      />
+                    ) : null}
                     {isStudent &&
                       l.to === "/student/external-jobs" &&
                       externalJobsCount > 0 && (
