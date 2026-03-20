@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiDownload, FiHeart } from "react-icons/fi";
+import { FiDownload } from "react-icons/fi";
 import StudentsTable from "../../components/admin/StudentsTable";
-import { addFavoriteStudents, listStudents } from "../../services/adminService";
+import {
+  addFavoriteStudents,
+  removeFavoriteStudents,
+  listFavoriteStudents,
+  listStudents,
+} from "../../services/adminService";
 import { showError } from "../../utils/alerts";
 
 function normalizeCtc(value) {
@@ -13,15 +18,19 @@ export default function Students() {
   const [rows, setRows] = useState([]);
   const [currentCtcFilter, setCurrentCtcFilter] = useState("");
   const [totalExperienceFilter, setTotalExperienceFilter] = useState("");
-  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [resumeFilter, setResumeFilter] = useState(""); // "" | "has" | "no"
+  const [dateSort, setDateSort] = useState("newest"); // "newest" | "oldest"
+  const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
 
   useEffect(() => {
-    listStudents()
-      .then((students) => {
+    Promise.all([listStudents(), listFavoriteStudents()])
+      .then(([students, favoriteIds]) => {
         setRows(Array.isArray(students) ? students : []);
+        setFavoriteStudentIds(Array.isArray(favoriteIds) ? favoriteIds : []);
       })
       .catch(async (error) => {
         setRows([]);
+        setFavoriteStudentIds([]);
         await showError(error?.message || "Failed to load students");
       });
   }, []);
@@ -57,6 +66,7 @@ export default function Students() {
           r.total_experience ??
           r.totalExperience ??
           null,
+        updatedAt: r.updated_at || r.updatedAt || null,
       })),
     [rows],
   );
@@ -82,9 +92,10 @@ export default function Students() {
   }, [mapped]);
 
   const filteredRows = useMemo(() => {
-    return mapped.filter((row) => {
+    const filtered = mapped.filter((row) => {
       const rowCurrent = normalizeCtc(row.currentCtc);
       const rowTotalExperience = String(row.totalExperience ?? "").trim();
+      const hasResume = Boolean(String(row.resumeUrl ?? "").trim());
 
       if (currentCtcFilter !== "" && rowCurrent !== Number(currentCtcFilter)) {
         return false;
@@ -97,42 +108,36 @@ export default function Students() {
         return false;
       }
 
+      if (resumeFilter === "has" && !hasResume) return false;
+      if (resumeFilter === "no" && hasResume) return false;
+
       return true;
     });
-  }, [mapped, currentCtcFilter, totalExperienceFilter]);
 
-  const toggleRowSelection = (id, checked) => {
-    setSelectedStudentIds((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(id);
-      } else {
-        next.delete(id);
-      }
-      return [...next];
+    const toTime = (value) => {
+      const parsed = Date.parse(value || "");
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    return filtered.sort((a, b) => {
+      const aTime = toTime(a.updatedAt);
+      const bTime = toTime(b.updatedAt);
+      return dateSort === "oldest" ? aTime - bTime : bTime - aTime;
     });
-  };
+  }, [mapped, currentCtcFilter, totalExperienceFilter, resumeFilter, dateSort]);
 
-  const toggleAllRows = (checked) => {
-    if (!checked) {
-      setSelectedStudentIds([]);
-      return;
-    }
-
-    setSelectedStudentIds(filteredRows.map((row) => row.id).filter(Boolean));
-  };
-
-  const addSelectedToFavorites = async () => {
-    if (selectedStudentIds.length === 0) {
-      await showError("Select at least one student to add to favourites");
-      return;
-    }
-
+  const toggleFavorite = async (id) => {
     try {
-      await addFavoriteStudents(selectedStudentIds);
-      setSelectedStudentIds([]);
+      const isFav = favoriteStudentIds.includes(id);
+      if (isFav) {
+        const next = await removeFavoriteStudents([id]);
+        setFavoriteStudentIds(Array.isArray(next) ? next : []);
+      } else {
+        const next = await addFavoriteStudents([id]);
+        setFavoriteStudentIds(Array.isArray(next) ? next : []);
+      }
     } catch (error) {
-      await showError(error?.message || "Failed to add favourite students");
+      await showError(error?.message || "Failed to update favourite students");
     }
   };
 
@@ -206,7 +211,7 @@ export default function Students() {
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
               Current CTC (in LPA)
@@ -243,17 +248,37 @@ export default function Students() {
             </select>
           </label>
 
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Resume
+            </span>
+            <select
+              value={resumeFilter}
+              onChange={(event) => setResumeFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-primary"
+            >
+              <option value="">All</option>
+              <option value="has">Has resume</option>
+              <option value="no">No resume</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Sort By
+            </span>
+            <select
+              value={dateSort}
+              onChange={(event) => setDateSort(event.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-primary"
+            >
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+            </select>
+          </label>
+
           <div className="flex items-end">
             <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2">
-              <button
-                type="button"
-                onClick={addSelectedToFavorites}
-                disabled={selectedStudentIds.length === 0}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <FiHeart className="h-4 w-4" />
-                Add Selected to Favourite
-              </button>
               <button
                 type="button"
                 onClick={exportFilteredCsv}
@@ -270,10 +295,8 @@ export default function Students() {
 
       <StudentsTable
         rows={filteredRows}
-        selectable
-        selectedRowIds={selectedStudentIds}
-        onToggleRow={toggleRowSelection}
-        onToggleAll={toggleAllRows}
+        favoriteRowIds={favoriteStudentIds}
+        onToggleFavorite={toggleFavorite}
       />
     </div>
   );

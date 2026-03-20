@@ -2,6 +2,7 @@
 
 import PropTypes from "prop-types";
 import { FiFileText, FiExternalLink } from "react-icons/fi";
+import { AiOutlineHeart, AiFillHeart } from "react-icons/ai";
 
 export default function StudentsTable({
   rows,
@@ -10,11 +11,14 @@ export default function StudentsTable({
   selectedRowIds = [],
   onToggleRow,
   onToggleAll,
+  favoriteRowIds = [],
+  onToggleFavorite,
 }) {
   const rowList = Array.isArray(rows) ? rows : [];
   const selectedSet = new Set(selectedRowIds);
   const allSelected =
     rowList.length > 0 && rowList.every((row) => selectedSet.has(row.id));
+  const favoriteSet = new Set(Array.isArray(favoriteRowIds) ? favoriteRowIds : []);
 
   return (
     <div className="rounded-xl bg-white p-5">
@@ -33,6 +37,8 @@ export default function StudentsTable({
                       aria-label="Select all students"
                     />
                   </th>
+                ) : onToggleFavorite ? (
+                  <th className="px-4 py-3"> </th>
                 ) : null}
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email</th>
@@ -62,6 +68,21 @@ export default function StudentsTable({
                           }
                           aria-label={`Select ${r.fullName || r.email || "student"}`}
                         />
+                      </td>
+                    ) : onToggleFavorite ? (
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => onToggleFavorite?.(r.id)}
+                          className="inline-flex items-center justify-center rounded-full p-1 text-slate-400 hover:text-rose-600"
+                          aria-label={favoriteSet.has(r.id) ? "Unfavorite" : "Favorite"}
+                        >
+                          {favoriteSet.has(r.id) ? (
+                            <AiFillHeart className="h-5 w-5 text-rose-600" />
+                          ) : (
+                            <AiOutlineHeart className="h-5 w-5" />
+                          )}
+                        </button>
                       </td>
                     ) : null}
                     <td className="px-4 py-3 font-medium text-slate-900">
@@ -121,7 +142,7 @@ export default function StudentsTable({
                 <tr>
                   <td
                     className="px-4 py-4 text-slate-600"
-                    colSpan={selectable ? 10 : 9}
+                    colSpan={selectable || onToggleFavorite ? 10 : 9}
                   >
                     No students loaded.
                   </td>
@@ -142,4 +163,6 @@ StudentsTable.propTypes = {
   selectedRowIds: PropTypes.arrayOf(PropTypes.string),
   onToggleRow: PropTypes.func,
   onToggleAll: PropTypes.func,
+  favoriteRowIds: PropTypes.arrayOf(PropTypes.string),
+  onToggleFavorite: PropTypes.func,
 };
