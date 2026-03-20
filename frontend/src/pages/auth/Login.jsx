@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { FcGoogle } from "react-icons/fc";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import RoleDropdown from "../../components/common/RoleDropdown";
@@ -88,9 +89,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-2">
-        <section className="relative hidden overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 p-7 text-white shadow-xl sm:p-10 lg:block">
+        <section className="relative hidden overflow-hidden rounded-2xl bg-linear-to-br from-blue-600 via-blue-700 to-indigo-700 p-7 text-white shadow-xl sm:p-10 lg:block">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.24),transparent_45%),radial-gradient(circle_at_85%_5%,rgba(255,255,255,0.18),transparent_38%),radial-gradient(circle_at_30%_85%,rgba(255,255,255,0.1),transparent_45%)]" />
 
           <div className="relative flex h-full flex-col">
@@ -150,7 +151,10 @@ export default function Login() {
               onClick={onGoogle}
               disabled={submitting}
             >
-              Continue with Google
+              <span className="inline-flex items-center gap-2">
+                <FcGoogle className="h-5 w-5" />
+                Continue with Google
+              </span>
             </Button>
 
             <div className="flex items-center gap-3">
