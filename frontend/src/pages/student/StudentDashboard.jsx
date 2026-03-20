@@ -65,6 +65,23 @@ function getEligibilityText(eligibility) {
   return `Applications remaining: ${remaining}`;
 }
 
+function sortJobsForStudent(a, b) {
+  const aIsActive =
+    String(a?.status || "")
+      .trim()
+      .toLowerCase() === "active";
+  const bIsActive =
+    String(b?.status || "")
+      .trim()
+      .toLowerCase() === "active";
+
+  if (aIsActive !== bIsActive) return bIsActive ? 1 : -1;
+
+  const aTime = new Date(a?.updated_at || a?.created_at || 0).getTime();
+  const bTime = new Date(b?.updated_at || b?.created_at || 0).getTime();
+  return bTime - aTime;
+}
+
 export default function StudentDashboard() {
   const [analytics, setAnalytics] = useState({
     totalJobs: 0,
@@ -95,15 +112,7 @@ export default function StudentDashboard() {
       const safeJobs = Array.isArray(jobsData) ? jobsData : [];
       const safeApps = Array.isArray(appsData) ? appsData : [];
 
-      setRecentJobs(
-        [...safeJobs]
-          .sort(
-            (a, b) =>
-              new Date(b?.created_at || b?.createdAt || 0).getTime() -
-              new Date(a?.created_at || a?.createdAt || 0).getTime(),
-          )
-          .slice(0, 4),
-      );
+      setRecentJobs([...safeJobs].sort(sortJobsForStudent).slice(0, 4));
 
       setRecentApplications(
         [...safeApps]
@@ -271,7 +280,7 @@ export default function StudentDashboard() {
                   >
                     <span className="absolute left-3 top-5 h-2.5 w-2.5 rounded-full bg-primary" />
                     {showConnector ? (
-                      <div className="absolute left-[15px] top-7 h-[calc(100%+10px)] w-px bg-slate-200" />
+                      <div className="absolute left-3.75 top-7 h-[calc(100%+10px)] w-px bg-slate-200" />
                     ) : null}
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
