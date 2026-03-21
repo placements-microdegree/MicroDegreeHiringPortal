@@ -12,6 +12,7 @@ import {
   FiLogOut,
   FiCloud,
   FiBriefcase,
+  FiFileText,
   FiChevronDown,
   FiChevronRight,
   FiSend,
@@ -142,11 +143,19 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         label: "External Jobs",
         icon: FiBriefcase,
       },
+            {
+        href: "https://resumes.microdegree.work/",
+        label: "Resume builder",
+        icon: FiFileText,
+        betaBadge: true,
+        external: true,
+      },
       {
         to: "/student/refer-job-opening",
         label: "Refer a Job Opening",
         icon: FiSend,
         imageBadge: "/sign.png",
+        newBadge: true,
       },
       {
         to: "/student/career-guide",
@@ -158,6 +167,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         label: "Cloud Drive",
         icon: FiCloud,
       },
+
       { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
     ];
   }
@@ -208,6 +218,27 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         <nav className="mt-6 space-y-1.5">
           {links.map((l) => {
             const Icon = l.icon;
+            if (l.external) {
+              return (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onClose}
+                  className={`${linkBase} text-slate-700 hover:bg-slate-100 hover:text-slate-900`}
+                >
+                  {Icon && <Icon className="h-4 w-4 text-slate-500" />}
+                  <span>{l.label}</span>
+                  {l.betaBadge ? (
+                    <span className="ml-auto inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                      Beta
+                    </span>
+                  ) : null}
+                </a>
+              );
+            }
+
             return (
               <NavLink
                 key={l.to}
@@ -229,12 +260,17 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                       />
                     )}
                     <span>{l.label}</span>
-                    {l.imageBadge ? (
+                    {/* {l.imageBadge ? (
                       <img
                         src={l.imageBadge}
                         alt="New"
                         className="h-4 w-auto"
                       />
+                    ) : null} */}
+                    {l.newBadge ? (
+                      <span className="ml-auto inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                        New
+                      </span>
                     ) : null}
                     {isStudent &&
                       l.to === "/student/external-jobs" &&
