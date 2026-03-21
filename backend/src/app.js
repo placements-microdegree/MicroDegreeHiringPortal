@@ -16,6 +16,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const externalJobRoutes = require("./routes/externalJobRoutes"); // ← moved here
 const referralRoutes = require("./routes/referralRoutes");
+const resumeBuilderRoutes = require("./routes/resumeBuilderRoutes");
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/external-jobs", externalJobRoutes); // ← moved here
 app.use("/api/referrals", referralRoutes);
+app.use("/api/resume-builder", resumeBuilderRoutes);
 
 app.use(errorHandler);
 

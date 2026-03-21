@@ -22,6 +22,7 @@ import { ROLES } from "../../utils/constants";
 import { useAuth } from "../../context/authStore";
 import { listActiveExternalJobs } from "../../services/externalJobService";
 import { listReferredDataForAdmin } from "../../services/referralService";
+import { trackResumeBuilderClick } from "../../services/resumeBuilderService";
 
 const linkBase =
   "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
@@ -98,6 +99,20 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     };
   }, [isAdmin]);
 
+  function handleResumeBuilderClick(event) {
+    event.preventDefault();
+
+    const confirmOpen = window.confirm(
+      "Resume Builder will open in a new tab. Do you want to continue?",
+    );
+
+    if (!confirmOpen) return;
+
+    void trackResumeBuilderClick().catch(() => {});
+    window.open("https://resumes.microdegree.work/", "_blank", "noopener,noreferrer");
+    onClose?.();
+  }
+
   let links = [];
   if (role === ROLES.SUPER_ADMIN) {
     links = [
@@ -110,6 +125,10 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       {
         to: "/superadmin/external-job-analytics",
         label: "External Job Analytics",
+      },
+      {
+        to: "/superadmin/resume-builder-analytics",
+        label: "Resume Builder Analytics",
       },
       { to: "/superadmin/checker", label: "Checker" },
     ];
@@ -143,12 +162,13 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         label: "External Jobs",
         icon: FiBriefcase,
       },
-            {
+      {
         href: "https://resumes.microdegree.work/",
         label: "Resume builder",
         icon: FiFileText,
         betaBadge: true,
         external: true,
+        onClick: handleResumeBuilderClick,
       },
       {
         to: "/student/refer-job-opening",
@@ -225,7 +245,13 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                   href={l.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={onClose}
+                  onClick={(event) => {
+                    if (typeof l.onClick === "function") {
+                      l.onClick(event);
+                      return;
+                    }
+                    onClose?.();
+                  }}
                   className={`${linkBase} text-slate-700 hover:bg-slate-100 hover:text-slate-900`}
                 >
                   {Icon && <Icon className="h-4 w-4 text-slate-500" />}

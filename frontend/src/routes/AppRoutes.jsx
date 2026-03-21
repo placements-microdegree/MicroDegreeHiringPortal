@@ -34,6 +34,7 @@ import SuperAdminJobs from "../pages/superadmin/SuperAdminJobs";
 import SuperAdminApplications from "../pages/superadmin/SuperAdminApplications";
 import SuperAdminChecker from "../pages/superadmin/SuperAdminChecker";
 import SuperAdminExternalJobAnalytics from "../pages/superadmin/SuperAdminExternalJobAnalytics";
+import SuperAdminResumeBuilderAnalytics from "../pages/superadmin/SuperAdminResumeBuilderAnalytics";
 import PageOpeningShimmer from "../components/common/PageOpeningShimmer";
 
 function HomeRedirect() {
@@ -159,6 +160,10 @@ export default function AppRoutes() {
           <Route
             path="/superadmin/external-job-analytics"
             element={<SuperAdminExternalJobAnalytics />}
+          />
+          <Route
+            path="/superadmin/resume-builder-analytics"
+            element={<SuperAdminResumeBuilderAnalytics />}
           />
           <Route path="/superadmin/checker" element={<SuperAdminChecker />} />
         </Route>
