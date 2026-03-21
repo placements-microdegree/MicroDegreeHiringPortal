@@ -25,6 +25,7 @@ import PostExternalJob from "../pages/admin/PostExternalJob"; // ← NEW
 import PlacementMasterDashboard from "../pages/admin/PlacementMasterDashboard";
 import InterviewMappedCandidates from "../pages/admin/InterviewMappedCandidates";
 import ReferredData from "../pages/admin/ReferredData";
+import CloudDriveAdmin from "../pages/admin/CloudDriveAdmin";
 
 import SuperAdminDashboard from "../pages/superadmin/SuperAdminDashboard";
 import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
@@ -125,6 +126,7 @@ export default function AppRoutes() {
             element={<ManageApplications />}
           />
           <Route path="/admin/external-jobs" element={<PostExternalJob />} />{" "}
+          <Route path="/admin/cloud-drive" element={<CloudDriveAdmin />} />
           {/* ← NEW */}
           <Route path="/admin/referred-data" element={<ReferredData />} />
           <Route

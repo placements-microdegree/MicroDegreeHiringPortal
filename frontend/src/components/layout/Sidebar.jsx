@@ -171,6 +171,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     links = [
       { to: "/admin/dashboard", label: "Dashboard" },
       { to: "/admin/post-jd", label: "Post JD" },
+      { to: "/admin/cloud-drive", label: "Cloud Drive", icon: FiCloud },
       { to: "/admin/manage-applications", label: "Manage Applications" },
       {
         to: "/admin/external-jobs",
@@ -321,6 +322,12 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                       />
                     )}
                     <span>{l.label}</span>
+                    {isStudent && l.to === "/student/cloud-drive" ? (
+                      <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        Live
+                      </span>
+                    ) : null}
                     {/* {l.imageBadge ? (
                       <img
                         src={l.imageBadge}
