@@ -191,6 +191,96 @@ async function trackExternalJobClick({ jwt, jobId }) {
   return data;
 }
 
+async function trackExternalJobsPageVisit({ jwt, studentId }) {
+  const supabase = getClient(jwt);
+
+  const { data, error } = await supabase
+    .from("external_jobs_page_visits")
+    .insert({
+      student_id: studentId,
+      visited_at: new Date().toISOString(),
+    })
+    .select("id, visited_at")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    visitedAt: data.visited_at,
+  };
+}
+
+async function getExternalJobsVisitAnalytics({ jwt }) {
+  const supabase = getClient(jwt);
+
+  const [
+    { count, error: totalError },
+    { data: latestRow, error: latestError },
+    { data: visitRows, error: rowsError },
+  ] = await Promise.all([
+    supabase
+      .from("external_jobs_page_visits")
+      .select("id", { count: "exact", head: true }),
+    supabase
+      .from("external_jobs_page_visits")
+      .select("visited_at")
+      .order("visited_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("external_jobs_page_visits")
+      .select("student_id, visited_at, profiles:student_id(full_name, email)"),
+  ]);
+
+  if (totalError) throw totalError;
+  if (latestError) throw latestError;
+  if (rowsError) throw rowsError;
+
+  const perStudent = new Map();
+  (visitRows || []).forEach((row) => {
+    const studentId = row.student_id;
+    const visitedAt = row.visited_at || null;
+    const profile = row.profiles || {};
+
+    if (!studentId) return;
+
+    const existing = perStudent.get(studentId) || {
+      studentId,
+      fullName: profile.full_name || "Unknown",
+      email: profile.email || "-",
+      visitCount: 0,
+      lastVisitedAt: null,
+    };
+
+    existing.visitCount += 1;
+    if (
+      !existing.lastVisitedAt ||
+      new Date(visitedAt).getTime() > new Date(existing.lastVisitedAt).getTime()
+    ) {
+      existing.lastVisitedAt = visitedAt;
+    }
+
+    perStudent.set(studentId, existing);
+  });
+
+  const topStudents = Array.from(perStudent.values()).sort((a, b) => {
+    if (b.visitCount !== a.visitCount) return b.visitCount - a.visitCount;
+    return (
+      new Date(b.lastVisitedAt || 0).getTime() -
+      new Date(a.lastVisitedAt || 0).getTime()
+    );
+  });
+
+  return {
+    totalVisits: Number(count || 0),
+    uniqueStudents: topStudents.length,
+    lastVisitedAt: latestRow?.visited_at || null,
+    topStudent: topStudents[0] || null,
+    topStudents,
+  };
+}
+
 module.exports = {
   listActiveExternalJobs,
   listAllExternalJobs,
@@ -199,4 +289,6 @@ module.exports = {
   updateExternalJob,
   deleteExternalJob,
   trackExternalJobClick,
+  trackExternalJobsPageVisit,
+  getExternalJobsVisitAnalytics,
 };

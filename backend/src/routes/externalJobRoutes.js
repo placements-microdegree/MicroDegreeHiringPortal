@@ -46,6 +46,24 @@ router.post(
   externalJobController.bulkCreate,
 );
 
+// Eligible students — track page visit on /student/external-jobs
+router.post(
+  "/visit",
+  verifyToken,
+  authorizeRole([ROLES.STUDENT]),
+  invalidateApiCache(["/api/external-jobs/visit-analytics"]),
+  externalJobController.trackVisit,
+);
+
+// Super admin — analytics for page visits by students
+router.get(
+  "/visit-analytics",
+  verifyToken,
+  authorizeRole([ROLES.SUPER_ADMIN]),
+  cacheResponse({ ttlSeconds: 20 }),
+  externalJobController.visitAnalytics,
+);
+
 // Eligible students — track apply-link click
 router.post(
   "/:id/click",

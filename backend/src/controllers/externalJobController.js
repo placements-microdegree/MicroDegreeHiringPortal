@@ -94,6 +94,31 @@ async function trackClick(req, res, next) {
   }
 }
 
+// POST /api/external-jobs/visit
+async function trackVisit(req, res, next) {
+  try {
+    const result = await externalJobService.trackExternalJobsPageVisit({
+      jwt: req.user.jwt,
+      studentId: req.user.id,
+    });
+    res.status(201).json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/external-jobs/visit-analytics
+async function visitAnalytics(req, res, next) {
+  try {
+    const data = await externalJobService.getExternalJobsVisitAnalytics({
+      jwt: req.user.jwt,
+    });
+    res.json({ success: true, analytics: data });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listActive,
   listAll,
@@ -102,4 +127,6 @@ module.exports = {
   update,
   remove,
   trackClick,
+  trackVisit,
+  visitAnalytics,
 };

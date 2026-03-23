@@ -74,3 +74,26 @@ export async function trackExternalJobClick(id) {
     lastClickedAt: data.last_clicked_at || null,
   };
 }
+
+// Student — track page visit to external jobs screen
+export async function trackExternalJobsVisit() {
+  const data = await request("/api/external-jobs/visit", {
+    method: "POST",
+  });
+  return {
+    id: data?.id,
+    visitedAt: data?.visitedAt || null,
+  };
+}
+
+// Super admin — list student visit analytics for external jobs page
+export async function getExternalJobsVisitAnalytics() {
+  const data = await request("/api/external-jobs/visit-analytics");
+  return data?.analytics || {
+    totalVisits: 0,
+    uniqueStudents: 0,
+    lastVisitedAt: null,
+    topStudent: null,
+    topStudents: [],
+  };
+}

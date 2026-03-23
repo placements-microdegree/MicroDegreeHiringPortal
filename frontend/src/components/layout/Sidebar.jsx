@@ -118,6 +118,10 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         label: "External Job Analytics",
       },
       {
+        to: "/superadmin/external-jobs-visit-students",
+        label: "External Jobs Visit Students",
+      },
+      {
         to: "/superadmin/resume-builder-analytics",
         label: "Resume Builder Analytics",
       },

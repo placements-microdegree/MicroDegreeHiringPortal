@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import {
   listActiveExternalJobs,
+  trackExternalJobsVisit,
   trackExternalJobClick,
 } from "../../services/externalJobService";
 import { showError } from "../../utils/alerts";
@@ -88,6 +89,7 @@ export default function ExternalJobs() {
   };
 
   useEffect(() => {
+    void trackExternalJobsVisit().catch(() => {});
     refresh();
   }, []);
 
