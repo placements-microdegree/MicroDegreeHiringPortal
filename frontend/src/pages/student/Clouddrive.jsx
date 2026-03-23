@@ -324,7 +324,7 @@ export default function CloudDrive() {
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-900">Selection Process — 4 Rounds</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Selection Process - 4 Rounds</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           {rounds.map((round) => (
             <div key={round.round} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
