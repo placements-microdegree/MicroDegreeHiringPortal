@@ -17,7 +17,6 @@ import {
   FiChevronRight,
   FiSend,
 } from "react-icons/fi";
-import { toast } from "react-toastify";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
 import { useAuth } from "../../context/authStore";
@@ -27,7 +26,6 @@ import { trackResumeBuilderClick } from "../../services/resumeBuilderService";
 
 const linkBase =
   "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
-const RESUME_BUILDER_TOAST_ID = "resume-builder-open-confirmation";
 
 export default function Sidebar({ role, isOpen = false, onClose }) {
   const { logout, profile } = useAuth();
@@ -101,51 +99,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     };
   }, [isAdmin]);
 
-  function handleResumeBuilderClick(event) {
-    event.preventDefault();
-
-    if (toast.isActive(RESUME_BUILDER_TOAST_ID)) return;
-
-    toast.info(
-      ({ closeToast }) => (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-slate-800">
-            Resume Builder will open in a new tab.
-          </p>
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => closeToast?.()}
-              className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                closeToast?.();
-                void trackResumeBuilderClick().catch(() => {});
-                window.open(
-                  "https://resumes.microdegree.work/",
-                  "_blank",
-                  "noopener,noreferrer",
-                );
-                onClose?.();
-              }}
-              className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-primary/90"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      ),
-      {
-        toastId: RESUME_BUILDER_TOAST_ID,
-        autoClose: false,
-        closeOnClick: false,
-        draggable: false,
-      },
-    );
+  function handleResumeBuilderClick() {
+    void trackResumeBuilderClick().catch(() => {});
+    onClose?.();
   }
 
   let links = [];
@@ -204,6 +160,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         icon: FiFileText,
         betaBadge: true,
         external: true,
+        target: "_self",
         onClick: handleResumeBuilderClick,
       },
       {
@@ -279,8 +236,8 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                 <a
                   key={l.href}
                   href={l.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  target={l.target || "_blank"}
+                  rel={l.target === "_self" ? undefined : "noopener noreferrer"}
                   onClick={(event) => {
                     if (typeof l.onClick === "function") {
                       l.onClick(event);

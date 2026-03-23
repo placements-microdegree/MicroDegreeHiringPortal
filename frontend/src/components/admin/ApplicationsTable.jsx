@@ -61,7 +61,7 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
             placeholder="Add HR comment..."
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            className="w-full resize-none rounded-xl border border-primary bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+            className="w-full resize rounded-xl border border-primary bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
           />
         </label>
         <textarea
@@ -69,7 +69,7 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
           placeholder="Add comment for student..."
           value={draft2}
           onChange={(e) => setDraft2(e.target.value)}
-          className="w-full resize-none rounded-xl border border-primary bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
+          className="w-full resize rounded-xl border border-primary bg-white px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
         />
         <div className="flex gap-2">
           <button
