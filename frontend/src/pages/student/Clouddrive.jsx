@@ -61,9 +61,9 @@ const rounds = [
     round: "Round 1",
     title: "MCQ Screening Test",
     points: [
-      "30 AWS/DevOps-focused questions",
       "Join the meeting by 9:30 AM",
       "Test will start from 9:45 AM",
+      "30 AWS/DevOps-focused questions",
       "Duration: 30 minutes",
       "Cutoff: 18/30 to qualify",
     ],
