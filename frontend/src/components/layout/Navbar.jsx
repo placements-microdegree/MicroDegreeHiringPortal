@@ -1,5 +1,10 @@
 import Button from "../common/Button";
-import { FiMenu, FiCheckCircle, FiXCircle, FiAlertCircle } from "react-icons/fi";
+import {
+  FiMenu,
+  FiCheckCircle,
+  FiXCircle,
+  FiAlertCircle,
+} from "react-icons/fi";
 import NotificationBell from "./NotificationBell";
 
 // ── EligibilityBadge ──────────────────────────────────────────────────────────
