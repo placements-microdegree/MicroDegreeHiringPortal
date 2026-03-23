@@ -113,6 +113,12 @@ router.patch(
   authorizeRole(ADMIN_ROLES),
   applicationController.updateComment,
 );
+router.post(
+  "/:id/ai-comment-suggestion",
+  verifyToken,
+  authorizeRole(ADMIN_ROLES),
+  applicationController.generateAiCommentSuggestion,
+);
 router.delete(
   "/:id",
   verifyToken,

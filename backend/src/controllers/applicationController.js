@@ -80,9 +80,26 @@ async function updateComment(req, res, next) {
       applicationId: req.params.id,
       comment: req.body.comment,
       comment2: req.body.comment2,
+      aiSuggestionId: req.body.aiSuggestionId,
+      aiApproved: req.body.aiApproved,
+      actorId: req.user.id,
       jwt: req.user.jwt,
     });
     res.json({ success: true, application: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function generateAiCommentSuggestion(req, res, next) {
+  try {
+    const suggestion = await applicationService.generateAiCommentSuggestion({
+      applicationId: req.params.id,
+      regenerate: req.body?.regenerate === true,
+      actorId: req.user.id,
+      jwt: req.user.jwt,
+    });
+    res.json({ success: true, suggestion });
   } catch (err) {
     next(err);
   }
@@ -242,6 +259,7 @@ module.exports = {
   allApplications,
   updateStatus,
   updateComment,
+  generateAiCommentSuggestion,
   deleteOne,
   applyOnBehalf,
   searchStudents,

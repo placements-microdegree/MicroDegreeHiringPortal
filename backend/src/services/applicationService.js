@@ -3,6 +3,7 @@
 const { getSupabaseUser, getSupabaseAdmin } = require("../config/db");
 const { ROLES, APPLICATION_STATUSES } = require("../utils/constants");
 const { MAX_RESUMES_PER_STUDENT } = require("./resumeService");
+const aiCommentService = require("./aiCommentService");
 
 function getClient(jwt) {
   const admin = getSupabaseAdmin();
@@ -519,6 +520,9 @@ async function updateApplicationComment({
   applicationId,
   comment,
   comment2,
+  aiSuggestionId,
+  aiApproved,
+  actorId,
   jwt,
 }) {
   const supabase = getClient(jwt);
@@ -533,6 +537,17 @@ async function updateApplicationComment({
     .select("id, hr_comment, hr_comment_2")
     .single();
   if (error) throw error;
+
+  if (aiSuggestionId || aiApproved === true) {
+    await aiCommentService.logAiApprovalEvent({
+      applicationId,
+      suggestionId: aiSuggestionId || null,
+      actorId,
+      jwt,
+      approved: aiApproved === true,
+    });
+  }
+
   return data;
 }
 
@@ -622,6 +637,20 @@ async function getStudentAnalytics({ studentId, jwt }) {
   };
 }
 
+async function generateAiCommentSuggestion({
+  applicationId,
+  jwt,
+  actorId,
+  regenerate,
+}) {
+  return aiCommentService.generateApplicationCommentSuggestion({
+    applicationId,
+    jwt,
+    actorId,
+    regenerate: regenerate === true,
+  });
+}
+
 module.exports = {
   createApplication,
   applyOnBehalf,
@@ -631,5 +660,6 @@ module.exports = {
   updateApplicationComment,
   deleteApplication,
   getStudentAnalytics,
+  generateAiCommentSuggestion,
   normalizeApplicationForAdminView,
 };

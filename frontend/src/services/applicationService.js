@@ -50,10 +50,12 @@ export async function updateApplicationComment(
   applicationId,
   comment,
   comment2 = "",
+  options = {},
 ) {
+  const { aiSuggestionId = null, aiApproved = false } = options;
   const data = await request(`/api/applications/${applicationId}/comment`, {
     method: "PATCH",
-    body: { comment, comment2 },
+    body: { comment, comment2, aiSuggestionId, aiApproved },
   });
   return data.application;
 }
@@ -118,4 +120,18 @@ export async function deleteResumeForStudent(resumeId) {
   await request(`/api/applications/student-resumes/${resumeId}`, {
     method: "DELETE",
   });
+}
+
+export async function generateAiCommentSuggestion(
+  applicationId,
+  { regenerate = false } = {},
+) {
+  const data = await request(
+    `/api/applications/${applicationId}/ai-comment-suggestion`,
+    {
+      method: "POST",
+      body: { regenerate },
+    },
+  );
+  return data.suggestion || null;
 }

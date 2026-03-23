@@ -1,16 +1,26 @@
 // FILE: src/components/admin/ApplicationsTable.jsx
 
 import { useEffect, useState } from "react";
+import PropTypes from "prop-types";
 import { FiEdit2, FiCheck, FiTrash2, FiX } from "react-icons/fi";
 import { APPLICATION_STATUSES } from "../../utils/constants";
 
 // ── Per-row HR Comment cell ───────────────────────────────────────────────────
 
-function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
+function CommentCell({
+  rowId,
+  savedComment,
+  savedComment2,
+  onSave,
+  onGenerateAiSuggestion,
+}) {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(savedComment ?? "");
   const [draft2, setDraft2] = useState(savedComment2 ?? "");
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [aiHint, setAiHint] = useState("");
+  const [aiMeta, setAiMeta] = useState(null);
   const [expandHrComment, setExpandHrComment] = useState(false);
   const [expandStudentComment, setExpandStudentComment] = useState(false);
 
@@ -20,6 +30,8 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
     if (!isEditing) {
       setDraft(savedComment ?? "");
       setDraft2(savedComment2 ?? "");
+      setAiHint("");
+      setAiMeta(null);
       setExpandHrComment(false);
       setExpandStudentComment(false);
     }
@@ -28,24 +40,75 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
   const handleEdit = () => {
     setDraft(savedComment ?? "");
     setDraft2(savedComment2 ?? "");
+    setAiHint("");
+    setAiMeta(null);
     setIsEditing(true);
   };
 
   const handleCancel = () => {
     setDraft(savedComment ?? "");
     setDraft2(savedComment2 ?? "");
+    setAiHint("");
+    setAiMeta(null);
     setIsEditing(false);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(rowId, draft, draft2);
+      await onSave(rowId, draft, draft2, {
+        aiSuggestionId: aiMeta?.id || null,
+        aiApproved: Boolean(aiMeta?.id && gatePassed),
+      });
       setIsEditing(false);
     } finally {
       setSaving(false);
     }
   };
+
+  const handleAiSuggest = async (regenerate = false) => {
+    if (typeof onGenerateAiSuggestion !== "function") return;
+    setGenerating(true);
+    setAiHint("");
+    try {
+      const suggestion = await onGenerateAiSuggestion(rowId, { regenerate });
+      if (!suggestion) return;
+
+      const nextHrComment = String(suggestion.hr_comment || "").trim();
+      const nextStudentComment = String(
+        suggestion.student_comment || "",
+      ).trim();
+
+      if (nextHrComment) setDraft(nextHrComment);
+      if (nextStudentComment) setDraft2(nextStudentComment);
+
+      const score = Number(suggestion.fit_score);
+      const confidence = String(suggestion.confidence || "").trim();
+      const summary = String(suggestion.summary || "").trim();
+      const cached = suggestion.cached === true;
+      const gatePassed = suggestion?.quality_gate?.passed === true;
+
+      const parts = [];
+      if (Number.isFinite(score))
+        parts.push(`Fit score: ${Math.round(score)}%`);
+      if (confidence) parts.push(`Confidence: ${confidence}`);
+      parts.push(cached ? "Cached" : "Fresh");
+      if (!gatePassed) parts.push("Quality gate: review carefully");
+      if (summary) parts.push(summary);
+      setAiHint(parts.join(" | "));
+      setAiMeta(suggestion);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const gatePassed = aiMeta?.quality_gate?.passed !== false;
+  const matchedSkills = Array.isArray(aiMeta?.matched_skills)
+    ? aiMeta.matched_skills
+    : [];
+  const missingSkills = Array.isArray(aiMeta?.missing_skills)
+    ? aiMeta.missing_skills
+    : [];
 
   // ── Editing mode ────────────────────────────────────────────────────────────
   if (isEditing) {
@@ -74,6 +137,22 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
         <div className="flex gap-2">
           <button
             type="button"
+            onClick={() => handleAiSuggest(false)}
+            disabled={saving || generating || !onGenerateAiSuggestion}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary transition hover:border-primary disabled:opacity-60"
+          >
+            {generating ? "Generating..." : "AI Suggest"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAiSuggest(true)}
+            disabled={saving || generating || !onGenerateAiSuggestion}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-400 disabled:opacity-60"
+          >
+            Regenerate
+          </button>
+          <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60"
@@ -91,6 +170,46 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
             Cancel
           </button>
         </div>
+        {aiHint ? <p className="text-xs text-slate-500">{aiHint}</p> : null}
+        {aiMeta ? (
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+            {!gatePassed ? (
+              <div className="text-xs font-semibold text-rose-700">
+                AI quality gate not passed. Regenerate or edit manually before
+                saving.
+              </div>
+            ) : null}
+            <div className="grid gap-2 md:grid-cols-2">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                  Matched skills
+                </p>
+                <p className="text-xs text-slate-700">
+                  {matchedSkills.length ? matchedSkills.join(", ") : "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                  Missing skills
+                </p>
+                <p className="text-xs text-slate-700">
+                  {missingSkills.length ? missingSkills.join(", ") : "-"}
+                </p>
+              </div>
+            </div>
+            {Array.isArray(aiMeta?.quality_gate?.reasons) &&
+            aiMeta.quality_gate.reasons.length ? (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-rose-700">
+                  Gate reasons
+                </p>
+                <p className="text-xs text-slate-700">
+                  {aiMeta.quality_gate.reasons.join(" | ")}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -176,6 +295,7 @@ export default function ApplicationsTable({
   rows,
   onStatusChange,
   onCommentChange,
+  onGenerateAiComment,
   onDeleteApplication,
 }) {
   // ── CSV export ─────────────────────────────────────────────────────────────
@@ -432,6 +552,7 @@ export default function ApplicationsTable({
                       savedComment={r.hr_comment ?? ""}
                       savedComment2={r.hr_comment_2 ?? ""}
                       onSave={onCommentChange}
+                      onGenerateAiSuggestion={onGenerateAiComment}
                     />
                   </td>
                   <td className="px-4 py-3 text-slate-700">
@@ -468,3 +589,19 @@ export default function ApplicationsTable({
     </div>
   );
 }
+
+CommentCell.propTypes = {
+  rowId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  savedComment: PropTypes.string,
+  savedComment2: PropTypes.string,
+  onSave: PropTypes.func.isRequired,
+  onGenerateAiSuggestion: PropTypes.func,
+};
+
+ApplicationsTable.propTypes = {
+  rows: PropTypes.arrayOf(PropTypes.object).isRequired,
+  onStatusChange: PropTypes.func,
+  onCommentChange: PropTypes.func,
+  onGenerateAiComment: PropTypes.func,
+  onDeleteApplication: PropTypes.func,
+};

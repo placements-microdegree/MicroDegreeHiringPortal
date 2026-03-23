@@ -18,6 +18,7 @@ import {
   listAllApplications,
   updateApplicationStatus,
   updateApplicationComment,
+  generateAiCommentSuggestion,
   applyOnBehalf,
   searchStudents,
   getStudentProfileForHR,
@@ -1154,9 +1155,9 @@ export default function ManageApplicationsByJobView({
       await showError(err?.message || "Failed to update status");
     }
   };
-  const onCommentChange = async (id, comment, comment2) => {
+  const onCommentChange = async (id, comment, comment2, options = {}) => {
     try {
-      await updateApplicationComment(id, comment, comment2);
+      await updateApplicationComment(id, comment, comment2, options);
       setRows((prev) =>
         prev.map((r) =>
           r.id === id
@@ -1170,6 +1171,15 @@ export default function ManageApplicationsByJobView({
       );
     } catch {
       /* silent */
+    }
+  };
+
+  const onGenerateAiComment = async (id, options = {}) => {
+    try {
+      return await generateAiCommentSuggestion(id, options);
+    } catch (err) {
+      await showError(err?.message || "Failed to generate AI suggestion");
+      return null;
     }
   };
 
@@ -1456,6 +1466,7 @@ export default function ManageApplicationsByJobView({
         rows={filteredRows}
         onStatusChange={onStatusChange}
         onCommentChange={onCommentChange}
+        onGenerateAiComment={onGenerateAiComment}
         onDeleteApplication={onDeleteApplication}
       />
     </div>
