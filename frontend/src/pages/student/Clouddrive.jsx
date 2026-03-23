@@ -256,7 +256,7 @@ export default function CloudDrive() {
             <div className="flex items-center gap-2">
               <FiCloud className="h-5 w-5 text-primary" />
               <h1 className="text-base font-semibold text-slate-900">
-                Cloud Placement Drive - Registration
+                MicroDegree Cloud Placement Drive - Registration
               </h1>
             </div>
             <p className="mt-2 text-sm text-slate-700">
@@ -342,6 +342,141 @@ export default function CloudDrive() {
               </ul>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <h2 className="text-base font-semibold text-slate-900">
+            Your Gateway to Top Cloud &amp; DevOps Jobs
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            At MicroDegree, we’ve built a structured <strong>Cloud Drive Process</strong> to help
+            serious learners transition into real job roles — faster and with expert support.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            This multi-round process acts as a <strong>mock industry hiring workflow</strong> and gives
+            us confidence in mapping you to job openings sourced by our Hiring Team.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <h3 className="text-sm font-semibold text-slate-900">What Is the Cloud Drive?</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            The Cloud Drive is our internal, recurring placement screening process. If you
+            <strong> clear all 4 rounds</strong>, you’ll receive:
+          </p>
+          <ul className="mt-3 space-y-2">
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <span><strong>First preference for jobs</strong> shared by MicroDegree&apos;s hiring partners</span>
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <span><strong>1:1 job search assistance</strong> and guidance</span>
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <span><strong>Referral opportunities</strong> through our Alumni Network (especially for experienced learners)</span>
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <span>Ongoing handholding in your job search journey</span>
+            </li>
+          </ul>
+          <p className="mt-3 text-sm leading-6 text-slate-700">
+            Our Placement Team actively reaches out to companies with Cloud, DevOps, and SysAdmin
+            openings — and <strong>Cloud Drive cleared candidates are prioritized</strong> when mapping
+            to those roles.
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <h3 className="text-sm font-semibold text-emerald-900">Eligibility Criteria</h3>
+            <p className="mt-2 text-sm text-emerald-900">To register and participate, you must:</p>
+            <ul className="mt-2 space-y-2">
+              <li className="flex items-start gap-2 text-sm text-emerald-900">
+                <FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />
+                Have completed MicroDegree’s AWS + DevOps training (with certificate)
+              </li>
+              <li className="flex items-start gap-2 text-sm text-emerald-900">
+                <FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />
+                Have access to your own AWS account
+              </li>
+              <li className="flex items-start gap-2 text-sm text-emerald-900">
+                <FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />
+                Completed at least 50% of the Placement Prep Course on your dashboard
+              </li>
+            </ul>
+            <p className="mt-3 text-xs text-emerald-900">
+              If you're not shortlisted in any round, you can <strong>re-register for the next available drive</strong>
+              and start from Round 1 again.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+            <h3 className="text-sm font-semibold text-slate-900">What Happens After You Clear All Rounds?</h3>
+            <ul className="mt-2 space-y-2">
+              <li className="flex items-start gap-2 text-sm text-slate-700">
+                <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                You get first preference for MicroDegree job postings
+              </li>
+              <li className="flex items-start gap-2 text-sm text-slate-700">
+                <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                Our team supports with referrals, follow-ups, resume adjustments, and mock interviews
+              </li>
+              <li className="flex items-start gap-2 text-sm text-slate-700">
+                <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                You’re eligible for exclusive openings shared with Cloud Drive cleared students only
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
+          <h3 className="text-sm font-semibold text-violet-900">For Experienced Candidates (1–4 years)</h3>
+          <ul className="mt-2 space-y-2 text-sm text-violet-900">
+            <li className="flex items-start gap-2">
+              <FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />
+              Referrals through our alumni network
+            </li>
+            <li className="flex items-start gap-2">
+              <FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />
+              Tailored guidance for lateral job switches
+            </li>
+            <li className="flex items-start gap-2">
+              <FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />
+              Direct mapping to interview-ready opportunities
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <h3 className="text-sm font-semibold text-slate-900">Final Thoughts</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            The Cloud Drive is not just an assessment — it&apos;s a launchpad.
+          </p>
+          <ul className="mt-2 space-y-2">
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              You’re technically ready
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              You know how to present yourself
+            </li>
+            <li className="flex items-start gap-2 text-sm text-slate-700">
+              <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              You’ve proven your skills in a real-world-style format
+            </li>
+          </ul>
+          <p className="mt-3 text-sm font-medium text-slate-800">
+            Clearing this process significantly improves your chances of getting placed faster.
+          </p>
+          <p className="mt-1 text-sm text-slate-700">
+            So take it seriously, prepare well, and show up with confidence.
+          </p>
         </div>
       </section>
 

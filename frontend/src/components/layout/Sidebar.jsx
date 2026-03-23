@@ -281,7 +281,10 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                     <span>{l.label}</span>
                     {isStudent && l.to === "/student/cloud-drive" ? (
                       <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        <span className="relative inline-flex h-2.5 w-2.5 items-center justify-center">
+                          <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-emerald-400 opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                        </span>
                         Live
                       </span>
                     ) : null}
