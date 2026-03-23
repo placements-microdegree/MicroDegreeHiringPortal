@@ -50,13 +50,13 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
   // ── Editing mode ────────────────────────────────────────────────────────────
   if (isEditing) {
     return (
-      <div className="flex min-w-[200px] flex-col gap-2">
+      <div className="flex min-w-[320px] flex-col gap-2">
         <label className="space-y-1">
           <span className="text-xs font-semibold text-slate-600">
             HR Comment
           </span>
           <textarea
-            rows={2}
+            rows={4}
             autoFocus
             placeholder="Add HR comment..."
             value={draft}
@@ -65,7 +65,7 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
           />
         </label>
         <textarea
-          rows={2}
+          rows={4}
           placeholder="Add comment for student..."
           value={draft2}
           onChange={(e) => setDraft2(e.target.value)}
@@ -139,7 +139,7 @@ function CommentCell({ rowId, savedComment, savedComment2, onSave }) {
 
   // ── Display mode ────────────────────────────────────────────────────────────
   return (
-    <div className="group flex min-w-[200px] items-start justify-between gap-2">
+    <div className="group flex min-w-[320px] items-start justify-between gap-2">
       <div className="space-y-1">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           HR Comment
@@ -363,7 +363,7 @@ export default function ApplicationsTable({
               <th className="px-4 py-3 whitespace-nowrap">Resume</th>
               <th className="px-4 py-3 whitespace-nowrap">Job</th>
               <th className="px-4 py-3 whitespace-nowrap">Status</th>
-              <th className="px-4 py-3 whitespace-nowrap min-w-[220px]">
+              <th className="px-4 py-3 whitespace-nowrap min-w-[320px]">
                 HR Comment
               </th>
               <th className="px-4 py-3 whitespace-nowrap min-w-[220px]">
