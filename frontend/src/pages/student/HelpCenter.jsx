@@ -156,16 +156,16 @@ export default function HelpCenter() {
             🌐 Follow Us
           </h2>
           <div className="grid grid-cols-2 gap-2">
-            {socials.map(({ label, url, icon: Icon, color }) => (
+            {socials.map((social) => (
               <a
-                key={label}
-                href={url}
+                key={social.label}
+                href={social.url}
                 target="_blank"
                 rel="noreferrer"
-                className={`flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 transition ${color}`}
+                className={`flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-700 transition ${social.color}`}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
+                <social.icon className="h-4 w-4 shrink-0" />
+                {social.label}
               </a>
             ))}
           </div>
