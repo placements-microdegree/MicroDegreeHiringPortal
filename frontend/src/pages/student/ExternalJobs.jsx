@@ -21,6 +21,7 @@ export default function ExternalJobs() {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [experienceRange, setExperienceRange] = useState({ min: "", max: "" });
+  const [postedDateSort, setPostedDateSort] = useState("newest");
 
   const parseExperienceRange = (value) => {
     const text = String(value || "")
@@ -75,6 +76,19 @@ export default function ExternalJobs() {
       return parsed.max >= queryMin && parsed.min <= queryMax;
     });
   }, [jobs, experienceRange]);
+
+  const sortedJobs = useMemo(() => {
+    const toTime = (value) => {
+      const parsed = Date.parse(value || "");
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    return [...filteredJobs].sort((a, b) => {
+      const aTime = toTime(a?.created_at || a?.updated_at);
+      const bTime = toTime(b?.created_at || b?.updated_at);
+      return postedDateSort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+  }, [filteredJobs, postedDateSort]);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -132,7 +146,7 @@ export default function ExternalJobs() {
               </tr>
             </thead>
             <tbody>
-              {filteredJobs.map((job) => (
+              {sortedJobs.map((job) => (
                 <tr
                   key={job.id}
                   className="border-t border-slate-100 transition hover:bg-slate-50"
@@ -169,7 +183,7 @@ export default function ExternalJobs() {
                   </td>
                 </tr>
               ))}
-              {filteredJobs.length === 0 && (
+              {sortedJobs.length === 0 && (
                 <tr className="border-t border-slate-100">
                   <td
                     className="px-4 py-6 text-center text-sm text-slate-500"
@@ -214,11 +228,27 @@ export default function ExternalJobs() {
 
       {/* Filters */}
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <FiClock className="h-4 w-4 text-violet-500" />
-          <span className="text-sm font-semibold text-slate-700">
-            Experience Range
-          </span>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <FiClock className="h-4 w-4 text-violet-500" />
+            <span className="text-sm font-semibold text-slate-700">
+              Experience Range
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-700">
+              Sort by Posted Date
+            </span>
+            <select
+              value={postedDateSort}
+              onChange={(e) => setPostedDateSort(e.target.value)}
+              className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700 outline-none transition duration-200 hover:border-slate-300 hover:bg-white focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
         </div>
 
         <div className="flex min-w-52 items-center gap-2">

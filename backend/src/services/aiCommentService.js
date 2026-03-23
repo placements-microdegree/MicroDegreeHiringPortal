@@ -8,7 +8,7 @@ const FETCH_TIMEOUT_MS = 12_000;
 const MAX_PROMPT_TEXT = 12_000;
 const MIN_EXTRACTION_HARD = Number(process.env.AI_MIN_EXTRACTION_HARD || 40);
 const MIN_EXTRACTION_SOFT = Number(process.env.AI_MIN_EXTRACTION_SOFT || 180);
-const PROMPT_VERSION = "v2";
+const PROMPT_VERSION = "v3";
 
 function createHttpError(status, message) {
   const err = new Error(message);
@@ -20,6 +20,41 @@ function normalizeText(value) {
   return String(value || "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeCommentText(
+  value,
+  { maxBullets = 3, maxCharsPerBullet = 110 } = {},
+) {
+  const raw = String(value || "").replace(/\r\n/g, "\n").trim();
+  if (!raw) return "";
+
+  let lines = raw
+    .split("\n")
+    .map((line) => String(line || "").trim())
+    .filter(Boolean);
+
+  if (lines.length <= 1) {
+    const sentenceParts = String(lines[0] || raw)
+      .split(/(?<=[.!?])\s+/)
+      .map((part) => String(part || "").trim())
+      .filter(Boolean);
+
+    if (sentenceParts.length > 1) {
+      lines = sentenceParts;
+    }
+  }
+
+  const bullets = lines
+    .map((line) => line.replace(/^[-•*\d.)\s]+/, "").trim())
+    .filter(Boolean)
+    .slice(0, maxBullets)
+    .map((line) => {
+      if (line.length <= maxCharsPerBullet) return `- ${line}`;
+      return `- ${line.slice(0, maxCharsPerBullet - 1).trimEnd()}…`;
+    });
+
+  return bullets.join("\n");
 }
 
 function truncateText(value, max = MAX_PROMPT_TEXT) {
@@ -143,7 +178,7 @@ function getClaudeModelCandidates() {
   const candidates = [
     configured,
     "claude-sonnet-4-20250514",
-    "claude-opus-4-20250514",
+    // "claude-opus-4-20250514",
     "claude-3-7-sonnet-latest",
     "claude-3-5-sonnet-latest",
     "claude-3-5-haiku-latest",
@@ -343,8 +378,10 @@ function buildPrompt(application, resumeDoc, jdDoc) {
     "}",
     "",
     "Rules:",
-    "- Keep hr_comment concise and actionable (max 80 words).",
-    "- Keep student_comment polite and constructive (max 70 words).",
+    "- hr_comment MUST be 2-3 short bullet points using '-' prefix.",
+    "- student_comment MUST be 2-3 short bullet points using '-' prefix.",
+    "- Keep each bullet simple, human, and under ~14 words.",
+    "- Do not write long paragraphs.",
     "- Do not fabricate details absent in provided data.",
     "- If JD/resume text is limited, mention that in summary and lower confidence.",
     "",
@@ -442,8 +479,8 @@ async function callClaudeForSuggestion(prompt) {
       confidence: ["low", "medium", "high"].includes(parsed.confidence)
         ? parsed.confidence
         : "medium",
-      hr_comment: normalizeText(parsed.hr_comment || ""),
-      student_comment: normalizeText(parsed.student_comment || ""),
+      hr_comment: normalizeCommentText(parsed.hr_comment || ""),
+      student_comment: normalizeCommentText(parsed.student_comment || ""),
       summary: normalizeText(parsed.summary || ""),
       missing_requirements: Array.isArray(parsed.missing_requirements)
         ? parsed.missing_requirements
