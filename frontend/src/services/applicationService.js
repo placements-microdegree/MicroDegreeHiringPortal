@@ -79,6 +79,11 @@ export async function getStudentAnalytics() {
   return data.analytics || {};
 }
 
+export async function listCareerProgressBoard() {
+  const data = await request("/api/applications/career-progress/me");
+  return data.progress || [];
+}
+
 // Search students by name, email or phone
 export async function searchStudents(query) {
   const params = new URLSearchParams({ q: query });

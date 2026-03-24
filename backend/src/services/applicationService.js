@@ -64,6 +64,67 @@ const APPLICATIONS_ADMIN_SELECT = `
   )
 `;
 
+const CAREER_PROGRESS_ALLOWED_STATUSES = new Set([
+  "Interview scheduled",
+  "Technical Round",
+  "Screening call Received",
+  "final Round",
+  "Placed",
+]);
+
+const CAREER_PROGRESS_STATUS_ORDER = [
+  "Screening call Received",
+  "Interview scheduled",
+  "Technical Round",
+  "final Round",
+  "Placed",
+];
+
+const CAREER_PROGRESS_STATUS_RANK = CAREER_PROGRESS_STATUS_ORDER.reduce(
+  (acc, status, index) => {
+    acc[status] = index;
+    return acc;
+  },
+  {},
+);
+
+function normalizeCareerProgressStatus(status) {
+  const raw = String(status || "").trim();
+  if (!raw) return "";
+
+  const normalized = normalizePipelineFromStatus(raw, null, raw).status;
+  if (CAREER_PROGRESS_ALLOWED_STATUSES.has(normalized)) return normalized;
+
+  const lowered = raw.toLowerCase();
+  if (
+    lowered === "interview schedu" ||
+    lowered === "interview schedule" ||
+    lowered === "interview scheduled"
+  ) {
+    return "Interview scheduled";
+  }
+  if (lowered === "technical round") return "Technical Round";
+  if (
+    lowered === "screening call received" ||
+    lowered === "shortlisted" ||
+    lowered === "screening call recieved"
+  ) {
+    return "Screening call Received";
+  }
+  if (lowered === "final round") return "final Round";
+  if (lowered === "job on hold") return "Job on hold";
+  if (
+    lowered === "position close" ||
+    lowered === "position closed" ||
+    lowered === "job on hold/ position closed"
+  ) {
+    return "Position closed";
+  }
+  if (lowered === "placed" || lowered === "selected") return "Placed";
+
+  return normalized;
+}
+
 function normalizePipelineFromStatus(inputStatus, inputStage, inputSubStage) {
   const rawStatus = String(inputSubStage || inputStatus || "Applied").trim();
 
@@ -651,6 +712,104 @@ async function generateAiCommentSuggestion({
   });
 }
 
+async function listCareerProgressBoard({ studentId, jwt }) {
+  const supabase = getClient(jwt);
+  const { data, error } = await supabase
+    .from("applications")
+    .select(
+      "id, status, sub_stage, updated_at, created_at, student_id, jobs!inner(company,title), profiles:student_id!inner(full_name)",
+    )
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false, nullsFirst: false })
+    .limit(500);
+
+  if (error) throw error;
+
+  const latestByCompanyAndStudent = new Map();
+
+  for (const row of data || []) {
+    const normalized = normalizeCareerProgressStatus(
+      row?.sub_stage || row?.status,
+    );
+
+    if (!CAREER_PROGRESS_ALLOWED_STATUSES.has(normalized)) continue;
+
+    const companyName = String(row?.jobs?.company || "").trim();
+    const jobTitle = String(row?.jobs?.title || "").trim() || "Job Role";
+    const otherStudentId = String(row?.student_id || "").trim();
+    const studentName = String(row?.profiles?.full_name || "").trim() ||
+      "Student";
+
+    if (!companyName || !otherStudentId) continue;
+
+    const key = `${companyName}::${jobTitle}::${otherStudentId}`;
+    if (latestByCompanyAndStudent.has(key)) continue;
+
+    latestByCompanyAndStudent.set(key, {
+      companyName,
+      jobTitle,
+      studentName,
+      recruitmentPhase: normalized,
+      updatedAt: row?.updated_at || row?.created_at || null,
+    });
+  }
+
+  const grouped = new Map();
+
+  for (const item of latestByCompanyAndStudent.values()) {
+    const key = `${item.companyName.toLowerCase()}::${item.jobTitle.toLowerCase()}`;
+    const existing = grouped.get(key);
+    if (!existing) {
+      grouped.set(key, {
+        companyName: item.companyName,
+        jobTitle: item.jobTitle,
+        lastUpdatedAt: item.updatedAt,
+        students: [
+          {
+            studentName: item.studentName,
+            recruitmentPhase: item.recruitmentPhase,
+          },
+        ],
+      });
+      continue;
+    }
+
+    const existingTime = new Date(existing.lastUpdatedAt || 0).getTime();
+    const nextTime = new Date(item.updatedAt || 0).getTime();
+    if (nextTime > existingTime) {
+      existing.lastUpdatedAt = item.updatedAt;
+    }
+
+    existing.students.push({
+      studentName: item.studentName,
+      recruitmentPhase: item.recruitmentPhase,
+    });
+  }
+
+  return Array.from(grouped.values())
+    .map((companyGroup) => ({
+      companyName: companyGroup.companyName,
+      jobTitle: companyGroup.jobTitle,
+      students: companyGroup.students.sort((a, b) => {
+        const rankA = CAREER_PROGRESS_STATUS_RANK[a.recruitmentPhase] ?? 999;
+        const rankB = CAREER_PROGRESS_STATUS_RANK[b.recruitmentPhase] ?? 999;
+        if (rankA !== rankB) return rankA - rankB;
+        return a.studentName.localeCompare(b.studentName);
+      }),
+      lastUpdatedAt: companyGroup.lastUpdatedAt,
+    }))
+    .sort((a, b) => {
+      const timeA = new Date(a.lastUpdatedAt || 0).getTime();
+      const timeB = new Date(b.lastUpdatedAt || 0).getTime();
+      return timeB - timeA;
+    })
+    .map((item) => ({
+      companyName: item.companyName,
+      jobTitle: item.jobTitle,
+      students: item.students,
+    }));
+}
+
 module.exports = {
   createApplication,
   applyOnBehalf,
@@ -661,5 +820,6 @@ module.exports = {
   deleteApplication,
   getStudentAnalytics,
   generateAiCommentSuggestion,
+  listCareerProgressBoard,
   normalizeApplicationForAdminView,
 };

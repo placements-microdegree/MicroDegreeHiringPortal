@@ -7,7 +7,10 @@ import Sidebar from "./Sidebar";
 import JobCard from "../../components/student/JobCard";
 import ApplyJobModal from "../../components/student/ApplyJobModal";
 import Loader from "../../components/common/Loader";
-import { listApplicationsByStudent } from "../../services/applicationService";
+import {
+  listApplicationsByStudent,
+  listCareerProgressBoard,
+} from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
 import { showError, showInfo } from "../../utils/alerts";
 import { ROLES } from "../../utils/constants";
@@ -143,6 +146,13 @@ function normalizeApplicationStatus(status) {
   if (lowered === "job on hold/ position closed") return "Position closed";
 
   return value;
+}
+
+function maskStudentName(name) {
+  const safeName = String(name || "").trim();
+  if (!safeName) return "Student ***";
+  const firstWord = safeName.split(/\s+/)[0] || "Student";
+  return `${firstWord} ***`;
 }
 
 // ── StatsBar ──────────────────────────────────────────────────────────────────
@@ -293,6 +303,7 @@ function StudentDashboardHome({ profile }) {
 
   const [jobs, setJobs] = useState([]);
   const [apps, setApps] = useState([]);
+  const [careerProgressBoard, setCareerProgressBoard] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [applyOpen, setApplyOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -300,15 +311,18 @@ function StudentDashboardHome({ profile }) {
   const refresh = async () => {
     setIsLoading(true);
     try {
-      const [jobRows, appRows] = await Promise.all([
+      const [jobRows, appRows, progressRows] = await Promise.all([
         listJobs({ includeClosed: true }),
         listApplicationsByStudent(),
+        listCareerProgressBoard(),
       ]);
       setJobs(Array.isArray(jobRows) ? jobRows : []);
       setApps(Array.isArray(appRows) ? appRows : []);
+      setCareerProgressBoard(Array.isArray(progressRows) ? progressRows : []);
     } catch (error) {
       setJobs([]);
       setApps([]);
+      setCareerProgressBoard([]);
       await showError(error?.message || "Failed to load data");
     } finally {
       setIsLoading(false);
@@ -452,14 +466,50 @@ function StudentDashboardHome({ profile }) {
                 You haven't applied to any jobs yet
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-                {previewApps.map((app) => (
-                  <ApplicationCard
-                    key={app.id || app.application_id}
-                    application={app}
-                    jobs={safeJobs}
-                  />
-                ))}
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
+                      <tr>
+                        <th className="px-4 py-3 font-semibold">Job Title</th>
+                        <th className="px-4 py-3 font-semibold">Company</th>
+                        <th className="px-4 py-3 font-semibold">Applied Date</th>
+                        <th className="px-4 py-3 font-semibold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewApps.map((app) => {
+                        const status = normalizeApplicationStatus(
+                          app?.sub_stage || app?.status,
+                        );
+                        const meta = STATUS_META[status] || STATUS_META.Applied;
+                        return (
+                          <tr
+                            key={app.id || app.application_id}
+                            className="border-t border-slate-200"
+                          >
+                            <td className="px-4 py-3 font-medium text-slate-900">
+                              {app?.jobs?.title || app?.jobTitle || "Job"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-700">
+                              {app?.jobs?.company || app?.company || "Company"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-700">
+                              {formatDate(app?.created_at || app?.createdAt)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.cls}`}
+                              >
+                                {meta.label || status}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
@@ -471,6 +521,94 @@ function StudentDashboardHome({ profile }) {
                 >
                   View More Applications
                 </button>
+              </div>
+            )}
+          </section>
+
+          {/* Career Progress Board */}
+          <section>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Our Students • Career Progress Board
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Interview and placement progress of MicroDegree students.
+                </p>
+              </div>
+              {/* <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                Live Career Updates
+              </span> */}
+            </div>
+
+            {careerProgressBoard.length === 0 ? (
+              <div className="flex min-h-36 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 text-sm text-slate-500">
+                No student progress updates available right now.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {careerProgressBoard.map((company) => (
+                  <article
+                    key={`${company.companyName}-${company.jobTitle || "Job Role"}`}
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            {company.companyName}
+                          </h3>
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            Role: {company.jobTitle || "Job Role"}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-indigo-200 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                        {Array.isArray(company.students)
+                          ? company.students.length
+                          : 0} {" "}
+                        {Array.isArray(company.students) &&
+                        company.students.length === 1
+                          ? "Student"
+                          : "Students"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 p-4">
+                      {(Array.isArray(company.students)
+                        ? company.students
+                        : []
+                      ).map((student, index) => {
+                        const statusMeta = STATUS_META[student.recruitmentPhase];
+                        return (
+                          <div
+                            key={`${company.companyName}-${student.studentName}-${student.recruitmentPhase}-${index}`}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5"
+                          >
+                            <span
+                              className="inline-flex rounded-lg border px-2.5 py-1 text-sm font-semibold"
+                              style={{
+                                backgroundColor: "#FFFCFB",
+                                color: "#F21368",
+                                borderColor: "#000272",
+                              }}
+                            >
+                              {maskStudentName(student.studentName)}
+                            </span>
+                            <span
+                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                                statusMeta?.cls ||
+                                "border-slate-200 bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {statusMeta?.label || student.recruitmentPhase}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </article>
+                ))}
               </div>
             )}
           </section>

@@ -39,6 +39,13 @@ router.get(
   cacheResponse({ ttlSeconds: 30 }),
   applicationController.myAnalytics,
 );
+router.get(
+  "/career-progress/me",
+  verifyToken,
+  authorizeRole([ROLES.STUDENT]),
+  cacheResponse({ ttlSeconds: 30 }),
+  applicationController.myCareerProgressBoard,
+);
 
 // ── Admin routes — ALL static paths BEFORE /:id ───────────────────────────────
 router.get(

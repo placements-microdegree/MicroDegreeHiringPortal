@@ -4,6 +4,7 @@ import { FiArrowRight } from "react-icons/fi";
 import Loader from "../../components/common/Loader";
 import {
   getStudentAnalytics,
+  listCareerProgressBoard,
   listApplicationsByStudent,
 } from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
@@ -91,15 +92,17 @@ export default function StudentDashboard() {
   });
   const [recentJobs, setRecentJobs] = useState([]);
   const [recentApplications, setRecentApplications] = useState([]);
+  const [careerProgressBoard, setCareerProgressBoard] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = async () => {
     setIsLoading(true);
     try {
-      const [analyticsData, jobsData, appsData] = await Promise.all([
+      const [analyticsData, jobsData, appsData, progressData] = await Promise.all([
         getStudentAnalytics(),
         listJobs(),
         listApplicationsByStudent(),
+        listCareerProgressBoard(),
       ]);
 
       setAnalytics({
@@ -123,6 +126,8 @@ export default function StudentDashboard() {
           )
           .slice(0, 5),
       );
+
+      setCareerProgressBoard(Array.isArray(progressData) ? progressData : []);
     } catch {
       setAnalytics({
         totalJobs: 0,
@@ -132,6 +137,7 @@ export default function StudentDashboard() {
       });
       setRecentJobs([]);
       setRecentApplications([]);
+      setCareerProgressBoard([]);
     } finally {
       setIsLoading(false);
     }
@@ -314,6 +320,93 @@ export default function StudentDashboard() {
           )}
         </section>
       </div>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">
+              Our Students • Career Progress Board
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              See how students are progressing in interview and placement stages.
+            </p>
+          </div>
+          {/* <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            Live Career Updates
+          </span> */}
+        </div>
+
+        {careerProgressBoard.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
+            No student progress updates available right now.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {careerProgressBoard.map((company) => (
+              <article
+                key={`${company.companyName}-${company.jobTitle || "Job Role"}`}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+              >
+                <div className="border-b border-slate-100 bg-slate-50/70 px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        {company.companyName}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Role: {company.jobTitle || "Job Role"}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-indigo-200 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                    {Array.isArray(company.students)
+                      ? company.students.length
+                      : 0} {" "}
+                    {Array.isArray(company.students) &&
+                    company.students.length === 1
+                      ? "Student"
+                      : "Students"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 p-4">
+                  {(Array.isArray(company.students)
+                    ? company.students
+                    : []
+                  ).map((student, index) => {
+                    const timelineClass =
+                      statusClass[student.recruitmentPhase] ||
+                      "bg-slate-100 text-slate-700";
+
+                    return (
+                      <div
+                        key={`${company.companyName}-${student.studentName}-${student.recruitmentPhase}-${index}`}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5"
+                      >
+                        <span
+                          className="inline-flex rounded-lg border px-2.5 py-1 text-sm font-semibold"
+                          style={{
+                            backgroundColor: "#FFFCFB",
+                            color: "#F21368",
+                            borderColor: "#000272",
+                          }}
+                        >
+                          {student.studentName}
+                        </span>
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${timelineClass}`}
+                        >
+                          {student.recruitmentPhase}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
