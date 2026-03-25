@@ -90,10 +90,10 @@ export default function Navbar({
             />
           )}
 
-          {/* Notification bell — unchanged */}
+          {/* Notification bell */}
           <NotificationBell />
 
-          {/* Profile button — unchanged */}
+          {/* Profile button */}
           <Button
             variant="subtle"
             onClick={onProfileClick}
