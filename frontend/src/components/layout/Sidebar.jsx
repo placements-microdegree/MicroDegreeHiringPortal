@@ -100,7 +100,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   }, [isAdmin]);
 
   function handleResumeBuilderClick() {
-    void trackResumeBuilderClick().catch(() => {});
+    void trackResumeBuilderClick().catch(() => { });
     onClose?.();
   }
 
@@ -164,7 +164,8 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         icon: FiFileText,
         betaBadge: true,
         external: true,
-        target: "_self",
+        target: "_blank", // Changed from _self to _blank
+        rel: "noopener noreferrer", // Added for security
         onClick: handleResumeBuilderClick,
       },
       {
@@ -196,9 +197,8 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         type="button"
         aria-label="Close sidebar"
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/40 transition md:hidden ${
-          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
+        className={`fixed inset-0 z-40 bg-black/40 transition md:hidden ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
       />
 
       <aside
@@ -268,10 +268,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                 to={l.to}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `${linkBase} ${
-                    isActive
-                      ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
-                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  `${linkBase} ${isActive
+                    ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                   }`
                 }
               >
@@ -348,10 +347,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                     to="/admin/placement-status-pipeline/master-dashboard"
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `${linkBase} py-2 ${
-                        isActive
-                          ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
-                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      `${linkBase} py-2 ${isActive
+                        ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                       }`
                     }
                   >
@@ -362,10 +360,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                     to="/admin/placement-status-pipeline/interview-mapped-candidates"
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `${linkBase} py-2 ${
-                        isActive
-                          ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
-                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      `${linkBase} py-2 ${isActive
+                        ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                       }`
                     }
                   >

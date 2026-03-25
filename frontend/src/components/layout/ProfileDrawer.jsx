@@ -331,7 +331,7 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
                 <label className="cursor-pointer text-sm font-medium text-slate-700">
                   Profile Photo
                   <input type="file" accept="image/*"
-                    className="mt-2 block w-full text-sm"
+                    className="profile-photo-input mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-50"
                     onChange={(e) => onPickPhoto(e.target.files?.[0] || null)}
                     disabled={photoUploading}
                   />
