@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import {
@@ -73,11 +74,11 @@ export default function CloudDriveAdmin() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [commentDrafts, setCommentDrafts] = useState({});
   const [filters, setFilters] = useState({
     full_name: "",
     email: "",
     phone: "",
-    batch: "",
     status: "",
   });
 
@@ -178,6 +179,30 @@ export default function CloudDriveAdmin() {
     }
   }
 
+  useEffect(() => {
+    const drafts = {};
+    registrations.forEach((registration) => {
+      drafts[registration.id] = registration.hr_comment || "";
+    });
+    setCommentDrafts(drafts);
+  }, [registrations]);
+
+  async function onCommentSave(registrationId) {
+    const comment = commentDrafts[registrationId] || "";
+    try {
+      const updated = await updateRegistration(registrationId, { hr_comment: comment });
+      setRegistrations((prev) =>
+        prev.map((registration) =>
+          registration.id === registrationId
+            ? { ...registration, hr_comment: updated.hr_comment }
+            : registration,
+        ),
+      );
+    } catch (err) {
+      alert(err.message || "Failed to save comment");
+    }
+  }
+
   const filteredRegistrations = useMemo(() => {
     return registrations.filter((r) => {
       if (
@@ -200,18 +225,44 @@ export default function CloudDriveAdmin() {
       ) {
         return false;
       }
-      if (
-        filters.batch &&
-        !String(r.batch || "").toLowerCase().includes(filters.batch.toLowerCase())
-      ) {
-        return false;
-      }
       if (filters.status && String(r.status || "") !== filters.status) {
         return false;
       }
       return true;
     });
   }, [registrations, filters]);
+
+  function exportFilteredExcel() {
+    if (!filteredRegistrations.length) {
+      alert("No registrations available for export.");
+      return;
+    }
+
+    const exportRows = filteredRegistrations.map((registration) => ({
+      Name: registration.full_name || "",
+      Email: registration.email || "",
+      Phone: registration.phone || "",
+      "Current Location": registration.current_location || "",
+      "Relocation Preference": registration.relocation_preference || "",
+      "Highest Education": registration.highest_education || "",
+      "Total Experience": registration.total_experience || "",
+      "AWS Experience": registration.aws_experience || "",
+      "Previous Domain": registration.domain || "",
+      "MicroDegree AWS Cert": registration.aws_cert ? "Yes" : "No",
+      "MicroDegree DevOps Cert": registration.devops_cert ? "Yes" : "No",
+      Source: registration.source || "",
+      Comment: registration.hr_comment || "",
+      "HR Status": registration.status || "",
+      "Registered At": registration.registered_at
+        ? new Date(registration.registered_at).toLocaleString()
+        : "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Cloud Drive Registrations");
+    XLSX.writeFile(workbook, "cloud-drive-registrations.xlsx");
+  }
 
   const visibleSavedDrives = useMemo(
     () => (showAllSavedDrives ? drives : drives.slice(0, 3)),
@@ -290,7 +341,7 @@ export default function CloudDriveAdmin() {
             placeholder="Passcode"
           />
 
-          <label className="block md:col-span-2">
+          {/* <label className="block md:col-span-2">
             <div className="mb-1 text-sm font-medium text-slate-700">Notes (optional)</div>
             <textarea
               name="notes"
@@ -300,7 +351,7 @@ export default function CloudDriveAdmin() {
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
               placeholder="Any additional instructions for students"
             />
-          </label>
+          </label> */}
 
           <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 md:col-span-2">
             <input
@@ -369,8 +420,13 @@ export default function CloudDriveAdmin() {
       </section>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-900">Student Registrations (All Form Data)</h2>
-        <div className="mt-3 grid gap-2 md:grid-cols-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-slate-900">Student Registrations (All Form Data)</h2>
+          <Button type="button" variant="outline" onClick={exportFilteredExcel}>
+            Export Excel
+          </Button>
+        </div>
+        <div className="mt-3 grid gap-2 md:grid-cols-4">
           <Input
             label="Filter Name"
             value={filters.full_name}
@@ -385,11 +441,6 @@ export default function CloudDriveAdmin() {
             label="Filter Phone"
             value={filters.phone}
             onChange={(e) => setFilters((prev) => ({ ...prev, phone: e.target.value }))}
-          />
-          <Input
-            label="Filter Batch"
-            value={filters.batch}
-            onChange={(e) => setFilters((prev) => ({ ...prev, batch: e.target.value }))}
           />
           <label className="block">
             <div className="mb-1 text-sm font-medium text-slate-700">Filter Status</div>
@@ -409,7 +460,7 @@ export default function CloudDriveAdmin() {
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-[1900px] table-auto border-collapse">
+          <table className="min-w-[1800px] table-auto border-collapse">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-700">
                 <th className="p-2">Name</th>
@@ -423,10 +474,8 @@ export default function CloudDriveAdmin() {
                 <th className="p-2">Previous Domain</th>
                 <th className="p-2">AWS Cert</th>
                 <th className="p-2">DevOps Cert</th>
-                <th className="p-2">Institute Name</th>
                 <th className="p-2">Source</th>
-                <th className="p-2">MD Certified</th>
-                <th className="p-2">Batch</th>
+                <th className="p-2">Comment</th>
                 <th className="p-2">HR Status</th>
                 <th className="p-2">Registered At</th>
               </tr>
@@ -434,7 +483,7 @@ export default function CloudDriveAdmin() {
             <tbody>
               {filteredRegistrations.length === 0 ? (
                 <tr>
-                  <td colSpan={17} className="p-3 text-center text-sm text-slate-500">
+                  <td colSpan={16} className="p-3 text-center text-sm text-slate-500">
                     No registrations found for the current filters.
                   </td>
                 </tr>
@@ -452,10 +501,31 @@ export default function CloudDriveAdmin() {
                     <td className="p-2">{r.domain || "-"}</td>
                     <td className="p-2">{r.aws_cert ? "Yes" : "No"}</td>
                     <td className="p-2">{r.devops_cert ? "Yes" : "No"}</td>
-                    <td className="p-2">{r.institute_name || "-"}</td>
                     <td className="p-2">{r.source || "-"}</td>
-                    <td className="p-2">{r.microdegree_certified ? "Yes" : "No"}</td>
-                    <td className="p-2">{r.batch || "-"}</td>
+                    <td className="p-2">
+                      <div className="flex min-w-[230px] items-center gap-2">
+                        <input
+                          type="text"
+                          value={commentDrafts[r.id] || ""}
+                          onChange={(e) =>
+                            setCommentDrafts((prev) => ({
+                              ...prev,
+                              [r.id]: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded border border-slate-200 bg-white px-2 py-1 text-xs"
+                          placeholder="Add comment"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="px-2 py-1 text-[11px]"
+                          onClick={() => onCommentSave(r.id)}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </td>
                     <td className="p-2">
                       <select
                         value={r.status || "Registered"}

@@ -65,11 +65,7 @@ async function register(req, res, next) {
       domain: body.domain || null,
       aws_cert: body.aws_cert === true || body.aws_cert === "Yes",
       devops_cert: body.devops_cert === true || body.devops_cert === "Yes",
-      institute_name: body.institute_name || null,
       source: body.source || null,
-      microdegree_certified:
-        body.microdegree_certified === true || body.microdegree_certified === "Yes",
-      batch: body.batch || null,
       status: "Registered",
     };
 

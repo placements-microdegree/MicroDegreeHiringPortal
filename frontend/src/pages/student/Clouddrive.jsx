@@ -13,7 +13,6 @@ import { getNextDrive, registerForDrive } from "../../services/cloudDriveService
 
 const WHATSAPP_CHANNEL_URL =
   "https://whatsapp.com/channel/0029VbBni2CHFxPA411oCA2U";
-const TELEGRAM_UPDATES_URL = "https://t.me/+F62Xb7LdhWk3YjQ1";
 
 const relocationOptions = [
   "Bangalore",
@@ -36,7 +35,13 @@ const experienceOptions = [
   "I am a fresher",
   "6 months - 2 years experience",
   "2 - 3 years experience",
-  "4+ years experience",
+  "3 - 4 years experience",
+  "4 - 5 years experience",
+  "5 - 6 years experience",
+  "6 - 7 years experience",
+  "7 - 8 years experience",
+  "8 - 9 years experience",
+  "9 - 10 years experience",
 ];
 
 const domainOptions = [
@@ -51,9 +56,6 @@ const sourceOptions = [
   "LinkedIn",
   "MicroDegree Telegram group",
   "Instagram / WhatsApp",
-  "Indeed",
-  "Other institutions",
-  "Website",
 ];
 
 const rounds = [
@@ -187,10 +189,7 @@ export default function CloudDrive() {
     domain: "",
     aws_cert: "",
     devops_cert: "",
-    institute_name: "",
     source: "",
-    microdegree_certified: "",
-    batch: "",
   });
 
   useEffect(() => {
@@ -276,9 +275,9 @@ export default function CloudDrive() {
             </p>
           </div>
 
-          <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+          {/* <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
             Next Drive: <strong>{formatDate(nextDriveInfo?.drive_date || tentativeNextDate)}</strong>
-          </div>
+          </div> */}
         </div>
 
         <div className="mt-4">
@@ -287,25 +286,79 @@ export default function CloudDrive() {
               Drive schedule will be announced soon.
             </div>
           ) : registered ? (
-            <div className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-4 text-[15px] leading-6 text-emerald-900 shadow-sm">
-              <p>
-                You are registered for <strong>{formatDate(nextDriveInfo.drive_date)}</strong>. Your drive link
-                will be shared one day before the drive by email (check Spam/Promotions) and on dashboard.
-              </p>
-              {nextDriveInfo.zoom_link ? (
-                <div className="mt-3 rounded-lg border border-emerald-200 bg-white/80 p-3 text-sm text-emerald-950">
-                  <p className="font-semibold">Meeting details</p>
-                  <p className="mt-1 break-all">
-                    Zoom Link: <a href={nextDriveInfo.zoom_link} target="_blank" rel="noreferrer" className="font-semibold underline">{nextDriveInfo.zoom_link}</a>
+            <div className="overflow-hidden rounded-2xl border border-primary/30 bg-white shadow-sm">
+              <div className="border-b border-primary/20 bg-primary/10 px-4 py-3">
+                <p className="text-sm font-semibold text-primary">Registration Confirmed</p>
+              </div>
+
+              <div className="space-y-3 px-4 py-4 text-sm text-slate-800">
+                <div className="flex items-center gap-2 text-[15px] leading-6">
+                  <span className="relative inline-flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                  </span>
+                  <p>
+                    You are registered for{" "}
+                    <span className="inline-flex rounded-full bg-red-900 px-3 py-1 font-bold text-white">
+                      {formatDate(nextDriveInfo.drive_date)}
+                    </span>
                   </p>
-                  {nextDriveInfo.passcode ? (
-                    <p className="mt-1">
-                      Passcode: <strong>{nextDriveInfo.passcode}</strong>
-                    </p>
-                  ) : null}
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Important updates
+                  </p>
+                  <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
+                    <li className="flex items-start gap-2">
+                      <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>Meeting details are shared one day before the drive.</span>
+                      
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>You will get the Zoom link and passcode by email (check Spam/Promotions).</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>The same details will also be available on your dashboard</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {nextDriveInfo.zoom_link ? (
+                <div className="mx-4 mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-slate-800">
+                  <p className="font-semibold text-emerald-900">Meeting details</p>
+                  <p className="mt-1 text-xs text-emerald-800">Your session is ready. Use the button below to join.</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => window.open(nextDriveInfo.zoom_link, "_blank", "noopener,noreferrer")}
+                    >
+                      Join Meeting
+                    </Button>
+                    {nextDriveInfo.passcode ? (
+                      <div className="inline-flex items-center gap-1 rounded-xl border border-dashed border-violet-400 bg-violet-50 px-2 py-1 text-sm text-violet-900">
+                        <span className="font-semibold">Passcode:</span>
+                        <strong className="text-sm leading-none">{nextDriveInfo.passcode}</strong> &nbsp;
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (nextDriveInfo.passcode) {
+                              void navigator.clipboard.writeText(String(nextDriveInfo.passcode));
+                            }
+                          }}
+                          className="rounded-md border border-violet-300 bg-white px-1 py-1 text-xs font-semibold text-violet-700 transition hover:bg-violet-100"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ) : (
-                <div className="mt-2 text-sm">
+                <div className="mx-4 mb-4 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
                   Zoom link and passcode will be shared one day prior. Please check your dashboard and email.
                 </div>
               )}
@@ -565,7 +618,7 @@ export default function CloudDrive() {
 
           {renderRadioGroup({
             name: "aws_cert",
-            label: "Do you have Cloud AWS certification?",
+            label: "Do you have MicroDegree Cloud AWS certification?",
             options: ["Yes", "No"],
             value: form.aws_cert,
             onChange,
@@ -574,19 +627,12 @@ export default function CloudDrive() {
 
           {renderRadioGroup({
             name: "devops_cert",
-            label: "Do you have DevOps Certification?",
+            label: "Do you have MicroDegree DevOps Certification?",
             options: ["Yes", "No"],
             value: form.devops_cert,
             onChange,
             required: true,
           })}
-
-          <Input
-            label="If yes, mention the Institute Name"
-            name="institute_name"
-            value={form.institute_name}
-            onChange={onChange}
-          />
 
           {renderRadioGroup({
             name: "source",
@@ -597,35 +643,15 @@ export default function CloudDrive() {
             required: true,
           })}
 
-          {renderRadioGroup({
-            name: "microdegree_certified",
-            label: "Are you MicroDegree Cloud Certified?",
-            options: ["Yes", "No"],
-            value: form.microdegree_certified,
-            onChange,
-            required: true,
-          })}
-
-          <Input
-            label="Batch (eg: DevOps-Batch-E-02032022) *"
-            name="batch"
-            value={form.batch}
-            onChange={onChange}
-            required
-          />
-
-          <p className="text-xs text-slate-500">
-            Note: If you are not a MicroDegree Student, please fill as "Not a MicroDegree Student".
-          </p>
           <p className="text-sm text-slate-700">
             Click and Join below link to get updates:
             <a
-              href={TELEGRAM_UPDATES_URL}
+              href={WHATSAPP_CHANNEL_URL}
               target="_blank"
               rel="noreferrer"
               className="ml-1 font-semibold text-primary underline"
             >
-              Join Telegram Updates
+              Join WhatsApp Updates
             </a>
           </p>
 
