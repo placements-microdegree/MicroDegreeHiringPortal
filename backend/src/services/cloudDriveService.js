@@ -68,6 +68,22 @@ async function listRegistrations({ driveId, filters = {} } = {}) {
   return data || [];
 }
 
+async function listRegistrationsForProfile(profileId) {
+  const supabase = getReadClient();
+  const { data, error } = await supabase
+    .from("cloud_drive_registrations")
+    .select("id, drive_id, status, hr_comment, registered_at, cloud_drives(drive_date)")
+    .eq("profile_id", profileId)
+    .order("registered_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row) => ({
+    ...row,
+    drive_date: row.cloud_drives?.drive_date || null,
+  }));
+}
+
 async function upsertDrive(drive) {
   const supabase = getSupabaseAdmin();
   if (!supabase) throw new Error("Admin DB client not configured");
@@ -110,6 +126,7 @@ module.exports = {
   findRegistration,
   createRegistration,
   listRegistrations,
+  listRegistrationsForProfile,
   upsertDrive,
   listDrives,
   updateRegistration,

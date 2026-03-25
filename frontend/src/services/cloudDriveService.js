@@ -24,6 +24,11 @@ export async function registerForDrive(payload) {
   return data.registration;
 }
 
+export async function listMyRegistrations() {
+  const data = await request("/api/cloud-drive/my-registrations");
+  return data.registrations || [];
+}
+
 export async function listRegistrations(params) {
   const qs = params ? `?${new URLSearchParams(params).toString()}` : "";
   const data = await request(`/api/cloud-drive/admin/registrations${qs}`);

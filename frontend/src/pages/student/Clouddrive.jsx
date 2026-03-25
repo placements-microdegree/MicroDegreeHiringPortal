@@ -9,7 +9,11 @@ import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import Modal from "../../components/common/Modal";
 import { useAuth } from "../../context/authStore";
-import { getNextDrive, registerForDrive } from "../../services/cloudDriveService";
+import {
+  getNextDrive,
+  listMyRegistrations,
+  registerForDrive,
+} from "../../services/cloudDriveService";
 
 const WHATSAPP_CHANNEL_URL =
   "https://whatsapp.com/channel/0029VbBni2CHFxPA411oCA2U";
@@ -100,6 +104,15 @@ const rounds = [
   },
 ];
 
+const driveStatusClassMap = {
+  Registered: "bg-slate-100 text-slate-700",
+  "MCQ Screening Test cleared": "bg-amber-100 text-amber-700",
+  "Practical Online Task Round": "bg-blue-100 text-blue-700",
+  "Face-to-Face Round (Live Interview)": "bg-blue-100 text-blue-700",
+  "Managerial Round": "bg-violet-100 text-violet-700",
+  Rejected: "bg-red-100 text-red-700",
+};
+
 function getSecondAndFourthSaturdayReference(baseDate = new Date()) {
   const year = baseDate.getFullYear();
   const month = baseDate.getMonth();
@@ -177,6 +190,8 @@ export default function CloudDrive() {
   const [submitting, setSubmitting] = useState(false);
   const [nextDriveInfo, setNextDriveInfo] = useState(null);
   const [registered, setRegistered] = useState(false);
+  const [pastRegistrations, setPastRegistrations] = useState([]);
+  const [pastLoading, setPastLoading] = useState(true);
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -203,13 +218,21 @@ export default function CloudDrive() {
 
   useEffect(() => {
     async function loadDrive() {
+      setPastLoading(true);
       try {
-        const data = await getNextDrive();
-        setNextDriveInfo(data.nextDrive || null);
-        setRegistered(Boolean(data.registered));
+        const [driveData, historyData] = await Promise.all([
+          getNextDrive(),
+          listMyRegistrations(),
+        ]);
+        setNextDriveInfo(driveData.nextDrive || null);
+        setRegistered(Boolean(driveData.registered));
+        setPastRegistrations(historyData || []);
       } catch {
         setNextDriveInfo(null);
         setRegistered(false);
+        setPastRegistrations([]);
+      } finally {
+        setPastLoading(false);
       }
     }
     void loadDrive();
@@ -239,6 +262,8 @@ export default function CloudDrive() {
     try {
       await registerForDrive({ ...form, drive_id: nextDriveInfo.id });
       setRegistered(true);
+      const history = await listMyRegistrations();
+      setPastRegistrations(history || []);
       setOpen(false);
     } catch (err) {
       alert(err.message || "Registration failed");
@@ -373,6 +398,56 @@ export default function CloudDrive() {
               Register for Next Drive
             </Button>
           )}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="text-sm font-semibold text-slate-900">Your Past Cloud Drive Records</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Track your previous registrations, current HR status, and feedback comments.
+        </p>
+
+        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200">
+          <table className="min-w-full table-fixed text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
+              <tr>
+                <th className="w-[30%] px-3 py-3 font-semibold sm:px-4">Drive Date</th>
+                <th className="w-[30%] px-3 py-3 font-semibold sm:px-4">Status</th>
+                <th className="w-[40%] px-3 py-3 font-semibold sm:px-4">Feedback</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {pastLoading ? (
+                <tr>
+                  <td colSpan={3} className="px-3 py-4 text-center text-slate-600 sm:px-4">
+                    Loading records...
+                  </td>
+                </tr>
+              ) : pastRegistrations.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-3 py-5 text-center text-slate-600 sm:px-4">
+                    No past cloud drive records found.
+                  </td>
+                </tr>
+              ) : (
+                pastRegistrations.map((registration) => (
+                  <tr key={registration.id} className="border-t border-slate-200 text-slate-700">
+                    <td className="px-3 py-3 align-top text-xs sm:px-4 sm:text-sm">{formatDate(registration.drive_date)}</td>
+                    <td className="px-3 py-3 align-top sm:px-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          driveStatusClassMap[registration.status] || "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {registration.status || "-"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 align-top text-xs break-words sm:px-4 sm:text-sm">{registration.hr_comment || "-"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 

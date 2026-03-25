@@ -13,6 +13,9 @@ router.get('/next', optionalVerifyToken, cloudDriveController.getNextDrive);
 // register (student must be logged in)
 router.post('/register', verifyToken, cloudDriveController.register);
 
+// student history (drive date + status + feedback)
+router.get('/my-registrations', verifyToken, cloudDriveController.listMyRegistrations);
+
 // admin endpoints
 router.get(
   '/admin/registrations',

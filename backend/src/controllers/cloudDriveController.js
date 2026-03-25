@@ -89,6 +89,20 @@ async function listRegistrations(req, res, next) {
   }
 }
 
+async function listMyRegistrations(req, res, next) {
+  try {
+    const profileId = req.user?.id;
+    if (!profileId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const registrations = await cloudDriveService.listRegistrationsForProfile(profileId);
+    res.json({ success: true, registrations });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function upsertDrive(req, res, next) {
   try {
     const drive = req.body || {};
@@ -134,6 +148,7 @@ module.exports = {
   getNextDrive,
   register,
   listRegistrations,
+  listMyRegistrations,
   upsertDrive,
   listDrives,
   updateRegistration,
