@@ -275,9 +275,9 @@ export default function CloudDrive() {
             </p>
           </div>
 
-          {/* <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+          <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
             Next Drive: <strong>{formatDate(nextDriveInfo?.drive_date || tentativeNextDate)}</strong>
-          </div> */}
+          </div>
         </div>
 
         <div className="mt-4">
@@ -299,7 +299,7 @@ export default function CloudDrive() {
                   </span>
                   <p>
                     You are registered for{" "}
-                    <span className="inline-flex rounded-full bg-red-900 px-3 py-1 font-bold text-white">
+                    <span className="inline-flex rounded-full bg-red-600 px-3 py-1 font-bold text-white">
                       {formatDate(nextDriveInfo.drive_date)}
                     </span>
                   </p>
