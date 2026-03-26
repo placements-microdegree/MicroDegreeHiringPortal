@@ -22,7 +22,7 @@ router.post(
   "/apply",
   verifyToken,
   authorizeRole([ROLES.STUDENT]),
-  invalidateApiCache(["/api/applications"]),
+  invalidateApiCache(["/api/applications", "/api/admin/analytics"]),
   applicationController.apply,
 );
 router.get(
@@ -85,7 +85,7 @@ router.post(
   "/apply-on-behalf",
   verifyToken,
   authorizeRole(ADMIN_ROLES),
-  invalidateApiCache(["/api/applications"]),
+  invalidateApiCache(["/api/applications", "/api/admin/analytics"]),
   applicationController.applyOnBehalf,
 );
 
@@ -111,7 +111,7 @@ router.patch(
   "/:id/status",
   verifyToken,
   authorizeRole(ADMIN_ROLES),
-  invalidateApiCache(["/api/applications"]),
+  invalidateApiCache(["/api/applications", "/api/admin/analytics"]),
   applicationController.updateStatus,
 );
 router.patch(
@@ -130,7 +130,7 @@ router.delete(
   "/:id",
   verifyToken,
   authorizeRole(ADMIN_ROLES),
-  invalidateApiCache(["/api/applications"]),
+  invalidateApiCache(["/api/applications", "/api/admin/analytics"]),
   applicationController.deleteOne,
 );
 
