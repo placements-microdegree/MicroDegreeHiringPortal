@@ -478,6 +478,116 @@ function applyCreatedAtRange(query, range, column = "created_at") {
   return query.gte(column, range.fromIso).lt(column, range.toExclusiveIso);
 }
 
+function buildDayWindowFromKey(dayKey) {
+  const fromIso = `${dayKey}T00:00:00.000Z`;
+  const toDate = new Date(fromIso);
+  toDate.setUTCDate(toDate.getUTCDate() + 1);
+  return {
+    fromIso,
+    toExclusiveIso: toDate.toISOString(),
+  };
+}
+
+function resolveDauTargetDayKey(dateRange, now = new Date()) {
+  if (dateRange?.isFiltered && dateRange.toKey) return dateRange.toKey;
+  return toDayKey(startOfUtcDay(now).toISOString());
+}
+
+async function safeSelectColumnValues({
+  supabase,
+  table,
+  column,
+  fromIso,
+  toExclusiveIso,
+  timestampColumn = "created_at",
+}) {
+  const { data, error } = await supabase
+    .from(table)
+    .select(column)
+    .gte(timestampColumn, fromIso)
+    .lt(timestampColumn, toExclusiveIso);
+
+  if (error) {
+    // Ignore missing-table errors for optional sources in approximate DAU.
+    if (error.code === "42P01") return [];
+    throw error;
+  }
+
+  return (data || []).map((row) => row?.[column]).filter(Boolean);
+}
+
+async function getQuickApproximateDau({ supabase, targetDayKey }) {
+  const dayWindow = buildDayWindowFromKey(targetDayKey);
+
+  const [profileUpdates, applications, jobs, externalJobs, resumes] =
+    await Promise.all([
+      safeSelectColumnValues({
+        supabase,
+        table: "profiles",
+        column: "id",
+        fromIso: dayWindow.fromIso,
+        toExclusiveIso: dayWindow.toExclusiveIso,
+        timestampColumn: "updated_at",
+      }),
+      safeSelectColumnValues({
+        supabase,
+        table: "applications",
+        column: "student_id",
+        fromIso: dayWindow.fromIso,
+        toExclusiveIso: dayWindow.toExclusiveIso,
+      }),
+      safeSelectColumnValues({
+        supabase,
+        table: "jobs",
+        column: "posted_by",
+        fromIso: dayWindow.fromIso,
+        toExclusiveIso: dayWindow.toExclusiveIso,
+      }),
+      safeSelectColumnValues({
+        supabase,
+        table: "external_jobs",
+        column: "posted_by",
+        fromIso: dayWindow.fromIso,
+        toExclusiveIso: dayWindow.toExclusiveIso,
+      }),
+      safeSelectColumnValues({
+        supabase,
+        table: "resumes",
+        column: "user_id",
+        fromIso: dayWindow.fromIso,
+        toExclusiveIso: dayWindow.toExclusiveIso,
+      }),
+    ]);
+
+  return new Set([
+    ...profileUpdates,
+    ...applications,
+    ...jobs,
+    ...externalJobs,
+    ...resumes,
+  ]).size;
+}
+
+async function getAccurateDau({ supabase, targetDayKey }) {
+  const { count, error } = await supabase
+    .from("user_daily_activity")
+    .select("user_id", { count: "exact", head: true })
+    .eq("activity_date", targetDayKey);
+
+  if (error) {
+    // Table may not exist until migration is applied.
+    if (error.code === "42P01") {
+      return { count: null, available: false };
+    }
+    throw error;
+  }
+
+  return {
+    count: count || 0,
+    available: true,
+  };
+}
+
 function normalizeSkillTokens(rawSkills) {
   if (!rawSkills) return [];
 
@@ -888,6 +998,12 @@ async function analytics({ from, to } = {}) {
     recentApplications: recentApplicationsRes.data,
   });
 
+  const dauDate = resolveDauTargetDayKey(dateRange, now);
+  const [quickApproximateDau, accurateDauResult] = await Promise.all([
+    getQuickApproximateDau({ supabase, targetDayKey: dauDate }),
+    getAccurateDau({ supabase, targetDayKey: dauDate }),
+  ]);
+
   return {
     totalUsers,
     totalStudents,
@@ -901,6 +1017,10 @@ async function analytics({ from, to } = {}) {
     jobsPerDay,
     applicationsPerDay,
     usersGrowth,
+    quickApproximateDau,
+    accurateDau: accurateDauResult.count,
+    accurateDauAvailable: accurateDauResult.available,
+    dauDate,
     recentActivities: sortedRecentActivities,
     selectedRange: {
       from: dateRange.fromKey,

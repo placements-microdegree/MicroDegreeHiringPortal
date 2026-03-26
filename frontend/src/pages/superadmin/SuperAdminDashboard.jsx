@@ -47,6 +47,8 @@ const metricSkeletonIds = [
   "metric-skeleton-6",
   "metric-skeleton-7",
   "metric-skeleton-8",
+  "metric-skeleton-9",
+  "metric-skeleton-10",
 ];
 
 const skillSkeletonIds = [
@@ -91,6 +93,10 @@ const defaultAnalytics = {
   totalApplications: 0,
   newUsersToday: 0,
   applicationsToday: 0,
+  quickApproximateDau: 0,
+  accurateDau: null,
+  accurateDauAvailable: false,
+  dauDate: null,
   statusBreakdown: {
     Applied: 0,
     Shortlisted: 0,
@@ -386,6 +392,25 @@ export default function SuperAdminDashboard() {
         value: formatNumber(analytics.applicationsToday),
         subtitle: "Fresh applications today",
         icon: FiActivity,
+      },
+      {
+        key: "quick-approx-dau",
+        title: "DAU (Quick Approx)",
+        value: formatNumber(analytics.quickApproximateDau),
+        subtitle: `Estimated for ${analytics.dauDate || "today"}`,
+        icon: FiClock,
+      },
+      {
+        key: "accurate-dau",
+        title: "DAU (Accurate)",
+        value:
+          analytics.accurateDauAvailable && analytics.accurateDau !== null
+            ? formatNumber(analytics.accurateDau)
+            : "-",
+        subtitle: analytics.accurateDauAvailable
+          ? `Tracked for ${analytics.dauDate || "today"}`
+          : "Run DAU migration to enable",
+        icon: FiCheckCircle,
       },
     ],
     [analytics],

@@ -1,6 +1,7 @@
 const { getSupabaseAnonClient } = require("../config/supabaseClient");
 const { REFRESH_COOKIE, setAuthCookies } = require("../utils/cookies");
 const { ROLES } = require("../utils/constants");
+const { trackDailyUserActivity } = require("../services/activityService");
 
 const ACCESS_COOKIE = "mdpp_access_token";
 
@@ -56,12 +57,20 @@ async function verifyToken(req, res, next) {
       id: user.id,
       email: user.email,
       role:
-        user.user_metadata?.role ||
-        user.app_metadata?.role ||
-        ROLES.STUDENT,
+        user.user_metadata?.role || user.app_metadata?.role || ROLES.STUDENT,
       raw: user,
       jwt,
     };
+
+    // Fire-and-forget activity tracking for accurate DAU.
+    trackDailyUserActivity({
+      userId: req.user.id,
+      role: req.user.role,
+      method: req.method,
+      path: req.originalUrl || req.path,
+    }).catch(() => {
+      // Intentionally ignored: activity tracking must never block auth flow.
+    });
 
     next();
   } catch (err) {
