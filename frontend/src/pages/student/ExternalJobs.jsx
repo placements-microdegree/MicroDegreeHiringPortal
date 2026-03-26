@@ -8,6 +8,7 @@ import {
   FiBriefcase,
   FiMapPin,
   FiClock,
+  FiCalendar,
 } from "react-icons/fi";
 import {
   listActiveExternalJobs,
@@ -22,6 +23,18 @@ export default function ExternalJobs() {
   const [isLoading, setIsLoading] = useState(true);
   const [experienceRange, setExperienceRange] = useState({ min: "", max: "" });
   const [postedDateSort, setPostedDateSort] = useState("newest");
+
+  const formatPostedDate = (value) => {
+    if (!value) return "-";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "-";
+
+    return parsed.toLocaleDateString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  };
 
   const parseExperienceRange = (value) => {
     const text = String(value || "")
@@ -142,6 +155,7 @@ export default function ExternalJobs() {
                 <th className="px-4 py-3">Job Title</th>
                 <th className="px-4 py-3">Location</th>
                 <th className="px-4 py-3">Min Experience</th>
+                <th className="px-4 py-3">Posted Date</th>
                 <th className="px-4 py-3">Apply</th>
               </tr>
             </thead>
@@ -169,6 +183,12 @@ export default function ExternalJobs() {
                       {job.experience || "-"}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <span className="inline-flex items-center gap-1.5">
+                      <FiCalendar className="h-3.5 w-3.5 text-emerald-500" />
+                      {formatPostedDate(job.created_at || job.updated_at)}
+                    </span>
+                  </td>
                   <td className="px-4 py-3">
                     <a
                       href={job.apply_link}
@@ -187,7 +207,7 @@ export default function ExternalJobs() {
                 <tr className="border-t border-slate-100">
                   <td
                     className="px-4 py-6 text-center text-sm text-slate-500"
-                    colSpan={5}
+                    colSpan={6}
                   >
                     No jobs found for selected experience.
                   </td>
