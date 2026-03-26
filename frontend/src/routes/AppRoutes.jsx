@@ -172,6 +172,14 @@ export default function AppRoutes() {
             path="/superadmin/resume-builder-analytics"
             element={<SuperAdminResumeBuilderAnalytics />}
           />
+          <Route
+            path="/superadmin/placement-status-pipeline/master-dashboard"
+            element={<PlacementMasterDashboard />}
+          />
+          <Route
+            path="/superadmin/placement-status-pipeline/interview-mapped-candidates"
+            element={<InterviewMappedCandidates />}
+          />
           <Route path="/superadmin/checker" element={<SuperAdminChecker />} />
         </Route>
       </Route>

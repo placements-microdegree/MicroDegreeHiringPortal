@@ -1,4 +1,5 @@
 import Button from "../common/Button";
+import PropTypes from "prop-types";
 import {
   FiMenu,
   FiCheckCircle,
@@ -51,6 +52,7 @@ export default function Navbar({
   // new props for eligibility
   isEligible,
   applicationQuota,
+  actionButton,
 }) {
   const safePercent = Math.max(
     0,
@@ -100,7 +102,7 @@ export default function Navbar({
             className="gap-2 px-2 py-1.5 md:gap-3 md:px-4 md:py-2"
           >
             <div
-              className={`flex h-9 w-9 items-center justify-center rounded-full ${showCompletion ? "p-[2px]" : "overflow-hidden bg-slate-200"}`}
+              className={`flex h-9 w-9 items-center justify-center rounded-full ${showCompletion ? "p-0.5" : "overflow-hidden bg-slate-200"}`}
               style={ringStyle}
             >
               <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-white">
@@ -123,7 +125,46 @@ export default function Navbar({
             </div>
           </Button>
         </div>
-      ) : null}
+      ) : (
+        <div className="flex items-center gap-2">
+          {actionButton?.label && actionButton?.href ? (
+            <a
+              href={actionButton.href}
+              target={actionButton.target || "_self"}
+              rel={
+                actionButton.target === "_blank"
+                  ? "noopener noreferrer"
+                  : undefined
+              }
+              className="inline-flex items-center rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/15"
+            >
+              {actionButton.label}
+            </a>
+          ) : null}
+        </div>
+      )}
     </header>
   );
 }
+
+EligibilityBadge.propTypes = {
+  isEligible: PropTypes.bool,
+  applicationQuota: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+};
+
+Navbar.propTypes = {
+  title: PropTypes.string,
+  profilePhotoUrl: PropTypes.string,
+  studentName: PropTypes.string,
+  onProfileClick: PropTypes.func,
+  onMenuClick: PropTypes.func,
+  showProfile: PropTypes.bool,
+  completionPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  isEligible: PropTypes.bool,
+  applicationQuota: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  actionButton: PropTypes.shape({
+    label: PropTypes.string,
+    href: PropTypes.string,
+    target: PropTypes.string,
+  }),
+};

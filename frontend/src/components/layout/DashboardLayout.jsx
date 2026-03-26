@@ -473,7 +473,9 @@ function StudentDashboardHome({ profile }) {
                       <tr>
                         <th className="px-4 py-3 font-semibold">Job Title</th>
                         <th className="px-4 py-3 font-semibold">Company</th>
-                        <th className="px-4 py-3 font-semibold">Applied Date</th>
+                        <th className="px-4 py-3 font-semibold">
+                          Applied Date
+                        </th>
                         <th className="px-4 py-3 font-semibold">Status</th>
                       </tr>
                     </thead>
@@ -563,13 +565,13 @@ function StudentDashboardHome({ profile }) {
                           </p>
                         </div>
                         <span className="rounded-full border border-indigo-200 px-2.5 py-1 text-xs font-semibold text-amber-900">
-                        {Array.isArray(company.students)
-                          ? company.students.length
-                          : 0} {" "}
-                        {Array.isArray(company.students) &&
-                        company.students.length === 1
-                          ? "Student"
-                          : "Students"}
+                          {Array.isArray(company.students)
+                            ? company.students.length
+                            : 0}{" "}
+                          {Array.isArray(company.students) &&
+                          company.students.length === 1
+                            ? "Student"
+                            : "Students"}
                         </span>
                       </div>
                     </div>
@@ -579,7 +581,8 @@ function StudentDashboardHome({ profile }) {
                         ? company.students
                         : []
                       ).map((student, index) => {
-                        const statusMeta = STATUS_META[student.recruitmentPhase];
+                        const statusMeta =
+                          STATUS_META[student.recruitmentPhase];
                         return (
                           <div
                             key={`${company.companyName}-${student.studentName}-${student.recruitmentPhase}-${index}`}
@@ -661,6 +664,20 @@ export default function DashboardLayout({ role }) {
 
   const title = useMemo(() => {
     if (role === ROLES.SUPER_ADMIN) {
+      if (
+        location.pathname.includes(
+          "/superadmin/placement-status-pipeline/master-dashboard",
+        )
+      ) {
+        return "Placement Status Pipeline - Master Dashboard";
+      }
+      if (
+        location.pathname.includes(
+          "/superadmin/placement-status-pipeline/interview-mapped-candidates",
+        )
+      ) {
+        return "Placement Status Pipeline - Interview Mapped Candidates";
+      }
       if (location.pathname.includes("manage-hr")) return "Manage HR Admins";
       if (location.pathname.includes("students")) return "Students";
       if (location.pathname.includes("jobs")) return "Jobs";
@@ -695,6 +712,16 @@ export default function DashboardLayout({ role }) {
   }, [location.pathname, role]);
 
   const showProfile = role === ROLES.STUDENT;
+
+  const navbarActionButton =
+    role === ROLES.SUPER_ADMIN &&
+    location.pathname.includes("/superadmin/dashboard")
+      ? {
+          label: "Placement Status Pipeline",
+          href: "/superadmin/placement-status-pipeline/master-dashboard",
+          target: "_blank",
+        }
+      : null;
 
   const completionPercent = useMemo(() => {
     if (!showProfile) return null;
@@ -752,6 +779,7 @@ export default function DashboardLayout({ role }) {
             completionPercent={completionPercent}
             isEligible={profile?.isEligible}
             applicationQuota={profile?.applicationQuota}
+            actionButton={navbarActionButton}
           />
 
           <main

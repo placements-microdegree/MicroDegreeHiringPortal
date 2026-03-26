@@ -33,10 +33,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   const isStudent = role === ROLES.STUDENT;
   const isEligible = profile?.isEligible === true;
   const isAdmin = role === ROLES.ADMIN;
+  const isSuperAdmin = role === ROLES.SUPER_ADMIN;
   const [externalJobsCount, setExternalJobsCount] = useState(0);
   const [referredDataCount, setReferredDataCount] = useState(0);
   const isPlacementSectionActive = location.pathname.includes(
-    "/admin/placement-status-pipeline",
+    "/placement-status-pipeline",
   );
   const [placementSectionOpen, setPlacementSectionOpen] = useState(
     isPlacementSectionActive,
@@ -100,7 +101,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   }, [isAdmin]);
 
   function handleResumeBuilderClick() {
-    void trackResumeBuilderClick().catch(() => { });
+    void trackResumeBuilderClick().catch(() => {});
     onClose?.();
   }
 
@@ -197,8 +198,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         type="button"
         aria-label="Close sidebar"
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/40 transition md:hidden ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-          }`}
+        className={`fixed inset-0 z-40 bg-black/40 transition md:hidden ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
       />
 
       <aside
@@ -268,9 +270,10 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                 to={l.to}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `${linkBase} ${isActive
-                    ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
-                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  `${linkBase} ${
+                    isActive
+                      ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                   }`
                 }
               >
@@ -288,16 +291,9 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                           <span className="absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full bg-emerald-400 opacity-75" />
                           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-600" />
                         </span>
-                        Live
+                        <span>Live</span>
                       </span>
                     ) : null}
-                    {/* {l.imageBadge ? (
-                      <img
-                        src={l.imageBadge}
-                        alt="New"
-                        className="h-4 w-auto"
-                      />
-                    ) : null} */}
                     {l.newBadge ? (
                       <span className="ml-auto inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
                         New
@@ -323,7 +319,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
             );
           })}
 
-          {isAdmin ? (
+          {isAdmin || isSuperAdmin ? (
             <div className="space-y-1">
               <button
                 type="button"
@@ -344,12 +340,15 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
               {placementSectionOpen ? (
                 <div className="space-y-1 pl-6">
                   <NavLink
-                    to="/admin/placement-status-pipeline/master-dashboard"
+                    to={`/${
+                      isSuperAdmin ? "superadmin" : "admin"
+                    }/placement-status-pipeline/master-dashboard`}
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `${linkBase} py-2 ${isActive
-                        ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
-                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      `${linkBase} py-2 ${
+                        isActive
+                          ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                       }`
                     }
                   >
@@ -357,12 +356,15 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                   </NavLink>
 
                   <NavLink
-                    to="/admin/placement-status-pipeline/interview-mapped-candidates"
+                    to={`/${
+                      isSuperAdmin ? "superadmin" : "admin"
+                    }/placement-status-pipeline/interview-mapped-candidates`}
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `${linkBase} py-2 ${isActive
-                        ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
-                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                      `${linkBase} py-2 ${
+                        isActive
+                          ? "border border-primary/20 bg-primary/10 text-primary shadow-sm"
+                          : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                       }`
                     }
                   >
