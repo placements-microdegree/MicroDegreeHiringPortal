@@ -220,6 +220,7 @@ function normalizeApplicationForAdminView(row) {
           skills: row.jobs.skills,
           location: row.jobs.location,
           status: row.jobs.status,
+          posted_by: row.jobs.posted_by,
           interview_mode: row.jobs.interview_mode,
           work_mode: row.jobs.work_mode,
           experience: row.jobs.experience,
@@ -737,8 +738,8 @@ async function listCareerProgressBoard({ studentId, jwt }) {
     const companyName = String(row?.jobs?.company || "").trim();
     const jobTitle = String(row?.jobs?.title || "").trim() || "Job Role";
     const otherStudentId = String(row?.student_id || "").trim();
-    const studentName = String(row?.profiles?.full_name || "").trim() ||
-      "Student";
+    const studentName =
+      String(row?.profiles?.full_name || "").trim() || "Student";
 
     if (!companyName || !otherStudentId) continue;
 
