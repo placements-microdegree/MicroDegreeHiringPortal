@@ -71,7 +71,8 @@ async function promote(req, res, next) {
 
 async function analytics(req, res, next) {
   try {
-    const stats = await adminService.analytics();
+    const { from, to } = req.query || {};
+    const stats = await adminService.analytics({ from, to });
     res.json({ success: true, analytics: stats });
   } catch (err) {
     next(err);

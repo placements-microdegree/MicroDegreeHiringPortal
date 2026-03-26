@@ -6,9 +6,11 @@ import {
   FiCalendar,
   FiCheckCircle,
   FiClock,
+  FiFilter,
   FiFileText,
   FiLayers,
   FiPieChart,
+  FiRefreshCcw,
   FiTrendingUp,
   FiUserCheck,
   FiUserPlus,
@@ -98,6 +100,7 @@ const defaultAnalytics = {
   },
   usersGrowth: [],
   jobsPerDay: [],
+  applicationsPerDay: [],
   recentActivities: [],
   eligibleVsNonEligible: {
     eligible: 0,
@@ -133,6 +136,64 @@ function formatDate(value) {
     month: "short",
     year: "numeric",
   });
+}
+
+function toDateKey(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildQuickRange(days) {
+  const now = new Date();
+  const toDate = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  const fromDate = new Date(toDate);
+  fromDate.setUTCDate(fromDate.getUTCDate() - (days - 1));
+  return {
+    from: toDateKey(fromDate),
+    to: toDateKey(toDate),
+  };
+}
+
+function resolveDateRangeInput(fromDate, toDate) {
+  const normalizedFrom = String(fromDate || "").trim();
+  const normalizedTo = String(toDate || "").trim();
+
+  if (!normalizedFrom && !normalizedTo) {
+    return {
+      range: { from: "", to: "" },
+      error: "",
+    };
+  }
+
+  if (!normalizedFrom || !normalizedTo) {
+    return {
+      range: null,
+      error: "Please select both From and To dates.",
+    };
+  }
+
+  if (normalizedFrom > normalizedTo) {
+    return {
+      range: null,
+      error: "From date cannot be greater than To date.",
+    };
+  }
+
+  return {
+    range: { from: normalizedFrom, to: normalizedTo },
+    error: "",
+  };
+}
+
+function resolveChartContent({ loading, hasData, dataNode, emptyLabel }) {
+  if (loading) {
+    return <div className="h-64 animate-pulse rounded-lg bg-slate-100" />;
+  }
+  if (hasData) {
+    return dataNode;
+  }
+  return <EmptyState label={emptyLabel} />;
 }
 
 function EmptyState({ label }) {
@@ -205,6 +266,10 @@ export default function SuperAdminDashboard() {
   const [analytics, setAnalytics] = useState(defaultAnalytics);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [filterError, setFilterError] = useState("");
+  const [activeRange, setActiveRange] = useState({ from: "", to: "" });
 
   useEffect(() => {
     let mounted = true;
@@ -213,7 +278,7 @@ export default function SuperAdminDashboard() {
       setLoading(true);
       setError("");
       try {
-        const data = await getAnalytics();
+        const data = await getAnalytics(activeRange);
         if (!mounted) return;
         const normalizedData = data && typeof data === "object" ? data : {};
         setAnalytics({ ...defaultAnalytics, ...normalizedData });
@@ -233,7 +298,36 @@ export default function SuperAdminDashboard() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [activeRange]);
+
+  const selectedRangeLabel = useMemo(() => {
+    if (!activeRange.from || !activeRange.to) return "All-time analytics";
+    return `${activeRange.from} to ${activeRange.to}`;
+  }, [activeRange]);
+
+  const applyFilter = () => {
+    const result = resolveDateRangeInput(fromDate, toDate);
+    setFilterError(result.error);
+    if (!result.range) {
+      return;
+    }
+    setActiveRange(result.range);
+  };
+
+  const resetFilter = () => {
+    setFromDate("");
+    setToDate("");
+    setFilterError("");
+    setActiveRange({ from: "", to: "" });
+  };
+
+  const applyQuickRange = (days) => {
+    const range = buildQuickRange(days);
+    setFromDate(range.from);
+    setToDate(range.to);
+    setFilterError("");
+    setActiveRange(range);
+  };
 
   const metricCards = useMemo(
     () => [
@@ -324,15 +418,10 @@ export default function SuperAdminDashboard() {
     ));
   }
 
-  let userGrowthSection = (
-    <EmptyState label="No user growth data available yet." />
-  );
-  if (loading) {
-    userGrowthSection = (
-      <div className="h-64 animate-pulse rounded-lg bg-slate-100" />
-    );
-  } else if (analytics.usersGrowth?.length) {
-    userGrowthSection = (
+  const userGrowthSection = resolveChartContent({
+    loading,
+    hasData: Boolean(analytics.usersGrowth?.length),
+    dataNode: (
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={analytics.usersGrowth}>
@@ -350,18 +439,14 @@ export default function SuperAdminDashboard() {
           </LineChart>
         </ResponsiveContainer>
       </div>
-    );
-  }
+    ),
+    emptyLabel: "No user growth data available yet.",
+  });
 
-  let pieChartSection = (
-    <EmptyState label="No application status data available yet." />
-  );
-  if (loading) {
-    pieChartSection = (
-      <div className="h-64 animate-pulse rounded-lg bg-slate-100" />
-    );
-  } else if (hasPieData) {
-    pieChartSection = (
+  const pieChartSection = resolveChartContent({
+    loading,
+    hasData: hasPieData,
+    dataNode: (
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -380,18 +465,14 @@ export default function SuperAdminDashboard() {
           </PieChart>
         </ResponsiveContainer>
       </div>
-    );
-  }
+    ),
+    emptyLabel: "No application status data available yet.",
+  });
 
-  let jobsPerDaySection = (
-    <EmptyState label="No jobs timeline data available yet." />
-  );
-  if (loading) {
-    jobsPerDaySection = (
-      <div className="h-64 animate-pulse rounded-lg bg-slate-100" />
-    );
-  } else if (analytics.jobsPerDay?.length) {
-    jobsPerDaySection = (
+  const jobsPerDaySection = resolveChartContent({
+    loading,
+    hasData: Boolean(analytics.jobsPerDay?.length),
+    dataNode: (
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={analytics.jobsPerDay}>
@@ -403,8 +484,34 @@ export default function SuperAdminDashboard() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-    );
-  }
+    ),
+    emptyLabel: "No jobs timeline data available yet.",
+  });
+
+  const applicationsTrendSection = resolveChartContent({
+    loading,
+    hasData: Boolean(analytics.applicationsPerDay?.length),
+    dataNode: (
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={analytics.applicationsPerDay}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="label" />
+            <YAxis allowDecimals={false} />
+            <Tooltip />
+            <Line
+              type="monotone"
+              dataKey="applications"
+              stroke="#0f766e"
+              strokeWidth={2.5}
+              dot={{ r: 3 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    ),
+    emptyLabel: "No applications trend data available yet.",
+  });
 
   let topSkillsSection = (
     <EmptyState label="No skill demand data available yet." />
@@ -521,11 +628,95 @@ export default function SuperAdminDashboard() {
             <p className="mt-1 text-sm text-slate-500">
               Platform health, growth, and hiring analytics at a glance.
             </p>
+            <p className="mt-1 text-xs font-medium text-slate-500">
+              {selectedRangeLabel}
+            </p>
           </div>
         </div>
         {error ? (
           <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
+          </p>
+        ) : null}
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <FiFilter className="h-4 w-4" />
+          Date Range Filter
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span>From Date</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-slate-700 outline-none focus:border-blue-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span>To Date</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal text-slate-700 outline-none focus:border-blue-500"
+            />
+          </label>
+
+          <div className="flex items-end gap-2">
+            <button
+              type="button"
+              onClick={applyFilter}
+              disabled={loading}
+              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Apply Filter
+            </button>
+            <button
+              type="button"
+              onClick={resetFilter}
+              disabled={loading}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <FiRefreshCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-2">
+            <button
+              type="button"
+              onClick={() => applyQuickRange(1)}
+              disabled={loading}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => applyQuickRange(7)}
+              disabled={loading}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Last 7 Days
+            </button>
+            <button
+              type="button"
+              onClick={() => applyQuickRange(30)}
+              disabled={loading}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Last 30 Days
+            </button>
+          </div>
+        </div>
+
+        {filterError ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            {filterError}
           </p>
         ) : null}
       </section>
@@ -539,7 +730,7 @@ export default function SuperAdminDashboard() {
           <SectionHeader
             icon={FiTrendingUp}
             title="User Growth Over Time"
-            subtitle="Daily registrations trend for the last 14 days"
+            subtitle={`Daily registrations trend (${selectedRangeLabel})`}
           />
           {userGrowthSection}
         </article>
@@ -559,7 +750,7 @@ export default function SuperAdminDashboard() {
           <SectionHeader
             icon={FiLayers}
             title="Jobs Posted Per Day"
-            subtitle="Daily posting volume for the last 14 days"
+            subtitle={`Daily posting volume (${selectedRangeLabel})`}
           />
           {jobsPerDaySection}
         </article>
@@ -604,6 +795,17 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
           )}
+        </article>
+      </section>
+
+      <section>
+        <article className={chartCardClass}>
+          <SectionHeader
+            icon={FiActivity}
+            title="Applications Trend"
+            subtitle={`Daily applications trend (${selectedRangeLabel})`}
+          />
+          {applicationsTrendSection}
         </article>
       </section>
 

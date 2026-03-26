@@ -53,8 +53,16 @@ export async function listAdmins() {
   return data.admins || [];
 }
 
-export async function getAnalytics() {
-  const data = await request("/api/admin/analytics");
+export async function getAnalytics({ from, to } = {}) {
+  const params = new URLSearchParams();
+
+  if (from) params.set("from", String(from).trim());
+  if (to) params.set("to", String(to).trim());
+
+  const query = params.toString();
+  const data = await request(
+    query ? `/api/admin/analytics?${query}` : "/api/admin/analytics",
+  );
   return data.analytics || {};
 }
 

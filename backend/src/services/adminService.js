@@ -385,6 +385,99 @@ function toShortLabel(dayKey) {
   return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
 }
 
+function normalizeDateOnly(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+  const date = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  return raw;
+}
+
+function buildDayKeysFromRange(fromKey, toKey) {
+  const keys = [];
+  const fromDate = new Date(`${fromKey}T00:00:00.000Z`);
+  const toDate = new Date(`${toKey}T00:00:00.000Z`);
+  const totalDays =
+    Math.floor(
+      (toDate.getTime() - fromDate.getTime()) / (24 * 60 * 60 * 1000),
+    ) + 1;
+
+  for (let offset = 0; offset < totalDays; offset += 1) {
+    const cursor = new Date(fromDate);
+    cursor.setUTCDate(fromDate.getUTCDate() + offset);
+    keys.push(toDayKey(cursor.toISOString()));
+  }
+
+  return keys;
+}
+
+function buildDayKeysFromRows(rowGroups, fallbackDate = new Date()) {
+  let minKey = null;
+  let maxKey = null;
+
+  for (const rows of rowGroups) {
+    for (const row of rows || []) {
+      const key = toDayKey(row?.created_at);
+      if (!key) continue;
+      if (!minKey || key < minKey) minKey = key;
+      if (!maxKey || key > maxKey) maxKey = key;
+    }
+  }
+
+  if (!minKey || !maxKey) {
+    const key = toDayKey(startOfUtcDay(fallbackDate).toISOString());
+    return [key];
+  }
+
+  return buildDayKeysFromRange(minKey, maxKey);
+}
+
+function parseAnalyticsDateRange({ from, to } = {}) {
+  const fromKey = normalizeDateOnly(from);
+  const toKey = normalizeDateOnly(to);
+
+  if (!fromKey && !toKey) {
+    return {
+      isFiltered: false,
+      fromKey: null,
+      toKey: null,
+      fromIso: null,
+      toExclusiveIso: null,
+    };
+  }
+
+  if (!fromKey || !toKey) {
+    const err = new Error("Both from and to dates are required for filtering");
+    err.status = 400;
+    throw err;
+  }
+
+  if (fromKey > toKey) {
+    const err = new Error("From date cannot be greater than To date");
+    err.status = 400;
+    throw err;
+  }
+
+  const fromIso = `${fromKey}T00:00:00.000Z`;
+  const toStart = new Date(`${toKey}T00:00:00.000Z`);
+  const toExclusive = new Date(toStart);
+  toExclusive.setUTCDate(toExclusive.getUTCDate() + 1);
+
+  return {
+    isFiltered: true,
+    fromKey,
+    toKey,
+    fromIso,
+    toExclusiveIso: toExclusive.toISOString(),
+  };
+}
+
+function applyCreatedAtRange(query, range, column = "created_at") {
+  if (!range?.isFiltered) return query;
+  return query.gte(column, range.fromIso).lt(column, range.toExclusiveIso);
+}
+
 function normalizeSkillTokens(rawSkills) {
   if (!rawSkills) return [];
 
@@ -404,13 +497,14 @@ function normalizeSkillTokens(rawSkills) {
     .filter(Boolean);
 }
 
-async function fetchProfilesTimeline(supabase, sinceIso) {
+async function fetchProfilesTimeline(supabase, range) {
   const baseSelect = "id, role, is_eligible, application_quota, updated_at";
 
-  const primary = await supabase
+  let primaryQuery = supabase
     .from("profiles")
-    .select(`${baseSelect}, created_at`)
-    .gte("created_at", sinceIso);
+    .select(`${baseSelect}, created_at`);
+  primaryQuery = applyCreatedAtRange(primaryQuery, range, "created_at");
+  const primary = await primaryQuery;
 
   if (!primary.error) {
     return {
@@ -419,10 +513,13 @@ async function fetchProfilesTimeline(supabase, sinceIso) {
     };
   }
 
-  const fallback = await supabase
-    .from("profiles")
-    .select(baseSelect)
-    .gte("updated_at", sinceIso);
+  let fallbackQuery = supabase.from("profiles").select(baseSelect);
+  if (range?.isFiltered) {
+    fallbackQuery = fallbackQuery
+      .gte("updated_at", range.fromIso)
+      .lt("updated_at", range.toExclusiveIso);
+  }
+  const fallback = await fallbackQuery;
   if (fallback.error) throw fallback.error;
 
   return {
@@ -555,14 +652,12 @@ function buildRecentActivities({
     .slice(0, 12);
 }
 
-async function analytics() {
+async function analytics({ from, to } = {}) {
   const supabase = requireAdminClient();
+  const dateRange = parseAnalyticsDateRange({ from, to });
 
   const now = new Date();
   const todayStart = startOfUtcDay(now);
-  const chartDays = 14;
-  const dayKeys = buildDayKeys(chartDays, now);
-  const chartStartIso = `${dayKeys[0]}T00:00:00.000Z`;
   const tomorrowStartIso = new Date(
     todayStart.getTime() + 24 * 60 * 60 * 1000,
   ).toISOString();
@@ -581,6 +676,7 @@ async function analytics() {
     eligibleStudentsRes,
     studentsWithQuotaRes,
     jobsTimelineRes,
+    applicationsTimelineRes,
     jobsExpiringSoonRes,
     topSkillsRowsRes,
     applicationsStatusRowsRes,
@@ -588,62 +684,129 @@ async function analytics() {
     recentApplicationsRes,
     profileTimeline,
   ] = await Promise.all([
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", ROLES.STUDENT),
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", ROLES.ADMIN),
-    supabase.from("jobs").select("id", { count: "exact", head: true }),
-    supabase
-      .from("jobs")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active"),
-    supabase.from("applications").select("id", { count: "exact", head: true }),
-    supabase
-      .from("applications")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", todayStart.toISOString())
-      .lt("created_at", tomorrowStartIso),
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", ROLES.STUDENT)
-      .eq("is_eligible", true),
-    supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", ROLES.STUDENT)
-      .gt("application_quota", 0),
-    supabase.from("jobs").select("created_at").gte("created_at", chartStartIso),
-    supabase
-      .from("jobs")
-      .select("id, title, company, valid_till")
-      .eq("status", "active")
-      .gte("valid_till", now.toISOString())
-      .lte("valid_till", weekAhead)
-      .order("valid_till", { ascending: true })
-      .limit(5),
-    supabase
-      .from("jobs")
-      .select("skills")
-      .order("created_at", { ascending: false })
-      .limit(300),
-    supabase.from("applications").select("status"),
-    supabase
-      .from("jobs")
-      .select("id, title, company, created_at")
-      .order("created_at", { ascending: false })
-      .limit(8),
-    supabase
-      .from("applications")
-      .select("id, status, created_at, updated_at, student_id, job_id")
-      .order("updated_at", { ascending: false })
-      .limit(12),
-    fetchProfilesTimeline(supabase, chartStartIso),
+    applyCreatedAtRange(
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", ROLES.STUDENT),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", ROLES.ADMIN),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase.from("jobs").select("id", { count: "exact", head: true }),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "active"),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true }),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", todayStart.toISOString())
+        .lt("created_at", tomorrowStartIso),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", ROLES.STUDENT)
+        .eq("is_eligible", true),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", ROLES.STUDENT)
+        .gt("application_quota", 0),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase.from("jobs").select("created_at"),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase.from("applications").select("created_at"),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("jobs")
+        .select("id, title, company, valid_till")
+        .eq("status", "active")
+        .gte("valid_till", now.toISOString())
+        .lte("valid_till", weekAhead)
+        .order("valid_till", { ascending: true })
+        .limit(5),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("jobs")
+        .select("skills")
+        .order("created_at", { ascending: false })
+        .limit(300),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase.from("applications").select("status"),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("jobs")
+        .select("id, title, company, created_at")
+        .order("created_at", { ascending: false })
+        .limit(8),
+      dateRange,
+      "created_at",
+    ),
+    applyCreatedAtRange(
+      supabase
+        .from("applications")
+        .select("id, status, created_at, updated_at, student_id, job_id")
+        .order("updated_at", { ascending: false })
+        .limit(12),
+      dateRange,
+      "created_at",
+    ),
+    fetchProfilesTimeline(supabase, dateRange),
   ]);
 
   const totalUsers = totalUsersRes.count || 0;
@@ -656,6 +819,17 @@ async function analytics() {
   const eligibleStudents = eligibleStudentsRes.count || 0;
   const nonEligibleStudents = Math.max(totalStudents - eligibleStudents, 0);
   const studentsWithRemainingQuota = studentsWithQuotaRes.count || 0;
+
+  const dayKeys = dateRange.isFiltered
+    ? buildDayKeysFromRange(dateRange.fromKey, dateRange.toKey)
+    : buildDayKeysFromRows(
+        [
+          profileTimeline.rows,
+          jobsTimelineRes.data,
+          applicationsTimelineRes.data,
+        ],
+        now,
+      );
 
   const usersGrowthCountByDay = countRowsByDay(
     dayKeys,
@@ -672,6 +846,12 @@ async function analytics() {
     "created_at",
   );
 
+  const applicationsCountByDay = countRowsByDay(
+    dayKeys,
+    applicationsTimelineRes.data,
+    "created_at",
+  );
+
   const usersGrowth = dayKeys.map((key) => ({
     date: key,
     label: toShortLabel(key),
@@ -682,6 +862,12 @@ async function analytics() {
     date: key,
     label: toShortLabel(key),
     jobs: jobsCountByDay[key] || 0,
+  }));
+
+  const applicationsPerDay = dayKeys.map((key) => ({
+    date: key,
+    label: toShortLabel(key),
+    applications: applicationsCountByDay[key] || 0,
   }));
 
   const statusBreakdown = buildStatusBreakdown(applicationsStatusRowsRes.data);
@@ -713,8 +899,14 @@ async function analytics() {
     applicationsToday,
     statusBreakdown,
     jobsPerDay,
+    applicationsPerDay,
     usersGrowth,
     recentActivities: sortedRecentActivities,
+    selectedRange: {
+      from: dateRange.fromKey,
+      to: dateRange.toKey,
+      isFiltered: dateRange.isFiltered,
+    },
     eligibleVsNonEligible: {
       eligible: eligibleStudents,
       nonEligible: nonEligibleStudents,
