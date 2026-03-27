@@ -1,5 +1,34 @@
 const cloudDriveService = require("../services/cloudDriveService");
 
+function normalizeStringArray(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function parseYesNoBoolean(value) {
+  if (value === true || value === "Yes" || value === "yes") return true;
+  if (value === false || value === "No" || value === "no") return false;
+  return null;
+}
+
+function parseNumberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 async function getNextDrive(req, res, next) {
   try {
     const nextDrive = await cloudDriveService.getNextDrive();
@@ -48,6 +77,43 @@ async function register(req, res, next) {
     const isReadyToRelocate =
       relocationPreference &&
       relocationPreference.toLowerCase() !== "i am not ready to relocate";
+    const awsCertifications = normalizeStringArray(body.aws_certifications);
+    const devopsTools = normalizeStringArray(body.devops_tools);
+    const track = body.track || null;
+    const currentStatus = body.current_status || body.status || null;
+    const relevantExperience =
+      body.relevant_experience || body.aws_experience || null;
+    const transitionToCloudDevOps = parseYesNoBoolean(
+      body.transitioning_to_cloud_devops,
+    );
+    const awsHandsOn = parseYesNoBoolean(body.has_aws_hands_on);
+    const devopsHandsOn = parseYesNoBoolean(body.has_devops_hands_on);
+    const currentlyWorking = parseYesNoBoolean(body.currently_working);
+    const hasAwsCert =
+      body.aws_cert === true ||
+      body.aws_cert === "Yes" ||
+      awsCertifications.some((item) => item !== "None");
+    const hasDevopsCert =
+      body.devops_cert === true ||
+      body.devops_cert === "Yes" ||
+      devopsTools.some((item) => item !== "None");
+
+    const backendTags = body.backend_tags && typeof body.backend_tags === "object"
+      ? body.backend_tags
+      : {
+          track: track === "AWS Cloud Track" ? "aws" : track === "DevOps Track" ? "devops" : null,
+          status:
+            currentStatus === "IT Professional"
+              ? "it"
+              : currentStatus === "Non-IT -> Transitioning to IT"
+                ? "non-it"
+                : currentStatus === "Fresher"
+                  ? "fresher"
+                  : null,
+          total_experience: body.total_experience || null,
+          relevant_experience: relevantExperience,
+          job_intent: body.job_intent || null,
+        };
 
     // associate profile if present
     const reg = {
@@ -61,11 +127,31 @@ async function register(req, res, next) {
       ready_to_relocate: Boolean(isReadyToRelocate),
       highest_education: body.highest_education || null,
       total_experience: body.total_experience || null,
-      aws_experience: body.aws_experience || null,
-      domain: body.domain || null,
-      aws_cert: body.aws_cert === true || body.aws_cert === "Yes",
-      devops_cert: body.devops_cert === true || body.devops_cert === "Yes",
+      aws_experience: relevantExperience,
+      domain: body.domain || currentStatus,
+      aws_cert: hasAwsCert,
+      devops_cert: hasDevopsCert,
       source: body.source || null,
+      current_status: currentStatus,
+      relevant_experience: relevantExperience,
+      current_last_role: body.current_last_role || null,
+      transitioning_to_cloud_devops: transitionToCloudDevOps,
+      non_it_field: body.non_it_field || null,
+      graduation_year: parseNumberOrNull(body.graduation_year),
+      track: track,
+      has_aws_hands_on: awsHandsOn,
+      aws_certifications: awsCertifications,
+      has_devops_hands_on: devopsHandsOn,
+      devops_tools: devopsTools,
+      job_intent: body.job_intent || null,
+      current_ctc: parseNumberOrNull(body.current_ctc),
+      expected_ctc: parseNumberOrNull(body.expected_ctc),
+      notice_period: body.notice_period || null,
+      currently_working: currentlyWorking,
+      commitment_full_drive: Boolean(body.commitment_full_drive),
+      commitment_serious_roles: Boolean(body.commitment_serious_roles),
+      commitment_selection_performance: Boolean(body.commitment_selection_performance),
+      backend_tags: backendTags,
       status: "Registered",
     };
 

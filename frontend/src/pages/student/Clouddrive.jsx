@@ -18,49 +18,75 @@ import {
 const WHATSAPP_CHANNEL_URL =
   "https://whatsapp.com/channel/0029VbBni2CHFxPA411oCA2U";
 
-const relocationOptions = [
-  "Bangalore",
-  "Hyderabad",
-  "Chennai",
-  "Pune/Mumbai",
-  "I am not ready to relocate",
-];
+const STEP_COUNT = 6;
 
-const educationOptions = [
-  "BE/MTech - IT Background (CS/IS/EC/EEE)",
-  "BE/MTech - Non IT Background (Mech, Civil, Others)",
-  "BCA/MCA/BSc/MSc (CS/IS/EC/EEE)",
-  "Other Degrees - BSc/B.com/BA/Others",
+const qualificationOptions = [
+  "B.E / B.Tech",
+  "M.E / M.Tech",
+  "BCA / MCA",
+  "B.Sc / M.Sc",
   "Diploma",
   "Other",
 ];
 
-const experienceOptions = [
-  "I am a fresher",
-  "6 months - 2 years experience",
-  "2 - 3 years experience",
-  "3 - 4 years experience",
-  "4 - 5 years experience",
-  "5 - 6 years experience",
-  "6 - 7 years experience",
-  "7 - 8 years experience",
-  "8 - 9 years experience",
-  "9 - 10 years experience",
+const currentStatusOptions = [
+  "IT Professional",
+  "Non-IT -> Transitioning to IT",
+  "Fresher",
 ];
 
-const domainOptions = [
-  "IT domain - Dev/Testing/Cloud",
-  "IT domain - Support/Maintenance",
-  "Non-IT Domain",
-  "I am a Fresher",
+const totalExperienceOptions = [
+  "Fresher (0 years)",
+  "1-2 years",
+  "3-4 years",
+  "5-6 years",
+  "7-10 years",
+  "10+ years",
 ];
 
-const sourceOptions = [
-  "Facebook",
-  "LinkedIn",
-  "MicroDegree Telegram group",
-  "Instagram / WhatsApp",
+const relevantExperienceOptions = [
+  "No experience (learning stage)",
+  "< 1 year",
+  "1-2 years",
+  "3-4 years",
+  "5+ years",
 ];
+
+const itRoleOptions = [
+  "Developer",
+  "Tester / QA",
+  "Support Engineer",
+  "System Admin",
+  "DevOps Engineer",
+  "Cloud Engineer",
+  "Other",
+];
+
+const trackOptions = ["AWS Cloud Track", "DevOps Track"];
+
+const awsCertificationOptions = [
+  "MicroDegree AWS Certified",
+  "AWS Global Certification",
+  "None",
+];
+
+const devopsToolOptions = [
+  "Docker",
+  "Kubernetes",
+  "Jenkins",
+  "Terraform",
+  "CI/CD",
+  "Linux",
+  "None",
+];
+
+const jobIntentOptions = [
+  "Yes (actively applying)",
+  "Exploring opportunities",
+  "Not actively looking",
+];
+
+const noticePeriodOptions = ["Immediate", "< 15 days", "30 days", "60+ days"];
 
 const rounds = [
   {
@@ -184,9 +210,48 @@ function renderRadioGroup({
   );
 }
 
+function renderMultiSelectGroup({
+  name,
+  label,
+  options,
+  selectedValues,
+  onToggle,
+  required = false,
+}) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium text-slate-700">
+        {label} {required ? <span className="text-rose-600">*</span> : null}
+      </legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map((option) => (
+          <label
+            key={option}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <input
+              type="checkbox"
+              name={name}
+              checked={selectedValues.includes(option)}
+              onChange={() => onToggle(name, option)}
+            />
+            <span>{option}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function mapTagValue(value, mapping) {
+  return mapping[value] || value || null;
+}
+
 export default function CloudDrive() {
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(1);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [nextDriveInfo, setNextDriveInfo] = useState(null);
   const [registered, setRegistered] = useState(false);
@@ -197,14 +262,27 @@ export default function CloudDrive() {
     email: "",
     phone: "",
     current_location: "",
-    relocation_preference: "",
     highest_education: "",
+    current_status: "",
     total_experience: "",
-    aws_experience: "",
-    domain: "",
-    aws_cert: "",
-    devops_cert: "",
-    source: "",
+    relevant_experience: "",
+    current_last_role: "",
+    transitioning_to_cloud_devops: "",
+    non_it_field: "",
+    graduation_year: "",
+    track: "",
+    has_aws_hands_on: "",
+    aws_certifications: [],
+    has_devops_hands_on: "",
+    devops_tools: [],
+    job_intent: "",
+    current_ctc: "",
+    expected_ctc: "",
+    notice_period: "",
+    currently_working: "",
+    commitment_full_drive: false,
+    commitment_serious_roles: false,
+    commitment_selection_performance: false,
   });
 
   useEffect(() => {
@@ -246,25 +324,199 @@ export default function CloudDrive() {
     closeAt && closeAt.getTime() < Date.now() && !registered,
   );
 
+  const progressPercentage = Math.round((step / STEP_COUNT) * 100);
+
   function onChange(event) {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = event.target;
+    setForm((prev) => {
+      const nextValue = type === "checkbox" ? checked : value;
+      const next = { ...prev, [name]: nextValue };
+
+      if (name === "current_status") {
+        next.current_last_role = "";
+        next.transitioning_to_cloud_devops = "";
+        next.non_it_field = "";
+        next.graduation_year = "";
+      }
+
+      if (name === "track") {
+        next.has_aws_hands_on = "";
+        next.aws_certifications = [];
+        next.has_devops_hands_on = "";
+        next.devops_tools = [];
+      }
+
+      return next;
+    });
+  }
+
+  function onToggleMultiSelect(name, option) {
+    setForm((prev) => {
+      const current = Array.isArray(prev[name]) ? prev[name] : [];
+      const alreadyExists = current.includes(option);
+      let nextValues = alreadyExists
+        ? current.filter((item) => item !== option)
+        : [...current, option];
+
+      if (option === "None") {
+        nextValues = alreadyExists ? [] : ["None"];
+      } else {
+        nextValues = nextValues.filter((item) => item !== "None");
+      }
+
+      return { ...prev, [name]: nextValues };
+    });
+  }
+
+  function validateStep(stepNumber) {
+    if (stepNumber === 1) {
+      if (!form.full_name || !form.email || !form.phone || !form.current_location) {
+        return "Please fill all required basic details.";
+      }
+      if (!form.highest_education) return "Please select your highest qualification.";
+    }
+
+    if (stepNumber === 2) {
+      if (!form.current_status || !form.total_experience || !form.relevant_experience) {
+        return "Please complete all required experience fields.";
+      }
+      if (form.current_status === "IT Professional") {
+        if (!form.current_last_role || !form.transitioning_to_cloud_devops) {
+          return "Please complete your IT background details.";
+        }
+      }
+      if (form.current_status === "Non-IT -> Transitioning to IT") {
+        if (!form.non_it_field || !form.current_last_role) {
+          return "Please complete your current non-IT background details.";
+        }
+      }
+      if (form.current_status === "Fresher" && !form.graduation_year) {
+        return "Please provide your graduation year.";
+      }
+    }
+
+    if (stepNumber === 3 && !form.track) {
+      return "Please choose your target track.";
+    }
+
+    if (stepNumber === 4) {
+      if (form.track === "AWS Cloud Track") {
+        if (!form.has_aws_hands_on || form.aws_certifications.length === 0) {
+          return "Please complete the AWS skill snapshot.";
+        }
+      }
+      if (form.track === "DevOps Track") {
+        if (!form.has_devops_hands_on || form.devops_tools.length === 0) {
+          return "Please complete the DevOps skill snapshot.";
+        }
+      }
+    }
+
+    if (stepNumber === 5) {
+      if (!form.job_intent || !form.notice_period || !form.currently_working) {
+        return "Please complete required job readiness details.";
+      }
+    }
+
+    if (stepNumber === 6) {
+      if (
+        !form.commitment_full_drive ||
+        !form.commitment_serious_roles ||
+        !form.commitment_selection_performance
+      ) {
+        return "Please accept all confirmations before submitting.";
+      }
+    }
+
+    return "";
+  }
+
+  function goToNextStep() {
+    const errorMessage = validateStep(step);
+    if (errorMessage) {
+      alert(errorMessage);
+      return;
+    }
+    setStep((prev) => Math.min(STEP_COUNT, prev + 1));
+  }
+
+  function goToPreviousStep() {
+    setStep((prev) => Math.max(1, prev - 1));
+  }
+
+  function openRegistrationModal() {
+    setSubmitSuccess(false);
+    setStep(1);
+    setOpen(true);
+  }
+
+  function closeRegistrationModal() {
+    setOpen(false);
+    setStep(1);
   }
 
   async function onSubmit(event) {
     event.preventDefault();
+    const errorMessage = validateStep(STEP_COUNT);
+    if (errorMessage) {
+      alert(errorMessage);
+      return;
+    }
+
     if (!nextDriveInfo?.id) {
       alert("No active drive available right now.");
       return;
     }
 
+    const trackTag = mapTagValue(form.track, {
+      "AWS Cloud Track": "aws",
+      "DevOps Track": "devops",
+    });
+    const statusTag = mapTagValue(form.current_status, {
+      "IT Professional": "it",
+      "Non-IT -> Transitioning to IT": "non-it",
+      Fresher: "fresher",
+    });
+    const relevantExperienceTag = mapTagValue(form.relevant_experience, {
+      "No experience (learning stage)": "none",
+      "< 1 year": "<1",
+      "1-2 years": "1-2",
+      "3-4 years": "3-4",
+      "5+ years": "5+",
+    });
+    const totalExperienceTag = mapTagValue(form.total_experience, {
+      "Fresher (0 years)": "0",
+      "1-2 years": "1-2",
+      "3-4 years": "3-4",
+      "5-6 years": "5-6",
+      "7-10 years": "7-10",
+      "10+ years": "10+",
+    });
+    const jobIntentTag = mapTagValue(form.job_intent, {
+      "Yes (actively applying)": "active",
+      "Exploring opportunities": "exploring",
+      "Not actively looking": "passive",
+    });
+
+    const payload = {
+      ...form,
+      drive_id: nextDriveInfo.id,
+      backend_tags: {
+        track: trackTag,
+        status: statusTag,
+        total_experience: totalExperienceTag,
+        relevant_experience: relevantExperienceTag,
+        job_intent: jobIntentTag,
+      },
+    };
+
     setSubmitting(true);
     try {
-      await registerForDrive({ ...form, drive_id: nextDriveInfo.id });
+      await registerForDrive(payload);
       setRegistered(true);
       const history = await listMyRegistrations();
       setPastRegistrations(history || []);
-      setOpen(false);
+      setSubmitSuccess(true);
     } catch (err) {
       alert(err.message || "Registration failed");
     } finally {
@@ -393,9 +645,9 @@ export default function CloudDrive() {
               Oops, you missed registration for this drive. Next drive is expected on <strong>{formatDate(tentativeNextDate)}</strong>.
             </div>
           ) : (
-            <Button onClick={() => setOpen(true)}>
+            <Button onClick={openRegistrationModal}>
               <FiExternalLink className="mr-2 h-4 w-4" />
-              Register for Next Drive
+              Register for Cloud Drive
             </Button>
           )}
         </div>
@@ -609,136 +861,384 @@ export default function CloudDrive() {
       </section>
 
       <Modal
-        title="Cloud Placement Drive - Registration"
+        title="MicroDegree Cloud Drive Registration"
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeRegistrationModal}
         scrollable
         maxWidthClass="max-w-[820px]"
       >
-        <div className="space-y-3 text-sm text-slate-700">
-          <p className="font-semibold text-slate-900">Are you looking for a Job as an AWS DevOps Engineer?</p>
-          <p>Here we are with 100+ job opportunities for you in big MNC's. Apply now and get shortlisted.</p>
-          <p>2nd and 4th Saturday of every month | 1st round: Online Task | 2nd Round: Virtual Interview</p>
-          <p>Clear the below test and get invited for the placement drive.</p>
-          <div>
-            <p className="font-semibold text-slate-900">Requirements</p>
-            <ul className="mt-1 space-y-1">
-              <li className="flex items-start gap-2"><FiCheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" />0 to 4 years cloud experience</li>
-              <li className="flex items-start gap-2"><FiCheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" />Graduates with Cloud Knowledge</li>
-              <li className="flex items-start gap-2"><FiCheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" />Freshers with Hands On Project Experience</li>
-              <li className="flex items-start gap-2"><FiCheckCircle className="mt-0.5 h-4 w-4 text-emerald-500" />Certifications on Cloud Computing</li>
-            </ul>
+        {submitSuccess ? (
+          <div className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            <h3 className="text-base font-semibold">Registration Successful</h3>
+            <p>You will receive the MCQ round link, Zoom session details, and next steps shortly.</p>
+            <p>
+              Join WhatsApp group for updates:
+              <a
+                href={WHATSAPP_CHANNEL_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-1 font-semibold underline"
+              >
+                Open WhatsApp Updates
+              </a>
+            </p>
+            <div className="flex justify-end">
+              <Button type="button" onClick={closeRegistrationModal}>
+                Close
+              </Button>
+            </div>
           </div>
-          <p>
-            Are you a company looking for top Cloud Candidates? Drop your contact info at
-            <span className="font-semibold text-slate-900"> hirings@microdegree.work</span>
-          </p>
-        </div>
+        ) : (
+          <>
+            <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-slate-700">
+              <h3 className="text-base font-semibold text-slate-900">
+                Get access to curated Cloud and DevOps job opportunities through our structured placement drive.
+              </h3>
+              <p>Drive Schedule: 2nd and 4th Saturday (Live on Zoom)</p>
+              <p>Roles: AWS Engineer | DevOps Engineer | Cloud Engineer</p>
+              <p className="font-medium text-rose-700">
+                Only candidates who complete all rounds will be considered for job mapping.
+              </p>
+            </div>
 
-        <form onSubmit={onSubmit} className="mt-4 space-y-4">
-          <Input label="Your Name *" name="full_name" value={form.full_name} onChange={onChange} required />
-          <Input label="Email Id *" name="email" type="email" value={form.email} onChange={onChange} required />
-          <Input label="Mobile Number *" name="phone" value={form.phone} onChange={onChange} required />
-          <Input label="Current Location *" name="current_location" value={form.current_location} onChange={onChange} required />
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                <span>Step {step} of {STEP_COUNT}</span>
+                <span>{progressPercentage}% complete</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-slate-200">
+                <div
+                  className="h-2 rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+            </div>
 
-          {renderRadioGroup({
-            name: "relocation_preference",
-            label: "Are you ready to relocate if placed?",
-            options: relocationOptions,
-            value: form.relocation_preference,
-            onChange,
-            required: true,
-          })}
+            <form onSubmit={onSubmit} className="mt-4 space-y-4">
+              {step === 1 ? (
+                <section className="space-y-4">
+                  <h4 className="text-sm font-semibold text-slate-900">Lets start with your basic details</h4>
+                  <Input label="Full Name *" name="full_name" value={form.full_name} onChange={onChange} required />
+                  <Input label="Email ID *" name="email" type="email" value={form.email} onChange={onChange} required />
+                  <Input label="Phone Number *" name="phone" value={form.phone} onChange={onChange} required />
+                  <Input
+                    label="Current Location (City) *"
+                    name="current_location"
+                    value={form.current_location}
+                    onChange={onChange}
+                    required
+                  />
 
-          {renderRadioGroup({
-            name: "highest_education",
-            label: "What is your highest educational qualification?",
-            options: educationOptions,
-            value: form.highest_education,
-            onChange,
-            required: true,
-          })}
+                  <label className="block">
+                    <div className="mb-1 text-sm font-medium text-slate-700">
+                      Highest Qualification <span className="text-rose-600">*</span>
+                    </div>
+                    <select
+                      name="highest_education"
+                      value={form.highest_education}
+                      onChange={onChange}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                      required
+                    >
+                      <option value="">Select qualification</option>
+                      {qualificationOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </section>
+              ) : null}
 
-          <div className="text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Experience</p>
-            <p>Mention previous experience if any. Placement drive is for all including freshers.</p>
-          </div>
+              {step === 2 ? (
+                <section className="space-y-4">
+                  <h4 className="text-sm font-semibold text-slate-900">Tell us about your professional background</h4>
+                  {renderRadioGroup({
+                    name: "current_status",
+                    label: "Current Status",
+                    options: currentStatusOptions,
+                    value: form.current_status,
+                    onChange,
+                    required: true,
+                  })}
 
-          {renderRadioGroup({
-            name: "total_experience",
-            label: "What's your total work experience",
-            options: experienceOptions,
-            value: form.total_experience,
-            onChange,
-            required: true,
-          })}
+                  {renderRadioGroup({
+                    name: "total_experience",
+                    label: "Total Experience",
+                    options: totalExperienceOptions,
+                    value: form.total_experience,
+                    onChange,
+                    required: true,
+                  })}
 
-          {renderRadioGroup({
-            name: "aws_experience",
-            label: "How many years of AWS/Cloud work experience do you have?",
-            options: experienceOptions,
-            value: form.aws_experience,
-            onChange,
-            required: true,
-          })}
+                  {renderRadioGroup({
+                    name: "relevant_experience",
+                    label: "Hands-on Cloud / DevOps experience",
+                    options: relevantExperienceOptions,
+                    value: form.relevant_experience,
+                    onChange,
+                    required: true,
+                  })}
 
-          {renderRadioGroup({
-            name: "domain",
-            label: "What domain is your previous experience?",
-            options: domainOptions,
-            value: form.domain,
-            onChange,
-            required: true,
-          })}
+                  {form.current_status === "IT Professional" ? (
+                    <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-sm font-semibold text-slate-900">Your IT Background</p>
 
-          {renderRadioGroup({
-            name: "aws_cert",
-            label: "Do you have MicroDegree Cloud AWS certification?",
-            options: ["Yes", "No"],
-            value: form.aws_cert,
-            onChange,
-            required: true,
-          })}
+                      <label className="block">
+                        <div className="mb-1 text-sm font-medium text-slate-700">
+                          Current / Last Role <span className="text-rose-600">*</span>
+                        </div>
+                        <select
+                          name="current_last_role"
+                          value={form.current_last_role}
+                          onChange={onChange}
+                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                          required
+                        >
+                          <option value="">Select role</option>
+                          {itRoleOptions.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
 
-          {renderRadioGroup({
-            name: "devops_cert",
-            label: "Do you have MicroDegree DevOps Certification?",
-            options: ["Yes", "No"],
-            value: form.devops_cert,
-            onChange,
-            required: true,
-          })}
+                      {renderRadioGroup({
+                        name: "transitioning_to_cloud_devops",
+                        label: "Are you transitioning to Cloud / DevOps?",
+                        options: ["Yes", "No"],
+                        value: form.transitioning_to_cloud_devops,
+                        onChange,
+                        required: true,
+                      })}
+                    </div>
+                  ) : null}
 
-          {renderRadioGroup({
-            name: "source",
-            label: "Where did you get this placement Drive Information?",
-            options: sourceOptions,
-            value: form.source,
-            onChange,
-            required: true,
-          })}
+                  {form.current_status === "Non-IT -> Transitioning to IT" ? (
+                    <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-sm font-semibold text-slate-900">Your Current Background</p>
+                      <Input
+                        label="Current Field *"
+                        name="non_it_field"
+                        value={form.non_it_field}
+                        onChange={onChange}
+                        required
+                      />
+                      <Input
+                        label="Current / Last Role *"
+                        name="current_last_role"
+                        value={form.current_last_role}
+                        onChange={onChange}
+                        required
+                      />
+                    </div>
+                  ) : null}
 
-          <p className="text-sm text-slate-700">
-            Click and Join below link to get updates:
-            <a
-              href={WHATSAPP_CHANNEL_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="ml-1 font-semibold text-primary underline"
-            >
-              Join WhatsApp Updates
-            </a>
-          </p>
+                  {form.current_status === "Fresher" ? (
+                    <Input
+                      label="Year of Graduation *"
+                      name="graduation_year"
+                      value={form.graduation_year}
+                      onChange={onChange}
+                      placeholder="e.g. 2025"
+                      required
+                    />
+                  ) : null}
+                </section>
+              ) : null}
 
-          <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Submitting..." : "Submit"}
-            </Button>
-          </div>
-        </form>
+              {step === 3 ? (
+                <section className="space-y-4">
+                  <h4 className="text-sm font-semibold text-slate-900">Choose the role you want to target</h4>
+                  {renderRadioGroup({
+                    name: "track",
+                    label: "Track",
+                    options: trackOptions,
+                    value: form.track,
+                    onChange,
+                    required: true,
+                  })}
+                </section>
+              ) : null}
+
+              {step === 4 ? (
+                <section className="space-y-4">
+                  <h4 className="text-sm font-semibold text-slate-900">Skill Snapshot</h4>
+                  {form.track === "AWS Cloud Track" ? (
+                    <>
+                      {renderRadioGroup({
+                        name: "has_aws_hands_on",
+                        label: "Do you have hands-on AWS experience?",
+                        options: ["Yes", "No"],
+                        value: form.has_aws_hands_on,
+                        onChange,
+                        required: true,
+                      })}
+
+                      {renderMultiSelectGroup({
+                        name: "aws_certifications",
+                        label: "AWS Certifications",
+                        options: awsCertificationOptions,
+                        selectedValues: form.aws_certifications,
+                        onToggle: onToggleMultiSelect,
+                        required: true,
+                      })}
+                    </>
+                  ) : null}
+
+                  {form.track === "DevOps Track" ? (
+                    <>
+                      {renderRadioGroup({
+                        name: "has_devops_hands_on",
+                        label: "Do you have hands-on DevOps experience?",
+                        options: ["Yes", "No"],
+                        value: form.has_devops_hands_on,
+                        onChange,
+                        required: true,
+                      })}
+
+                      {renderMultiSelectGroup({
+                        name: "devops_tools",
+                        label: "Tools you have worked on",
+                        options: devopsToolOptions,
+                        selectedValues: form.devops_tools,
+                        onToggle: onToggleMultiSelect,
+                        required: true,
+                      })}
+                    </>
+                  ) : null}
+
+                  {!form.track ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                      Choose your track in Step 3 to continue.
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {step === 5 ? (
+                <section className="space-y-4">
+                  <h4 className="text-sm font-semibold text-slate-900">Help us match you with the right opportunities</h4>
+
+                  {renderRadioGroup({
+                    name: "job_intent",
+                    label: "Are you actively looking for a job?",
+                    options: jobIntentOptions,
+                    value: form.job_intent,
+                    onChange,
+                    required: true,
+                  })}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Input
+                      label="Current CTC (INR)"
+                      name="current_ctc"
+                      value={form.current_ctc}
+                      onChange={onChange}
+                      placeholder="e.g. 450000"
+                    />
+                    <Input
+                      label="Expected CTC (INR)"
+                      name="expected_ctc"
+                      value={form.expected_ctc}
+                      onChange={onChange}
+                      placeholder="e.g. 700000"
+                    />
+                  </div>
+
+                  {renderRadioGroup({
+                    name: "notice_period",
+                    label: "Notice Period",
+                    options: noticePeriodOptions,
+                    value: form.notice_period,
+                    onChange,
+                    required: true,
+                  })}
+
+                  {renderRadioGroup({
+                    name: "currently_working",
+                    label: "Are you currently working?",
+                    options: ["Yes", "No"],
+                    value: form.currently_working,
+                    onChange,
+                    required: true,
+                  })}
+                </section>
+              ) : null}
+
+              {step === 6 ? (
+                <section className="space-y-4">
+                  <h4 className="text-sm font-semibold text-slate-900">Before you proceed</h4>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                    <p>This is a structured placement drive. You will go through:</p>
+                    <ul className="mt-2 space-y-1">
+                      <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 text-primary" />MCQ Round</li>
+                      <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 text-primary" />Practical Task Round</li>
+                      <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 text-primary" />1:1 Technical Evaluation</li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-2 rounded-xl border border-slate-200 p-3">
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        name="commitment_full_drive"
+                        checked={form.commitment_full_drive}
+                        onChange={onChange}
+                      />
+                      <span>I will attend the full drive and complete all rounds <span className="text-rose-600">*</span></span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        name="commitment_serious_roles"
+                        checked={form.commitment_serious_roles}
+                        onChange={onChange}
+                      />
+                      <span>I am serious about applying for Cloud / DevOps roles <span className="text-rose-600">*</span></span>
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        name="commitment_selection_performance"
+                        checked={form.commitment_selection_performance}
+                        onChange={onChange}
+                      />
+                      <span>I understand that selection depends on my performance <span className="text-rose-600">*</span></span>
+                    </label>
+                  </div>
+                </section>
+              ) : null}
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={closeRegistrationModal}>
+                  Cancel
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  {step > 1 ? (
+                    <Button type="button" variant="outline" onClick={goToPreviousStep}>
+                      Back
+                    </Button>
+                  ) : null}
+                  {step < STEP_COUNT ? (
+                    <Button type="button" onClick={goToNextStep}>
+                      Next
+                    </Button>
+                  ) : (
+                    <Button type="submit" disabled={submitting}>
+                      {submitting ? "Submitting..." : "Register for Cloud Drive"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </form>
+          </>
+        )}
       </Modal>
     </div>
   );
