@@ -8,6 +8,27 @@ function getClient(jwt) {
   return getSupabaseAdmin() || getSupabaseUser(jwt);
 }
 
+function normalizeSkills(rawSkills) {
+  const source = Array.isArray(rawSkills)
+    ? rawSkills
+    : String(rawSkills || "").split(",");
+
+  const unique = [];
+  const seen = new Set();
+
+  source.forEach((item) => {
+    const value = String(item || "").trim();
+    if (!value) return;
+
+    const key = value.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    unique.push(value);
+  });
+
+  return unique;
+}
+
 async function pruneExpiredExternalJobs({ jwt }) {
   const supabase = getClient(jwt);
   const cutoff = new Date(
@@ -50,11 +71,12 @@ async function listAllExternalJobs({ jwt }) {
 // Create a new external job
 async function createExternalJob({ jwt, userId, payload }) {
   const supabase = getClient(jwt);
+  const skills = normalizeSkills(payload.skills);
   const toSave = {
     company: payload.company,
     job_role: payload.jobRole,
     experience: payload.experience || null,
-    ctc: payload.ctc || null,
+    skills: skills.length ? skills : null,
     location: payload.location || null,
     apply_link: payload.applyLink,
     description: payload.description || null,
@@ -95,11 +117,13 @@ async function bulkCreateExternalJobs({ jwt, userId, jobs }) {
       throw err;
     }
 
+    const skills = normalizeSkills(job?.skills);
+
     return {
       company,
       job_role: jobRole,
       experience: String(job?.experience || "").trim() || null,
-      ctc: String(job?.ctc || "").trim() || null,
+      skills: skills.length ? skills : null,
       location: String(job?.location || "").trim() || null,
       apply_link: applyLink,
       description: String(job?.description || "").trim() || null,
@@ -120,11 +144,12 @@ async function bulkCreateExternalJobs({ jwt, userId, jobs }) {
 // Update an existing external job
 async function updateExternalJob({ jwt, jobId, payload }) {
   const supabase = getClient(jwt);
+  const skills = normalizeSkills(payload.skills);
   const toSave = {
     company: payload.company,
     job_role: payload.jobRole,
     experience: payload.experience || null,
-    ctc: payload.ctc || null,
+    skills: skills.length ? skills : null,
     location: payload.location || null,
     apply_link: payload.applyLink,
     description: payload.description || null,

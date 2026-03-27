@@ -24,7 +24,7 @@ const EMPTY_FORM = {
   company: "",
   jobRole: "",
   experience: "",
-  ctc: "",
+  skills: "",
   location: "",
   applyLink: "",
   description: "",
@@ -50,6 +50,7 @@ function mapRowsToExternalJobs(rows) {
     "job_title",
     "location",
     "experience",
+    "skills",
   ];
 
   const missing = required.filter((key) => !headerIndex.has(key));
@@ -71,7 +72,7 @@ function mapRowsToExternalJobs(rows) {
       location: get(row, "location"),
       experience: get(row, "experience"),
       applyLink: get(row, "apply_link"),
-      ctc: "",
+      skills: get(row, "skills") || get(row, "skill"),
       description: "",
     }))
     .filter(
@@ -82,6 +83,103 @@ function mapRowsToExternalJobs(rows) {
         item.experience ||
         item.applyLink,
     );
+}
+
+function ImportPreviewModal({
+  fileName,
+  rows,
+  uploading,
+  onUpload,
+  onCancel,
+}) {
+  const previewRows = rows.slice(0, 8);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">
+              Preview External Jobs Import
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              File: {fileName} | Rows detected: {rows.length}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+          >
+            <FiX className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="max-h-[60vh] overflow-auto px-5 py-4">
+          <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-3 py-2">Company</th>
+                  <th className="px-3 py-2">Role</th>
+                  <th className="px-3 py-2">Location</th>
+                  <th className="px-3 py-2">Experience</th>
+                  <th className="px-3 py-2">Skills</th>
+                  <th className="px-3 py-2">Apply Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previewRows.map((row, index) => (
+                  <tr key={`${row.company}-${row.jobRole}-${index}`} className="border-t border-slate-100">
+                    <td className="px-3 py-2 text-slate-700">{row.company || "-"}</td>
+                    <td className="px-3 py-2 text-slate-700">{row.jobRole || "-"}</td>
+                    <td className="px-3 py-2 text-slate-600">{row.location || "-"}</td>
+                    <td className="px-3 py-2 text-slate-600">{row.experience || "-"}</td>
+                    <td className="max-w-72 truncate px-3 py-2 text-slate-600" title={row.skills || ""}>
+                      {row.skills || "-"}
+                    </td>
+                    <td className="max-w-72 truncate px-3 py-2 text-slate-600" title={row.applyLink || ""}>
+                      {row.applyLink || "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {rows.length > previewRows.length && (
+            <p className="mt-2 text-xs text-slate-500">
+              Showing first {previewRows.length} rows only.
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={uploading}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onUpload}
+            disabled={uploading}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:opacity-60"
+          >
+            {uploading ? "Uploading..." : "Upload"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 async function parseExternalJobsFile(file) {
@@ -104,7 +202,9 @@ function FormModal({ initial, onSave, onClose }) {
           company: initial.company || "",
           jobRole: initial.job_role || "",
           experience: initial.experience || "",
-          ctc: initial.ctc || "",
+          skills: Array.isArray(initial.skills)
+            ? initial.skills.join(", ")
+            : initial.skills || "",
           location: initial.location || "",
           applyLink: initial.apply_link || "",
           description: initial.description || "",
@@ -214,7 +314,7 @@ function FormModal({ initial, onSave, onClose }) {
             </div>
           </div>
 
-          {/* Experience + CTC */}
+          {/* Experience + Skills */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -230,14 +330,14 @@ function FormModal({ initial, onSave, onClose }) {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                CTC
+                Skills (comma separated)
               </label>
               <input
                 type="text"
-                placeholder="e.g. 8–12 LPA"
+                placeholder="e.g. AWS, Terraform, Docker"
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
-                value={form.ctc}
-                onChange={(e) => update({ ctc: e.target.value })}
+                value={form.skills}
+                onChange={(e) => update({ skills: e.target.value })}
               />
             </div>
           </div>
@@ -337,6 +437,9 @@ export default function PostExternalJob() {
   const [modalOpen, setModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [previewRows, setPreviewRows] = useState([]);
+  const [previewFileName, setPreviewFileName] = useState("");
+  const [isPreviewUploading, setIsPreviewUploading] = useState(false);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -406,16 +509,37 @@ export default function PostExternalJob() {
         );
       }
 
-      const result = await createExternalJobsBulk(jobsToCreate);
-      await refresh();
-      await showSuccess(
-        `Imported ${result.count || jobsToCreate.length} external jobs.`,
-      );
+      setPreviewRows(jobsToCreate);
+      setPreviewFileName(file.name || "");
     } catch (err) {
       await showError(err?.message || "Failed to import file");
     } finally {
       event.target.value = "";
       setIsUploading(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (isPreviewUploading) return;
+    setPreviewRows([]);
+    setPreviewFileName("");
+  };
+
+  const handleConfirmPreviewUpload = async () => {
+    if (!previewRows.length) return;
+
+    setIsPreviewUploading(true);
+    try {
+      const result = await createExternalJobsBulk(previewRows);
+      await refresh();
+      await showSuccess(
+        `Imported ${result.count || previewRows.length} external jobs.`,
+      );
+      closePreview();
+    } catch (err) {
+      await showError(err?.message || "Failed to import file");
+    } finally {
+      setIsPreviewUploading(false);
     }
   };
 
@@ -488,7 +612,7 @@ export default function PostExternalJob() {
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Experience</th>
-                <th className="px-4 py-3">CTC</th>
+                <th className="px-4 py-3">Skills</th>
                 <th className="px-4 py-3">Location</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Link</th>
@@ -508,7 +632,11 @@ export default function PostExternalJob() {
                   <td className="px-4 py-3 text-slate-600">
                     {job.experience || "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{job.ctc || "—"}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {Array.isArray(job.skills)
+                      ? job.skills.join(", ") || "—"
+                      : job.skills || "—"}
+                  </td>
                   <td className="px-4 py-3 text-slate-600">
                     {job.location || "—"}
                   </td>
@@ -557,6 +685,17 @@ export default function PostExternalJob() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Form modal */}
+      {previewRows.length > 0 && (
+        <ImportPreviewModal
+          fileName={previewFileName}
+          rows={previewRows}
+          uploading={isPreviewUploading}
+          onUpload={handleConfirmPreviewUpload}
+          onCancel={closePreview}
+        />
       )}
 
       {/* Form modal */}

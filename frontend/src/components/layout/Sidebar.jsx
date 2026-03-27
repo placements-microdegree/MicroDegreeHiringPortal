@@ -147,21 +147,26 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     ];
   } else {
     links = [
-      { to: "/student/dashboard", label: "Dashboard", icon: FiGrid },
-      { to: "/student/jobs", label: "Jobs (JD)", icon: FiBookOpen },
+      { to: "/student/dashboard", label: "Overview", icon: FiGrid },
+      {
+        to: "/student/external-jobs",
+        label: "Job Feed",
+        icon: FiBriefcase,
+      },
+      { to: "/student/jobs", label: "Premium Jobs", icon: FiBookOpen },
       {
         to: "/student/applications",
-        label: "Application Status",
+        label: "My Applications",
         icon: FiClipboard,
       },
       {
-        to: "/student/external-jobs",
-        label: "External Jobs",
-        icon: FiBriefcase,
+        to: "/student/cloud-drive",
+        label: "Cloud Resources",
+        icon: FiCloud,
       },
       {
         href: "https://resumes.microdegree.work/",
-        label: "Resume builder",
+        label: "Resume Builder",
         icon: FiFileText,
         betaBadge: true,
         external: true,
@@ -171,22 +176,16 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       },
       {
         to: "/student/refer-job-opening",
-        label: "Refer a Job Opening",
+        label: "Refer a Job",
         icon: FiSend,
         imageBadge: "/sign.png",
         newBadge: true,
       },
       {
         to: "/student/career-guide",
-        label: "Career Assistance Guide",
+        label: "Career Guide",
         icon: FiBookOpen,
       },
-      {
-        to: "/student/cloud-drive",
-        label: "Cloud Drive",
-        icon: FiCloud,
-      },
-
       { to: "/student/help", label: "Help Center", icon: FiHelpCircle },
     ];
   }
@@ -303,7 +302,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                       l.to === "/student/external-jobs" &&
                       externalJobsCount > 0 && (
                         <span className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
-                          {externalJobsCount > 99 ? "99+" : externalJobsCount}
+                          {externalJobsCount > 99 ? "100+" : externalJobsCount}
                         </span>
                       )}
                     {isAdmin &&
