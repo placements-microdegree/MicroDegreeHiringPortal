@@ -70,6 +70,18 @@ const awsCertificationOptions = [
   "None",
 ];
 
+const awsToolOptions = [
+  "EC2",
+  "S3",
+  "IAM",
+  "VPC",
+  "Route 53",
+  "CloudWatch",
+  "Lambda",
+  "CloudFormation",
+  "None",
+];
+
 const devopsToolOptions = [
   "Docker",
   "Kubernetes",
@@ -77,6 +89,12 @@ const devopsToolOptions = [
   "Terraform",
   "CI/CD",
   "Linux",
+  "None",
+];
+
+const devopsCertificationOptions = [
+  "MicroDegree DevOps Certified",
+  "DevOps Global Certification",
   "None",
 ];
 
@@ -185,6 +203,7 @@ function renderRadioGroup({
   value,
   onChange,
   required = false,
+  error = "",
 }) {
   return (
     <fieldset className="space-y-2">
@@ -206,6 +225,7 @@ function renderRadioGroup({
           </label>
         ))}
       </div>
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </fieldset>
   );
 }
@@ -217,6 +237,7 @@ function renderMultiSelectGroup({
   selectedValues,
   onToggle,
   required = false,
+  error = "",
 }) {
   return (
     <fieldset className="space-y-2">
@@ -239,6 +260,7 @@ function renderMultiSelectGroup({
           </label>
         ))}
       </div>
+      {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </fieldset>
   );
 }
@@ -257,12 +279,15 @@ export default function CloudDrive() {
   const [registered, setRegistered] = useState(false);
   const [pastRegistrations, setPastRegistrations] = useState([]);
   const [pastLoading, setPastLoading] = useState(true);
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
   const [form, setForm] = useState({
     full_name: "",
     email: "",
     phone: "",
     current_location: "",
     highest_education: "",
+    highest_education_other: "",
     current_status: "",
     total_experience: "",
     relevant_experience: "",
@@ -273,8 +298,12 @@ export default function CloudDrive() {
     track: "",
     has_aws_hands_on: "",
     aws_certifications: [],
+    aws_tools: [],
+    aws_global_certification_details: "",
     has_devops_hands_on: "",
     devops_tools: [],
+    devops_certifications: [],
+    devops_global_certification_details: "",
     job_intent: "",
     current_ctc: "",
     expected_ctc: "",
@@ -328,6 +357,8 @@ export default function CloudDrive() {
 
   function onChange(event) {
     const { name, value, type, checked } = event.target;
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setSubmitError("");
     setForm((prev) => {
       const nextValue = type === "checkbox" ? checked : value;
       const next = { ...prev, [name]: nextValue };
@@ -342,8 +373,16 @@ export default function CloudDrive() {
       if (name === "track") {
         next.has_aws_hands_on = "";
         next.aws_certifications = [];
+        next.aws_tools = [];
+        next.aws_global_certification_details = "";
         next.has_devops_hands_on = "";
         next.devops_tools = [];
+        next.devops_certifications = [];
+        next.devops_global_certification_details = "";
+      }
+
+      if (name === "highest_education" && value !== "Other") {
+        next.highest_education_other = "";
       }
 
       return next;
@@ -351,6 +390,8 @@ export default function CloudDrive() {
   }
 
   function onToggleMultiSelect(name, option) {
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+    setSubmitError("");
     setForm((prev) => {
       const current = Array.isArray(prev[name]) ? prev[name] : [];
       const alreadyExists = current.includes(option);
@@ -369,74 +410,128 @@ export default function CloudDrive() {
   }
 
   function validateStep(stepNumber) {
+    const nextErrors = {};
+
     if (stepNumber === 1) {
-      if (!form.full_name || !form.email || !form.phone || !form.current_location) {
-        return "Please fill all required basic details.";
+      if (!form.full_name.trim()) nextErrors.full_name = "Full Name is required.";
+      if (!form.email.trim()) nextErrors.email = "Email ID is required.";
+      if (!form.phone.trim()) nextErrors.phone = "Phone Number is required.";
+      if (!form.current_location.trim()) {
+        nextErrors.current_location = "Current Location is required.";
       }
-      if (!form.highest_education) return "Please select your highest qualification.";
+      if (!form.highest_education) {
+        nextErrors.highest_education = "Highest Qualification is required.";
+      }
+      if (form.highest_education === "Other" && !form.highest_education_other.trim()) {
+        nextErrors.highest_education_other = "Please enter your highest qualification.";
+      }
     }
 
     if (stepNumber === 2) {
-      if (!form.current_status || !form.total_experience || !form.relevant_experience) {
-        return "Please complete all required experience fields.";
+      if (!form.current_status) nextErrors.current_status = "Current Status is required.";
+      if (!form.total_experience) {
+        nextErrors.total_experience = "Total Experience is required.";
+      }
+      if (!form.relevant_experience) {
+        nextErrors.relevant_experience = "This experience field is required.";
       }
       if (form.current_status === "IT Professional") {
-        if (!form.current_last_role || !form.transitioning_to_cloud_devops) {
-          return "Please complete your IT background details.";
+        if (!form.current_last_role) {
+          nextErrors.current_last_role = "Current / Last Role is required.";
+        }
+        if (!form.transitioning_to_cloud_devops) {
+          nextErrors.transitioning_to_cloud_devops =
+            "Please select if you are transitioning to Cloud / DevOps.";
         }
       }
       if (form.current_status === "Non-IT -> Transitioning to IT") {
-        if (!form.non_it_field || !form.current_last_role) {
-          return "Please complete your current non-IT background details.";
+        if (!form.non_it_field.trim()) {
+          nextErrors.non_it_field = "Current Field is required.";
+        }
+        if (!form.current_last_role.trim()) {
+          nextErrors.current_last_role = "Current / Last Role is required.";
         }
       }
-      if (form.current_status === "Fresher" && !form.graduation_year) {
-        return "Please provide your graduation year.";
+      if (form.current_status === "Fresher" && !form.graduation_year.trim()) {
+        nextErrors.graduation_year = "Year of Graduation is required.";
       }
     }
 
     if (stepNumber === 3 && !form.track) {
-      return "Please choose your target track.";
+      nextErrors.track = "Please choose your target track.";
     }
 
     if (stepNumber === 4) {
       if (form.track === "AWS Cloud Track") {
-        if (!form.has_aws_hands_on || form.aws_certifications.length === 0) {
-          return "Please complete the AWS skill snapshot.";
+        if (!form.has_aws_hands_on) {
+          nextErrors.has_aws_hands_on = "Please select your AWS hands-on status.";
+        }
+        if (form.aws_certifications.length === 0) {
+          nextErrors.aws_certifications = "Please select at least one AWS certification option.";
+        }
+        if (form.aws_tools.length === 0) {
+          nextErrors.aws_tools = "Please select at least one AWS tool option.";
+        }
+        if (
+          form.aws_certifications.includes("AWS Global Certification") &&
+          !form.aws_global_certification_details.trim()
+        ) {
+          nextErrors.aws_global_certification_details =
+            "Please enter your AWS global certification details.";
         }
       }
       if (form.track === "DevOps Track") {
-        if (!form.has_devops_hands_on || form.devops_tools.length === 0) {
-          return "Please complete the DevOps skill snapshot.";
+        if (!form.has_devops_hands_on) {
+          nextErrors.has_devops_hands_on =
+            "Please select your DevOps hands-on status.";
+        }
+        if (form.devops_tools.length === 0) {
+          nextErrors.devops_tools = "Please select at least one DevOps tool option.";
+        }
+        if (form.devops_certifications.length === 0) {
+          nextErrors.devops_certifications =
+            "Please select at least one DevOps certification option.";
+        }
+        if (
+          form.devops_certifications.includes("DevOps Global Certification") &&
+          !form.devops_global_certification_details.trim()
+        ) {
+          nextErrors.devops_global_certification_details =
+            "Please enter your DevOps global certification details.";
         }
       }
     }
 
     if (stepNumber === 5) {
-      if (!form.job_intent || !form.notice_period || !form.currently_working) {
-        return "Please complete required job readiness details.";
+      if (!form.job_intent) nextErrors.job_intent = "Job intent is required.";
+      if (!form.notice_period) nextErrors.notice_period = "Notice period is required.";
+      if (!form.currently_working) {
+        nextErrors.currently_working = "Please select whether you are currently working.";
       }
     }
 
     if (stepNumber === 6) {
-      if (
-        !form.commitment_full_drive ||
-        !form.commitment_serious_roles ||
-        !form.commitment_selection_performance
-      ) {
-        return "Please accept all confirmations before submitting.";
+      if (!form.commitment_full_drive) {
+        nextErrors.commitment_full_drive = "This confirmation is required.";
+      }
+      if (!form.commitment_serious_roles) {
+        nextErrors.commitment_serious_roles = "This confirmation is required.";
+      }
+      if (!form.commitment_selection_performance) {
+        nextErrors.commitment_selection_performance = "This confirmation is required.";
       }
     }
 
-    return "";
+    return nextErrors;
   }
 
   function goToNextStep() {
-    const errorMessage = validateStep(step);
-    if (errorMessage) {
-      alert(errorMessage);
+    const stepErrors = validateStep(step);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
       return;
     }
+    setErrors({});
     setStep((prev) => Math.min(STEP_COUNT, prev + 1));
   }
 
@@ -447,24 +542,30 @@ export default function CloudDrive() {
   function openRegistrationModal() {
     setSubmitSuccess(false);
     setStep(1);
+    setErrors({});
+    setSubmitError("");
     setOpen(true);
   }
 
   function closeRegistrationModal() {
     setOpen(false);
     setStep(1);
+    setErrors({});
+    setSubmitError("");
   }
 
   async function onSubmit(event) {
     event.preventDefault();
-    const errorMessage = validateStep(STEP_COUNT);
-    if (errorMessage) {
-      alert(errorMessage);
+    const stepErrors = validateStep(STEP_COUNT);
+    if (Object.keys(stepErrors).length > 0) {
+      setErrors(stepErrors);
       return;
     }
+    setErrors({});
+    setSubmitError("");
 
     if (!nextDriveInfo?.id) {
-      alert("No active drive available right now.");
+      setSubmitError("No active drive available right now.");
       return;
     }
 
@@ -518,7 +619,7 @@ export default function CloudDrive() {
       setPastRegistrations(history || []);
       setSubmitSuccess(true);
     } catch (err) {
-      alert(err.message || "Registration failed");
+      setSubmitError(err.message || "Registration failed");
     } finally {
       setSubmitting(false);
     }
@@ -915,17 +1016,24 @@ export default function CloudDrive() {
             </div>
 
             <form onSubmit={onSubmit} className="mt-4 space-y-4">
+              {submitError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {submitError}
+                </div>
+              ) : null}
+
               {step === 1 ? (
                 <section className="space-y-4">
                   <h4 className="text-sm font-semibold text-slate-900">Lets start with your basic details</h4>
-                  <Input label="Full Name *" name="full_name" value={form.full_name} onChange={onChange} required />
-                  <Input label="Email ID *" name="email" type="email" value={form.email} onChange={onChange} required />
-                  <Input label="Phone Number *" name="phone" value={form.phone} onChange={onChange} required />
+                  <Input label="Full Name *" name="full_name" value={form.full_name} onChange={onChange} error={errors.full_name} required />
+                  <Input label="Email ID *" name="email" type="email" value={form.email} onChange={onChange} error={errors.email} required />
+                  <Input label="Phone Number *" name="phone" value={form.phone} onChange={onChange} error={errors.phone} required />
                   <Input
                     label="Current Location (City) *"
                     name="current_location"
                     value={form.current_location}
                     onChange={onChange}
+                    error={errors.current_location}
                     required
                   />
 
@@ -937,7 +1045,7 @@ export default function CloudDrive() {
                       name="highest_education"
                       value={form.highest_education}
                       onChange={onChange}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                      className={`w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ${errors.highest_education ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-primary"}`}
                       required
                     >
                       <option value="">Select qualification</option>
@@ -947,7 +1055,22 @@ export default function CloudDrive() {
                         </option>
                       ))}
                     </select>
+                    {errors.highest_education ? (
+                      <p className="mt-1 text-xs text-red-600">{errors.highest_education}</p>
+                    ) : null}
                   </label>
+
+                  {form.highest_education === "Other" ? (
+                    <Input
+                      label="Enter Highest Qualification *"
+                      name="highest_education_other"
+                      value={form.highest_education_other}
+                      onChange={onChange}
+                      error={errors.highest_education_other}
+                      placeholder="Enter your qualification"
+                      required
+                    />
+                  ) : null}
                 </section>
               ) : null}
 
@@ -961,6 +1084,7 @@ export default function CloudDrive() {
                     value: form.current_status,
                     onChange,
                     required: true,
+                    error: errors.current_status,
                   })}
 
                   {renderRadioGroup({
@@ -970,15 +1094,17 @@ export default function CloudDrive() {
                     value: form.total_experience,
                     onChange,
                     required: true,
+                    error: errors.total_experience,
                   })}
 
                   {renderRadioGroup({
                     name: "relevant_experience",
-                    label: "Hands-on Cloud / DevOps experience",
+                    label: "Hands-on Real Cloud / DevOps experience",
                     options: relevantExperienceOptions,
                     value: form.relevant_experience,
                     onChange,
                     required: true,
+                    error: errors.relevant_experience,
                   })}
 
                   {form.current_status === "IT Professional" ? (
@@ -993,7 +1119,7 @@ export default function CloudDrive() {
                           name="current_last_role"
                           value={form.current_last_role}
                           onChange={onChange}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+                          className={`w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ${errors.current_last_role ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-primary"}`}
                           required
                         >
                           <option value="">Select role</option>
@@ -1003,6 +1129,9 @@ export default function CloudDrive() {
                             </option>
                           ))}
                         </select>
+                        {errors.current_last_role ? (
+                          <p className="mt-1 text-xs text-red-600">{errors.current_last_role}</p>
+                        ) : null}
                       </label>
 
                       {renderRadioGroup({
@@ -1012,6 +1141,7 @@ export default function CloudDrive() {
                         value: form.transitioning_to_cloud_devops,
                         onChange,
                         required: true,
+                        error: errors.transitioning_to_cloud_devops,
                       })}
                     </div>
                   ) : null}
@@ -1024,6 +1154,7 @@ export default function CloudDrive() {
                         name="non_it_field"
                         value={form.non_it_field}
                         onChange={onChange}
+                        error={errors.non_it_field}
                         required
                       />
                       <Input
@@ -1031,6 +1162,7 @@ export default function CloudDrive() {
                         name="current_last_role"
                         value={form.current_last_role}
                         onChange={onChange}
+                        error={errors.current_last_role}
                         required
                       />
                     </div>
@@ -1042,6 +1174,7 @@ export default function CloudDrive() {
                       name="graduation_year"
                       value={form.graduation_year}
                       onChange={onChange}
+                      error={errors.graduation_year}
                       placeholder="e.g. 2025"
                       required
                     />
@@ -1052,6 +1185,19 @@ export default function CloudDrive() {
               {step === 3 ? (
                 <section className="space-y-4">
                   <h4 className="text-sm font-semibold text-slate-900">Choose the role you want to target</h4>
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                    <ul className="list-disc space-y-1 pl-5">
+                      <li>
+                        Based on the track you select, your Cloud Drive questions will be tailored accordingly.
+                      </li>
+                      <li>
+                        If you clear your selected track, you will be mapped to relevant job opportunities.
+                      </li>
+                      <li>
+                        Can you do both tracks? Yes, you can do both (you can choose the other track in the next drive).
+                      </li>
+                    </ul>
+                  </div>
                   {renderRadioGroup({
                     name: "track",
                     label: "Track",
@@ -1059,6 +1205,7 @@ export default function CloudDrive() {
                     value: form.track,
                     onChange,
                     required: true,
+                    error: errors.track,
                   })}
                 </section>
               ) : null}
@@ -1075,6 +1222,7 @@ export default function CloudDrive() {
                         value: form.has_aws_hands_on,
                         onChange,
                         required: true,
+                        error: errors.has_aws_hands_on,
                       })}
 
                       {renderMultiSelectGroup({
@@ -1084,6 +1232,29 @@ export default function CloudDrive() {
                         selectedValues: form.aws_certifications,
                         onToggle: onToggleMultiSelect,
                         required: true,
+                        error: errors.aws_certifications,
+                      })}
+
+                      {form.aws_certifications.includes("AWS Global Certification") ? (
+                        <Input
+                          label="AWS Global Certification Details *"
+                          name="aws_global_certification_details"
+                          value={form.aws_global_certification_details}
+                          onChange={onChange}
+                          error={errors.aws_global_certification_details}
+                          placeholder="Enter certification name, issuer, and year"
+                          required
+                        />
+                      ) : null}
+
+                      {renderMultiSelectGroup({
+                        name: "aws_tools",
+                        label: "Tools you have worked on",
+                        options: awsToolOptions,
+                        selectedValues: form.aws_tools,
+                        onToggle: onToggleMultiSelect,
+                        required: true,
+                        error: errors.aws_tools,
                       })}
                     </>
                   ) : null}
@@ -1097,6 +1268,7 @@ export default function CloudDrive() {
                         value: form.has_devops_hands_on,
                         onChange,
                         required: true,
+                        error: errors.has_devops_hands_on,
                       })}
 
                       {renderMultiSelectGroup({
@@ -1106,7 +1278,30 @@ export default function CloudDrive() {
                         selectedValues: form.devops_tools,
                         onToggle: onToggleMultiSelect,
                         required: true,
+                        error: errors.devops_tools,
                       })}
+
+                      {renderMultiSelectGroup({
+                        name: "devops_certifications",
+                        label: "DevOps Certifications",
+                        options: devopsCertificationOptions,
+                        selectedValues: form.devops_certifications,
+                        onToggle: onToggleMultiSelect,
+                        required: true,
+                        error: errors.devops_certifications,
+                      })}
+
+                      {form.devops_certifications.includes("DevOps Global Certification") ? (
+                        <Input
+                          label="DevOps Global Certification Details *"
+                          name="devops_global_certification_details"
+                          value={form.devops_global_certification_details}
+                          onChange={onChange}
+                          error={errors.devops_global_certification_details}
+                          placeholder="Enter certification name, issuer, and year"
+                          required
+                        />
+                      ) : null}
                     </>
                   ) : null}
 
@@ -1129,24 +1324,28 @@ export default function CloudDrive() {
                     value: form.job_intent,
                     onChange,
                     required: true,
+                    error: errors.job_intent,
                   })}
 
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input
-                      label="Current CTC (INR)"
+                      label="Current CTC (LPA - yearly)"
                       name="current_ctc"
                       value={form.current_ctc}
                       onChange={onChange}
-                      placeholder="e.g. 450000"
+                      placeholder="e.g. 7.5"
                     />
                     <Input
-                      label="Expected CTC (INR)"
+                      label="Expected CTC (LPA - yearly)"
                       name="expected_ctc"
                       value={form.expected_ctc}
                       onChange={onChange}
-                      placeholder="e.g. 700000"
+                      placeholder="e.g. 10.0"
                     />
                   </div>
+                  <p className="text-xs text-slate-500">
+                    Enter values in LPA only (example: 6.5, 7.5), not monthly or yearly rupee amount.
+                  </p>
 
                   {renderRadioGroup({
                     name: "notice_period",
@@ -1155,6 +1354,7 @@ export default function CloudDrive() {
                     value: form.notice_period,
                     onChange,
                     required: true,
+                    error: errors.notice_period,
                   })}
 
                   {renderRadioGroup({
@@ -1164,6 +1364,7 @@ export default function CloudDrive() {
                     value: form.currently_working,
                     onChange,
                     required: true,
+                    error: errors.currently_working,
                   })}
                 </section>
               ) : null}
@@ -1190,6 +1391,9 @@ export default function CloudDrive() {
                       />
                       <span>I will attend the full drive and complete all rounds <span className="text-rose-600">*</span></span>
                     </label>
+                    {errors.commitment_full_drive ? (
+                      <p className="text-xs text-red-600">{errors.commitment_full_drive}</p>
+                    ) : null}
 
                     <label className="flex items-center gap-2 text-sm text-slate-700">
                       <input
@@ -1200,6 +1404,9 @@ export default function CloudDrive() {
                       />
                       <span>I am serious about applying for Cloud / DevOps roles <span className="text-rose-600">*</span></span>
                     </label>
+                    {errors.commitment_serious_roles ? (
+                      <p className="text-xs text-red-600">{errors.commitment_serious_roles}</p>
+                    ) : null}
 
                     <label className="flex items-center gap-2 text-sm text-slate-700">
                       <input
@@ -1210,6 +1417,9 @@ export default function CloudDrive() {
                       />
                       <span>I understand that selection depends on my performance <span className="text-rose-600">*</span></span>
                     </label>
+                    {errors.commitment_selection_performance ? (
+                      <p className="text-xs text-red-600">{errors.commitment_selection_performance}</p>
+                    ) : null}
                   </div>
                 </section>
               ) : null}

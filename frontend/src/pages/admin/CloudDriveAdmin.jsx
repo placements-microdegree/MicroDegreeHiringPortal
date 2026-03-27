@@ -244,6 +244,7 @@ export default function CloudDriveAdmin() {
       Phone: registration.phone || "",
       "Current Location": registration.current_location || "",
       "Highest Education": registration.highest_education || "",
+      "Highest Education (Other Input)": registration.highest_education_other || "",
       "Current Status": registration.current_status || "",
       "Total Experience": registration.total_experience || "",
       "Relevant Experience": registration.relevant_experience || registration.aws_experience || "",
@@ -255,13 +256,21 @@ export default function CloudDriveAdmin() {
       "AWS Certifications": Array.isArray(registration.aws_certifications)
         ? registration.aws_certifications.join(", ")
         : "",
+      "AWS Tools": Array.isArray(registration.aws_tools)
+        ? registration.aws_tools.join(", ")
+        : "",
+      "AWS Global Certification Details": registration.aws_global_certification_details || "",
       "DevOps Hands-on": registration.has_devops_hands_on === null || registration.has_devops_hands_on === undefined ? "" : registration.has_devops_hands_on ? "Yes" : "No",
       "DevOps Tools": Array.isArray(registration.devops_tools)
         ? registration.devops_tools.join(", ")
         : "",
+      "DevOps Certifications": Array.isArray(registration.devops_certifications)
+        ? registration.devops_certifications.join(", ")
+        : "",
+      "DevOps Global Certification Details": registration.devops_global_certification_details || "",
       "Job Intent": registration.job_intent || "",
-      "Current CTC": registration.current_ctc || "",
-      "Expected CTC": registration.expected_ctc || "",
+      "Current CTC (LPA)": registration.current_ctc || "",
+      "Expected CTC (LPA)": registration.expected_ctc || "",
       "Notice Period": registration.notice_period || "",
       "Currently Working": registration.currently_working === null || registration.currently_working === undefined ? "" : registration.currently_working ? "Yes" : "No",
       "MicroDegree AWS Cert": registration.aws_cert ? "Yes" : "No",
@@ -478,7 +487,7 @@ export default function CloudDriveAdmin() {
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          <table className="min-w-[2800px] table-auto border-collapse">
+          <table className="min-w-[3400px] table-auto border-collapse">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-700">
                 <th className="p-2">Name</th>
@@ -486,6 +495,7 @@ export default function CloudDriveAdmin() {
                 <th className="p-2">Phone</th>
                 <th className="p-2">Current Location</th>
                 <th className="p-2">Highest Education</th>
+                <th className="p-2">Highest Education (Other)</th>
                 <th className="p-2">Current Status</th>
                 <th className="p-2">Total Experience</th>
                 <th className="p-2">Relevant Experience</th>
@@ -495,11 +505,15 @@ export default function CloudDriveAdmin() {
                 <th className="p-2">Track</th>
                 <th className="p-2">AWS Hands-on</th>
                 <th className="p-2">AWS Certifications</th>
+                <th className="p-2">AWS Tools</th>
+                <th className="p-2">AWS Global Cert Details</th>
                 <th className="p-2">DevOps Hands-on</th>
                 <th className="p-2">DevOps Tools</th>
+                <th className="p-2">DevOps Certifications</th>
+                <th className="p-2">DevOps Global Cert Details</th>
                 <th className="p-2">Job Intent</th>
-                <th className="p-2">Current CTC</th>
-                <th className="p-2">Expected CTC</th>
+                <th className="p-2">Current CTC (LPA)</th>
+                <th className="p-2">Expected CTC (LPA)</th>
                 <th className="p-2">Notice Period</th>
                 <th className="p-2">Currently Working</th>
                 <th className="p-2">AWS Cert</th>
@@ -515,7 +529,7 @@ export default function CloudDriveAdmin() {
             <tbody>
               {filteredRegistrations.length === 0 ? (
                 <tr>
-                  <td colSpan={30} className="p-3 text-center text-sm text-slate-500">
+                  <td colSpan={35} className="p-3 text-center text-sm text-slate-500">
                     No registrations found for the current filters.
                   </td>
                 </tr>
@@ -527,6 +541,7 @@ export default function CloudDriveAdmin() {
                     <td className="p-2">{r.phone || "-"}</td>
                     <td className="p-2">{r.current_location || "-"}</td>
                     <td className="p-2">{r.highest_education || "-"}</td>
+                    <td className="p-2">{r.highest_education_other || "-"}</td>
                     <td className="p-2">{r.current_status || "-"}</td>
                     <td className="p-2">{r.total_experience || "-"}</td>
                     <td className="p-2">{r.relevant_experience || r.aws_experience || "-"}</td>
@@ -536,8 +551,12 @@ export default function CloudDriveAdmin() {
                     <td className="p-2">{r.track || "-"}</td>
                     <td className="p-2">{r.has_aws_hands_on === null || r.has_aws_hands_on === undefined ? "-" : r.has_aws_hands_on ? "Yes" : "No"}</td>
                     <td className="p-2">{Array.isArray(r.aws_certifications) && r.aws_certifications.length ? r.aws_certifications.join(", ") : "-"}</td>
+                    <td className="p-2">{Array.isArray(r.aws_tools) && r.aws_tools.length ? r.aws_tools.join(", ") : "-"}</td>
+                    <td className="p-2">{r.aws_global_certification_details || "-"}</td>
                     <td className="p-2">{r.has_devops_hands_on === null || r.has_devops_hands_on === undefined ? "-" : r.has_devops_hands_on ? "Yes" : "No"}</td>
                     <td className="p-2">{Array.isArray(r.devops_tools) && r.devops_tools.length ? r.devops_tools.join(", ") : "-"}</td>
+                    <td className="p-2">{Array.isArray(r.devops_certifications) && r.devops_certifications.length ? r.devops_certifications.join(", ") : "-"}</td>
+                    <td className="p-2">{r.devops_global_certification_details || "-"}</td>
                     <td className="p-2">{r.job_intent || "-"}</td>
                     <td className="p-2">{r.current_ctc ?? "-"}</td>
                     <td className="p-2">{r.expected_ctc ?? "-"}</td>

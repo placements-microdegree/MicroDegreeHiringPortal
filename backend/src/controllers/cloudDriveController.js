@@ -77,8 +77,16 @@ async function register(req, res, next) {
     const isReadyToRelocate =
       relocationPreference &&
       relocationPreference.toLowerCase() !== "i am not ready to relocate";
+    const highestEducation = body.highest_education || null;
+    const highestEducationOther = body.highest_education_other || null;
+    const finalHighestEducation =
+      highestEducation === "Other" && highestEducationOther
+        ? highestEducationOther
+        : highestEducation;
     const awsCertifications = normalizeStringArray(body.aws_certifications);
+    const awsTools = normalizeStringArray(body.aws_tools);
     const devopsTools = normalizeStringArray(body.devops_tools);
+    const devopsCertifications = normalizeStringArray(body.devops_certifications);
     const track = body.track || null;
     const currentStatus = body.current_status || body.status || null;
     const relevantExperience =
@@ -96,7 +104,7 @@ async function register(req, res, next) {
     const hasDevopsCert =
       body.devops_cert === true ||
       body.devops_cert === "Yes" ||
-      devopsTools.some((item) => item !== "None");
+      devopsCertifications.some((item) => item !== "None");
 
     const backendTags = body.backend_tags && typeof body.backend_tags === "object"
       ? body.backend_tags
@@ -125,7 +133,8 @@ async function register(req, res, next) {
       current_location: body.current_location || null,
       relocation_preference: relocationPreference || null,
       ready_to_relocate: Boolean(isReadyToRelocate),
-      highest_education: body.highest_education || null,
+      highest_education: finalHighestEducation,
+      highest_education_other: highestEducationOther,
       total_experience: body.total_experience || null,
       aws_experience: relevantExperience,
       domain: body.domain || currentStatus,
@@ -141,8 +150,14 @@ async function register(req, res, next) {
       track: track,
       has_aws_hands_on: awsHandsOn,
       aws_certifications: awsCertifications,
+      aws_tools: awsTools,
+      aws_global_certification_details:
+        body.aws_global_certification_details || null,
       has_devops_hands_on: devopsHandsOn,
       devops_tools: devopsTools,
+      devops_certifications: devopsCertifications,
+      devops_global_certification_details:
+        body.devops_global_certification_details || null,
       job_intent: body.job_intent || null,
       current_ctc: parseNumberOrNull(body.current_ctc),
       expected_ctc: parseNumberOrNull(body.expected_ctc),
