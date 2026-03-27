@@ -1,6 +1,8 @@
 const { getSupabaseAdmin } = require("../config/db");
 const { ROLES } = require("../utils/constants");
 
+const APPLICATION_FETCH_BATCH_SIZE = 75;
+
 function requireAdminClient() {
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -17,6 +19,38 @@ function normalizeEmail(email) {
   return String(email || "")
     .trim()
     .toLowerCase();
+}
+
+function chunkArray(values, size) {
+  const chunks = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
+}
+
+async function fetchApplicationsByStudentIds({
+  supabase,
+  studentIds,
+  selectColumns,
+}) {
+  const batches = chunkArray(studentIds, APPLICATION_FETCH_BATCH_SIZE);
+
+  const responses = await Promise.all(
+    batches.map((batch) =>
+      supabase
+        .from("applications")
+        .select(selectColumns)
+        .in("student_id", batch)
+        .order("created_at", { ascending: false })
+        .order("updated_at", { ascending: false }),
+    ),
+  );
+
+  const firstError = responses.find((response) => response?.error)?.error;
+  if (firstError) throw firstError;
+
+  return responses.flatMap((response) => response?.data || []);
 }
 
 async function listUsersPage(adminApi, page, perPage) {
@@ -227,31 +261,20 @@ async function listStudentsWithLatestApplication() {
   // Some DB deployments do not have current_ctc / expected_ctc / total_experience on applications.
   // Try the rich select first, then gracefully fall back to schema-safe columns.
   let applications = [];
-  {
-    const { data, error } = await supabase
-      .from("applications")
-      .select(
+  try {
+    applications = await fetchApplicationsByStudentIds({
+      supabase,
+      studentIds,
+      selectColumns:
         "id, student_id, current_ctc, expected_ctc, total_experience, relevant_experience, selected_resume_url, created_at, updated_at",
-      )
-      .in("student_id", studentIds)
-      .order("created_at", { ascending: false })
-      .order("updated_at", { ascending: false });
-
-    if (error) {
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from("applications")
-        .select(
-          "id, student_id, relevant_experience, selected_resume_url, created_at, updated_at",
-        )
-        .in("student_id", studentIds)
-        .order("created_at", { ascending: false })
-        .order("updated_at", { ascending: false });
-
-      if (fallbackError) throw fallbackError;
-      applications = fallbackData || [];
-    } else {
-      applications = data || [];
-    }
+    });
+  } catch {
+    applications = await fetchApplicationsByStudentIds({
+      supabase,
+      studentIds,
+      selectColumns:
+        "id, student_id, relevant_experience, selected_resume_url, created_at, updated_at",
+    });
   }
 
   const latestByStudentId = new Map();
