@@ -29,6 +29,7 @@ export default function ResumeUpload({ resumes = [], onUpload, onDelete }) {
           id={resumeInputId}
           type="file"
           multiple
+          accept=".pdf"
           className="hidden"
           onChange={(e) => onUpload?.(Array.from(e.target.files || []))}
         />

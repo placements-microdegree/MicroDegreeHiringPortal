@@ -934,7 +934,7 @@ function ApplyOnBehalfModal({ job, onClose, onSuccess }) {
                         type="file"
                         className="hidden"
                         multiple
-                        accept=".pdf,.doc,.docx"
+                        accept=".pdf"
                         disabled={uploading || resumes.length >= MAX_RESUMES}
                         onChange={(e) => handleUploadResumes(e.target.files)}
                       />

@@ -848,7 +848,7 @@ export default function ApplyJobModal({
                   type="file"
                   className="hidden"
                   multiple
-                  accept=".pdf,.doc,.docx"
+                  accept=".pdf"
                   onChange={(e) =>
                     handleUploadResumes(Array.from(e.target.files || []))
                   }

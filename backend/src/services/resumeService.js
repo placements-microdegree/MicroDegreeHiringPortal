@@ -9,6 +9,14 @@ const {
 const BUCKET = "resumes";
 const MAX_RESUMES_PER_STUDENT = 3;
 
+const PDF_MIME_TYPES = new Set(["application/pdf", "application/x-pdf"]);
+
+function isPdfFile(file) {
+  const ext = path.extname(file?.originalname || "").toLowerCase();
+  const mime = String(file?.mimetype || "").toLowerCase();
+  return ext === ".pdf" && (mime === "" || PDF_MIME_TYPES.has(mime));
+}
+
 function buildObjectPath(userId, originalName) {
   const ext = path.extname(originalName || "");
   const name = uuidv4() + ext;
@@ -16,6 +24,12 @@ function buildObjectPath(userId, originalName) {
 }
 
 async function uploadResume({ userId, jwt, file }) {
+  if (!isPdfFile(file)) {
+    const err = new Error("Only PDF resumes are allowed");
+    err.status = 400;
+    throw err;
+  }
+
   const existing = await listResumesByUser(userId);
   if ((existing || []).length >= MAX_RESUMES_PER_STUDENT) {
     const err = new Error("Maximum 3 resumes are allowed");
