@@ -161,7 +161,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       },
       {
         to: "/student/cloud-drive",
-        label: "Cloud Resources",
+        label: "Cloud Drive",
         icon: FiCloud,
       },
       {
