@@ -19,6 +19,7 @@ async function listAll(req, res, next) {
   try {
     const jobs = await externalJobService.listAllExternalJobs({
       jwt: req.user.jwt,
+      createdDate: req.query?.createdDate,
     });
     res.json({ success: true, jobs });
   } catch (err) {
@@ -87,6 +88,7 @@ async function trackClick(req, res, next) {
     const result = await externalJobService.trackExternalJobClick({
       jwt: req.user.jwt,
       jobId: req.params.id,
+      studentId: req.user.id,
     });
     res.json({ success: true, ...result });
   } catch (err) {

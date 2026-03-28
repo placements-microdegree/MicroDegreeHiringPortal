@@ -79,11 +79,16 @@ export default function SuperAdminExternalJobAnalytics() {
   const [minExperience, setMinExperience] = useState("");
   const [maxExperience, setMaxExperience] = useState("");
   const [clicksFilter, setClicksFilter] = useState("all");
+  const [createdDate, setCreatedDate] = useState("");
 
-  const refresh = async () => {
+  const refresh = async (dateOverride) => {
     setLoading(true);
     try {
-      const data = await listAllExternalJobs();
+      const dateToFetch =
+        typeof dateOverride === "string" ? dateOverride : createdDate;
+      const data = await listAllExternalJobs({
+        createdDate: dateToFetch || undefined,
+      });
       setJobs(Array.isArray(data) ? data : []);
     } catch (err) {
       await showError(
@@ -97,8 +102,8 @@ export default function SuperAdminExternalJobAnalytics() {
   };
 
   useEffect(() => {
-    refresh();
-  }, []);
+    refresh(createdDate);
+  }, [createdDate]);
 
   const sortedJobs = useMemo(() => {
     return [...jobs].sort((a, b) => {
@@ -213,7 +218,17 @@ export default function SuperAdminExternalJobAnalytics() {
         ) : (
           <div className="overflow-x-auto">
             <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
-              <div className="grid gap-3 md:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-5">
+                <label className="flex flex-col gap-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <span>Posted Date</span>
+                  <input
+                    type="date"
+                    value={createdDate}
+                    onChange={(e) => setCreatedDate(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm normal-case tracking-normal text-slate-700 outline-none transition focus:border-primary"
+                  />
+                </label>
+
                 <label className="flex flex-col gap-1 text-xs font-medium uppercase tracking-wide text-slate-500">
                   <span>Min Experience (Years)</span>
                   <input
@@ -259,6 +274,7 @@ export default function SuperAdminExternalJobAnalytics() {
                   <button
                     type="button"
                     onClick={() => {
+                      setCreatedDate("");
                       setMinExperience("");
                       setMaxExperience("");
                       setClicksFilter("all");

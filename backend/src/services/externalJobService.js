@@ -4,6 +4,27 @@ const { getSupabaseAdmin, getSupabaseUser } = require("../config/db");
 
 const EXTERNAL_JOB_RETENTION_DAYS = 7;
 
+function parseIsoDayToUtcRange(dateString) {
+  if (!dateString) return null;
+
+  const value = String(dateString).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const err = new Error("Invalid date. Use YYYY-MM-DD");
+    err.status = 400;
+    throw err;
+  }
+
+  const start = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(start.getTime())) {
+    const err = new Error("Invalid date. Use YYYY-MM-DD");
+    err.status = 400;
+    throw err;
+  }
+
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end, date: value };
+}
+
 function getClient(jwt) {
   return getSupabaseAdmin() || getSupabaseUser(jwt);
 }
@@ -57,14 +78,23 @@ async function listActiveExternalJobs({ jwt }) {
 }
 
 // List all external jobs (for HR — all statuses)
-async function listAllExternalJobs({ jwt }) {
+async function listAllExternalJobs({ jwt, createdDate }) {
   await pruneExpiredExternalJobs({ jwt });
   const supabase = getClient(jwt);
-  const { data, error } = await supabase
-    .from("external_jobs")
-    .select("*")
-    .order("created_at", { ascending: false });
+
+  const range = parseIsoDayToUtcRange(createdDate);
+  let query = supabase.from("external_jobs").select("*");
+  if (range) {
+    query = query
+      .gte("created_at", range.start.toISOString())
+      .lt("created_at", range.end.toISOString());
+  }
+
+  const { data, error } = await query.order("created_at", {
+    ascending: false,
+  });
   if (error) throw error;
+
   return data || [];
 }
 
@@ -177,7 +207,7 @@ async function deleteExternalJob({ jwt, jobId }) {
 }
 
 // Track student apply-link click for analytics
-async function trackExternalJobClick({ jwt, jobId }) {
+async function trackExternalJobClick({ jwt, jobId, studentId }) {
   const supabase = getClient(jwt);
 
   const { data: job, error: readError } = await supabase
@@ -200,6 +230,18 @@ async function trackExternalJobClick({ jwt, jobId }) {
 
   const now = new Date().toISOString();
   const nextCount = Number(job.apply_click_count || 0) + 1;
+
+  if (studentId) {
+    const { error: clickInsertError } = await supabase
+      .from("external_job_apply_clicks")
+      .insert({
+        job_id: jobId,
+        student_id: studentId,
+        clicked_at: now,
+      });
+
+    if (clickInsertError) throw clickInsertError;
+  }
 
   const { data, error } = await supabase
     .from("external_jobs")
