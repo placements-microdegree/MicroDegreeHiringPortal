@@ -80,6 +80,7 @@ export default function CloudDriveAdmin() {
     email: "",
     phone: "",
     status: "",
+    track: "",
   });
 
   useEffect(() => {
@@ -227,6 +228,15 @@ export default function CloudDriveAdmin() {
       }
       if (filters.status && String(r.status || "") !== filters.status) {
         return false;
+      }
+      if (filters.track) {
+        const trackValue = String(r.track || "").toLowerCase();
+        if (filters.track === "aws" && !trackValue.includes("aws")) {
+          return false;
+        }
+        if (filters.track === "devops" && !trackValue.includes("devops")) {
+          return false;
+        }
       }
       return true;
     });
@@ -453,7 +463,7 @@ export default function CloudDriveAdmin() {
             Export Excel
           </Button>
         </div>
-        <div className="mt-3 grid gap-2 md:grid-cols-4">
+        <div className="mt-3 grid gap-2 md:grid-cols-5">
           <Input
             label="Filter Name"
             value={filters.full_name}
@@ -482,6 +492,18 @@ export default function CloudDriveAdmin() {
                   {status}
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="block">
+            <div className="mb-1 text-sm font-medium text-slate-700">Filter Track</div>
+            <select
+              value={filters.track}
+              onChange={(e) => setFilters((prev) => ({ ...prev, track: e.target.value }))}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+            >
+              <option value="">All</option>
+              <option value="aws">AWS</option>
+              <option value="devops">DevOps</option>
             </select>
           </label>
         </div>
