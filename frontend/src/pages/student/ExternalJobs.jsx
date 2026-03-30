@@ -1,5 +1,5 @@
 // FILE: src/pages/student/ExternalJobs.jsx
-// Route: /student/external-jobs  (visible to eligible students only)
+// Route: /student/external-jobs
 
 import { useEffect, useMemo, useState } from "react";
 import {

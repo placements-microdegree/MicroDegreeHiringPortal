@@ -31,7 +31,6 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   const { logout, profile } = useAuth();
   const location = useLocation();
   const isStudent = role === ROLES.STUDENT;
-  const isEligible = profile?.isEligible === true;
   const isAdmin = role === ROLES.ADMIN;
   const isSuperAdmin = role === ROLES.SUPER_ADMIN;
   const [externalJobsCount, setExternalJobsCount] = useState(0);
@@ -50,7 +49,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   }, [isPlacementSectionActive]);
 
   useEffect(() => {
-    if (!isStudent || !isEligible) {
+    if (!isStudent) {
       setExternalJobsCount(0);
       return;
     }
@@ -72,7 +71,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       mounted = false;
       clearInterval(timer);
     };
-  }, [isStudent, isEligible]);
+  }, [isStudent]);
 
   useEffect(() => {
     if (!isAdmin) {

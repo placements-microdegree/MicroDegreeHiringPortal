@@ -11,6 +11,7 @@ function mapProfileRow(row, resumes = []) {
     phone: row.phone,
     role: row.role,
     location: row.location,
+    preferredLocation: row.preferred_location,
     skills: row.skills || [],
     experienceLevel: row.experience_level,
     experienceYears: row.experience_years,

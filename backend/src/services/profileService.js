@@ -50,6 +50,7 @@ async function upsertProfile({ userId, jwt, payload }) {
     phone: normalizedPhone || null,
     role: payload.role,
     location: payload.location,
+    preferred_location: payload.preferredLocation,
     skills: payload.skills,
     experience_level: payload.experienceLevel,
     experience_years: payload.experienceYears,

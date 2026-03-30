@@ -4,6 +4,32 @@ import PropTypes from "prop-types";
 import { FiFileText, FiExternalLink } from "react-icons/fi";
 import { AiOutlineHeart, AiFillHeart } from "react-icons/ai";
 
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString();
+}
+
+function formatLastActiveLabel(value) {
+  if (!value) return "No recent activity";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "No recent activity";
+
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startTarget = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
+  const dayDiff = Math.floor((startToday - startTarget) / (24 * 60 * 60 * 1000));
+
+  if (dayDiff <= 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  return `${dayDiff} days ago`;
+}
+
 export default function StudentsTable({
   rows,
   title = "Students",
@@ -19,6 +45,8 @@ export default function StudentsTable({
   const allSelected =
     rowList.length > 0 && rowList.every((row) => selectedSet.has(row.id));
   const favoriteSet = new Set(Array.isArray(favoriteRowIds) ? favoriteRowIds : []);
+  const columnCount =
+    12 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
 
   return (
     <div className="rounded-xl bg-white p-5">
@@ -37,17 +65,21 @@ export default function StudentsTable({
                       aria-label="Select all students"
                     />
                   </th>
-                ) : onToggleFavorite ? (
+                ) : null}
+                {onToggleFavorite ? (
                   <th className="px-4 py-3"> </th>
                 ) : null}
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Location</th>
+                <th className="px-4 py-3">Preferred Location</th>
                 <th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">Eligibility</th>
                 <th className="px-4 py-3">Current CTC (in LPA)</th>
                 <th className="px-4 py-3">Expected CTC (in LPA)</th>
                 <th className="px-4 py-3">Total Experience</th>
+                <th className="px-4 py-3">Profile Last Updated</th>
+                <th className="px-4 py-3">Last Active</th>
                 <th className="px-4 py-3">Resume</th>
               </tr>
             </thead>
@@ -69,7 +101,8 @@ export default function StudentsTable({
                           aria-label={`Select ${r.fullName || r.email || "student"}`}
                         />
                       </td>
-                    ) : onToggleFavorite ? (
+                    ) : null}
+                    {onToggleFavorite ? (
                       <td className="px-4 py-3">
                         <button
                           type="button"
@@ -91,6 +124,9 @@ export default function StudentsTable({
                     <td className="px-4 py-3 text-slate-700">{r.email}</td>
                     <td className="px-4 py-3 text-slate-700">
                       {r.location || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {r.preferredLocation || "-"}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {r.phone || "-"}
@@ -118,6 +154,15 @@ export default function StudentsTable({
                     <td className="px-4 py-3 text-slate-700">
                       {r.totalExperience ?? "-"}
                     </td>
+                    <td className="px-4 py-3 text-xs text-slate-700">
+                      {formatDateTime(r.updatedAt)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-700">
+                      <div>{formatLastActiveLabel(r.lastActiveAt)}</div>
+                      <div className="text-[11px] text-slate-500">
+                        {formatDateTime(r.lastActiveAt)}
+                      </div>
+                    </td>
                     <td className="px-4 py-3">
                       {r.resumeUrl ? (
                         <a
@@ -142,7 +187,7 @@ export default function StudentsTable({
                 <tr>
                   <td
                     className="px-4 py-4 text-slate-600"
-                    colSpan={selectable || onToggleFavorite ? 10 : 9}
+                    colSpan={columnCount}
                   >
                     No students loaded.
                   </td>

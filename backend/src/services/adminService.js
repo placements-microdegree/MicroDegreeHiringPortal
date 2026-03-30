@@ -53,6 +53,30 @@ async function fetchApplicationsByStudentIds({
   return responses.flatMap((response) => response?.data || []);
 }
 
+async function fetchLatestActivityByStudentIds({ supabase, studentIds }) {
+  const batches = chunkArray(studentIds, APPLICATION_FETCH_BATCH_SIZE);
+
+  const responses = await Promise.all(
+    batches.map((batch) =>
+      supabase
+        .from("user_daily_activity")
+        .select("user_id, activity_date, last_activity_at")
+        .in("user_id", batch)
+        .order("activity_date", { ascending: false })
+        .order("last_activity_at", { ascending: false }),
+    ),
+  );
+
+  const firstError = responses.find((response) => response?.error)?.error;
+  if (firstError) {
+    // If migration is not yet applied, skip activity data gracefully.
+    if (firstError.code === "42P01") return [];
+    throw firstError;
+  }
+
+  return responses.flatMap((response) => response?.data || []);
+}
+
 async function listUsersPage(adminApi, page, perPage) {
   // Support both old and new API shapes:
   // - listUsers({ page, perPage })
@@ -231,7 +255,7 @@ async function listStudentsWithLatestApplication() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, phone, role, location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, current_ctc, expected_ctc, total_experience",
+        "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, current_ctc, expected_ctc, total_experience",
       )
       .eq("role", ROLES.STUDENT)
       .order("updated_at", { ascending: false });
@@ -240,7 +264,7 @@ async function listStudentsWithLatestApplication() {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, email, phone, role, location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url",
+          "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url",
         )
         .eq("role", ROLES.STUDENT)
         .order("updated_at", { ascending: false });
@@ -257,6 +281,19 @@ async function listStudentsWithLatestApplication() {
   const studentIds = students.map((student) => student?.id).filter(Boolean);
 
   if (studentIds.length === 0) return students;
+
+  let latestActivityByStudentId = new Map();
+  {
+    const activityRows = await fetchLatestActivityByStudentIds({
+      supabase,
+      studentIds,
+    });
+
+    (activityRows || []).forEach((row) => {
+      if (!row?.user_id || latestActivityByStudentId.has(row.user_id)) return;
+      latestActivityByStudentId.set(row.user_id, row.last_activity_at || null);
+    });
+  }
 
   // Some DB deployments do not have current_ctc / expected_ctc / total_experience on applications.
   // Try the rich select first, then gracefully fall back to schema-safe columns.
@@ -301,6 +338,7 @@ async function listStudentsWithLatestApplication() {
       recent_application_resume_url:
         latest?.selected_resume_url ?? student?.resume_url ?? null,
       recent_application_created_at: latest?.created_at ?? null,
+      last_active_at: latestActivityByStudentId.get(student.id) || null,
     };
   });
 }

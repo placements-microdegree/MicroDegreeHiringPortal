@@ -20,6 +20,7 @@ export default function CompleteProfile() {
       phone: p.phone || "",
       role: user?.role || p.role || ROLES.STUDENT,
       location: p.location || "",
+      preferredLocation: p.preferredLocation || "",
       skills: p.skills || [],
       experienceLevel: p.experienceLevel || "Fresher",
       experienceYears: p.experienceYears || "",
@@ -148,6 +149,12 @@ export default function CompleteProfile() {
               label="Location"
               value={form.location}
               onChange={(e) => update({ location: e.target.value })}
+            />
+            <Input
+              label="Preferred Job Location"
+              value={form.preferredLocation}
+              onChange={(e) => update({ preferredLocation: e.target.value })}
+              placeholder="e.g. Bengaluru, Hyderabad"
             />
             <Input
               label="Phone"

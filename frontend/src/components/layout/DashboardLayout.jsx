@@ -740,7 +740,6 @@ export default function DashboardLayout({ role }) {
     isStudent &&
     isNonEligible &&
     [
-      "/student/external-jobs",
       "/student/career-guide",
       "/student/cloud-drive",
     ].includes(location.pathname);

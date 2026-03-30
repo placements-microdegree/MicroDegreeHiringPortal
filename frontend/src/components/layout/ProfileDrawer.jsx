@@ -26,7 +26,7 @@ function hasChanges(form, original) {
   if (!original) return false;
   const keys = [
     "fullName", "phone", "location", "experienceLevel",
-    "experienceYears", "currentCTC", "expectedCTC", "profilePhotoUrl",
+    "preferredLocation", "experienceYears", "currentCTC", "expectedCTC", "profilePhotoUrl",
   ];
   for (const key of keys) {
     if ((form[key] || "") !== (original[key] || "")) return true;
@@ -211,6 +211,7 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
         phone:           "",
         role:            "",
         location:        "",
+        preferredLocation: "",
         skills:          [],
         experienceLevel: "Fresher",
         experienceYears: "",
@@ -369,6 +370,10 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
             <Input label="Location" value={form.location || ""}
               onChange={(e) => update({ location: e.target.value })}
               placeholder="e.g. Bengaluru, Karnataka"
+            />
+            <Input label="Preferred Job Location" value={form.preferredLocation || ""}
+              onChange={(e) => update({ preferredLocation: e.target.value })}
+              placeholder="e.g. Bengaluru, Hyderabad"
             />
 
             {/* Skills */}
