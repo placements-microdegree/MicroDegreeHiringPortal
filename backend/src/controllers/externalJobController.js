@@ -14,6 +14,16 @@ async function listActive(req, res, next) {
   }
 }
 
+// GET /api/external-jobs/public  — public visitors
+async function listPublicActive(req, res, next) {
+  try {
+    const jobs = await externalJobService.listPublicActiveExternalJobs();
+    res.json({ success: true, jobs });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/external-jobs/all  — HR/admin sees everything
 async function listAll(req, res, next) {
   try {
@@ -89,6 +99,22 @@ async function trackClick(req, res, next) {
       jwt: req.user.jwt,
       jobId: req.params.id,
       studentId: req.user.id,
+      tracking: req.body,
+    });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/external-jobs/:id/click/public
+async function trackPublicClick(req, res, next) {
+  try {
+    const result = await externalJobService.trackPublicExternalJobClick({
+      jobId: req.params.id,
+      tracking: req.body,
+      userAgent: req.get("user-agent") || null,
+      ipAddress: req.ip || null,
     });
     res.json({ success: true, ...result });
   } catch (err) {
@@ -102,6 +128,37 @@ async function trackVisit(req, res, next) {
     const result = await externalJobService.trackExternalJobsPageVisit({
       jwt: req.user.jwt,
       studentId: req.user.id,
+    });
+    res.status(201).json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/external-jobs/public/visit
+async function trackPublicVisit(req, res, next) {
+  try {
+    const result = await externalJobService.trackExternalJobsPublicVisit({
+      tracking: req.body,
+      userAgent: req.get("user-agent") || null,
+      ipAddress: req.ip || null,
+    });
+    res.status(201).json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/external-jobs/:id/share
+async function trackShare(req, res, next) {
+  try {
+    const result = await externalJobService.trackExternalJobShare({
+      jwt: req.user.jwt,
+      jobId: req.params.id,
+      studentId: req.user.id,
+      tracking: req.body,
+      userAgent: req.get("user-agent") || null,
+      ipAddress: req.ip || null,
     });
     res.status(201).json({ success: true, ...result });
   } catch (err) {
@@ -123,12 +180,16 @@ async function visitAnalytics(req, res, next) {
 
 module.exports = {
   listActive,
+  listPublicActive,
   listAll,
   create,
   bulkCreate,
   update,
   remove,
   trackClick,
+  trackPublicClick,
+  trackShare,
   trackVisit,
+  trackPublicVisit,
   visitAnalytics,
 };

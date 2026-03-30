@@ -29,6 +29,46 @@ function getClient(jwt) {
   return getSupabaseAdmin() || getSupabaseUser(jwt);
 }
 
+function getPublicWriteClient() {
+  const admin = getSupabaseAdmin();
+  if (admin) return admin;
+
+  const err = new Error(
+    "Public tracking requires SUPABASE_SERVICE_ROLE_KEY configuration",
+  );
+  err.status = 503;
+  throw err;
+}
+
+function sanitizeTrackingMeta(input = {}) {
+  const source = input && typeof input === "object" ? input : {};
+  const rawRef = source.ref ? String(source.ref).trim() : "";
+  const normalizedRef =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      rawRef,
+    )
+      ? rawRef
+      : null;
+
+  return {
+    ref: normalizedRef,
+    utmSource: source.utm_source ? String(source.utm_source).trim() : null,
+    utmMedium: source.utm_medium ? String(source.utm_medium).trim() : null,
+    utmCampaign: source.utm_campaign
+      ? String(source.utm_campaign).trim()
+      : null,
+    shareChannel: source.share_channel
+      ? String(source.share_channel).trim()
+      : null,
+    visitorToken: source.visitor_token
+      ? String(source.visitor_token).trim()
+      : null,
+    landingPath: source.landing_path
+      ? String(source.landing_path).trim()
+      : null,
+  };
+}
+
 function normalizeSkills(rawSkills) {
   const source = Array.isArray(rawSkills)
     ? rawSkills
@@ -64,6 +104,81 @@ async function pruneExpiredExternalJobs({ jwt }) {
   if (error) throw error;
 }
 
+async function validateExternalJobForClick({ supabase, jobId }) {
+  const { data: job, error: readError } = await supabase
+    .from("external_jobs")
+    .select("id, status, apply_click_count")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (readError) throw readError;
+  if (!job) {
+    const err = new Error("External job not found");
+    err.status = 404;
+    throw err;
+  }
+  if (job.status !== "active") {
+    const err = new Error("External job is not active");
+    err.status = 400;
+    throw err;
+  }
+
+  return job;
+}
+
+async function updateExternalJobClickCounter({
+  supabase,
+  jobId,
+  currentCount,
+}) {
+  const now = new Date().toISOString();
+  const nextCount = Number(currentCount || 0) + 1;
+
+  const { data, error } = await supabase
+    .from("external_jobs")
+    .update({
+      apply_click_count: nextCount,
+      last_clicked_at: now,
+      updated_at: now,
+    })
+    .eq("id", jobId)
+    .select("id, apply_click_count, last_clicked_at")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function insertGrowthEvent({
+  supabase,
+  eventType,
+  jobId = null,
+  studentId = null,
+  refStudentId = null,
+  tracking = {},
+  userAgent = null,
+  ipAddress = null,
+}) {
+  const meta = sanitizeTrackingMeta(tracking);
+
+  const { error } = await supabase.from("external_job_growth_events").insert({
+    event_type: eventType,
+    job_id: jobId,
+    student_id: studentId,
+    ref_student_id: refStudentId,
+    utm_source: meta.utmSource,
+    utm_medium: meta.utmMedium,
+    utm_campaign: meta.utmCampaign,
+    share_channel: meta.shareChannel,
+    visitor_token: meta.visitorToken,
+    landing_path: meta.landingPath,
+    user_agent: userAgent,
+    ip_address: ipAddress,
+  });
+
+  if (error) throw error;
+}
+
 // List all active external jobs (for eligible students)
 async function listActiveExternalJobs({ jwt }) {
   await pruneExpiredExternalJobs({ jwt });
@@ -73,6 +188,22 @@ async function listActiveExternalJobs({ jwt }) {
     .select("*")
     .eq("status", "active")
     .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+// Public listing for share links
+async function listPublicActiveExternalJobs() {
+  await pruneExpiredExternalJobs({ jwt: null });
+  const supabase = getClient(null);
+  const { data, error } = await supabase
+    .from("external_jobs")
+    .select(
+      "id, company, job_role, experience, skills, location, apply_link, description, created_at",
+    )
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+
   if (error) throw error;
   return data || [];
 }
@@ -207,12 +338,82 @@ async function deleteExternalJob({ jwt, jobId }) {
 }
 
 // Track student apply-link click for analytics
-async function trackExternalJobClick({ jwt, jobId, studentId }) {
+async function trackExternalJobClick({ jwt, jobId, studentId, tracking = {} }) {
+  const supabase = getClient(jwt);
+  const job = await validateExternalJobForClick({ supabase, jobId });
+  const meta = sanitizeTrackingMeta(tracking);
+
+  if (studentId) {
+    const { error: clickInsertError } = await supabase
+      .from("external_job_apply_clicks")
+      .insert({
+        job_id: jobId,
+        student_id: studentId,
+        clicked_at: new Date().toISOString(),
+      });
+
+    if (clickInsertError) throw clickInsertError;
+  }
+
+  const refStudentId = meta.ref;
+  await insertGrowthEvent({
+    supabase,
+    eventType: "apply_click",
+    jobId,
+    studentId,
+    refStudentId,
+    tracking,
+  });
+
+  return updateExternalJobClickCounter({
+    supabase,
+    jobId,
+    currentCount: job.apply_click_count,
+  });
+}
+
+async function trackPublicExternalJobClick({
+  jobId,
+  tracking = {},
+  userAgent = null,
+  ipAddress = null,
+}) {
+  const supabase = getPublicWriteClient();
+  const job = await validateExternalJobForClick({ supabase, jobId });
+  const meta = sanitizeTrackingMeta(tracking);
+
+  const refStudentId = meta.ref;
+  await insertGrowthEvent({
+    supabase,
+    eventType: "apply_click",
+    jobId,
+    studentId: null,
+    refStudentId,
+    tracking,
+    userAgent,
+    ipAddress,
+  });
+
+  return updateExternalJobClickCounter({
+    supabase,
+    jobId,
+    currentCount: job.apply_click_count,
+  });
+}
+
+async function trackExternalJobShare({
+  jwt,
+  jobId,
+  studentId,
+  tracking = {},
+  userAgent = null,
+  ipAddress = null,
+}) {
   const supabase = getClient(jwt);
 
   const { data: job, error: readError } = await supabase
     .from("external_jobs")
-    .select("id, status, apply_click_count")
+    .select("id")
     .eq("id", jobId)
     .maybeSingle();
 
@@ -222,40 +423,42 @@ async function trackExternalJobClick({ jwt, jobId, studentId }) {
     err.status = 404;
     throw err;
   }
-  if (job.status !== "active") {
-    const err = new Error("External job is not active");
-    err.status = 400;
-    throw err;
-  }
 
-  const now = new Date().toISOString();
-  const nextCount = Number(job.apply_click_count || 0) + 1;
+  await insertGrowthEvent({
+    supabase,
+    eventType: "share",
+    jobId,
+    studentId,
+    refStudentId: studentId,
+    tracking,
+    userAgent,
+    ipAddress,
+  });
 
-  if (studentId) {
-    const { error: clickInsertError } = await supabase
-      .from("external_job_apply_clicks")
-      .insert({
-        job_id: jobId,
-        student_id: studentId,
-        clicked_at: now,
-      });
+  return { ok: true };
+}
 
-    if (clickInsertError) throw clickInsertError;
-  }
+async function trackExternalJobsPublicVisit({
+  tracking = {},
+  userAgent = null,
+  ipAddress = null,
+}) {
+  const supabase = getPublicWriteClient();
+  const meta = sanitizeTrackingMeta(tracking);
 
-  const { data, error } = await supabase
-    .from("external_jobs")
-    .update({
-      apply_click_count: nextCount,
-      last_clicked_at: now,
-      updated_at: now,
-    })
-    .eq("id", jobId)
-    .select("id, apply_click_count, last_clicked_at")
-    .single();
+  const refStudentId = meta.ref;
+  await insertGrowthEvent({
+    supabase,
+    eventType: "visit",
+    jobId: null,
+    studentId: null,
+    refStudentId,
+    tracking,
+    userAgent,
+    ipAddress,
+  });
 
-  if (error) throw error;
-  return data;
+  return { ok: true };
 }
 
 async function trackExternalJobsPageVisit({ jwt, studentId }) {
@@ -350,12 +553,16 @@ async function getExternalJobsVisitAnalytics({ jwt }) {
 
 module.exports = {
   listActiveExternalJobs,
+  listPublicActiveExternalJobs,
   listAllExternalJobs,
   createExternalJob,
   bulkCreateExternalJobs,
   updateExternalJob,
   deleteExternalJob,
   trackExternalJobClick,
+  trackPublicExternalJobClick,
+  trackExternalJobShare,
   trackExternalJobsPageVisit,
+  trackExternalJobsPublicVisit,
   getExternalJobsVisitAnalytics,
 };

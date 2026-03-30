@@ -15,6 +15,13 @@ const ROLE_OPTIONS = [
   { value: "team", label: "MicroDegree Team Login" },
 ];
 
+function resolveSafeRedirect(searchParams) {
+  const redirect = String(searchParams.get("redirect") || "").trim();
+  if (!redirect) return null;
+  if (redirect.startsWith("/student/external-jobs")) return redirect;
+  return null;
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const { login, profile, user } = useAuth();
@@ -25,6 +32,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loginType, setLoginType] = useState("student");
+  const safeRedirect = resolveSafeRedirect(searchParams);
 
   // Handle OAuth error redirects (e.g. expired state on re-login)
   useEffect(() => {
@@ -44,6 +52,8 @@ export default function Login() {
     const profileComplete = isStudentProfileComplete(profile, user);
     if (user.role === ROLES.STUDENT && !profileComplete) {
       navigate("/complete-profile", { replace: true });
+    } else if (user.role === ROLES.STUDENT && safeRedirect) {
+      navigate(safeRedirect, { replace: true });
     } else if (user.role === ROLES.SUPER_ADMIN) {
       navigate("/superadmin/dashboard", { replace: true });
     } else {
@@ -52,7 +62,7 @@ export default function Login() {
         { replace: true },
       );
     }
-  }, [user, profile, navigate]);
+  }, [user, profile, navigate, safeRedirect]);
 
   const onSubmit = async (event) => {
     event.preventDefault();
@@ -74,6 +84,8 @@ export default function Login() {
         navigate("/admin/dashboard");
       } else if (needsProfile) {
         navigate("/complete-profile");
+      } else if (safeRedirect) {
+        navigate(safeRedirect);
       } else {
         navigate("/student/dashboard");
       }

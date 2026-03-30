@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "../context/authStore";
 import { ROLES } from "../utils/constants";
 import ProtectedRoute from "./ProtectedRoute";
@@ -72,6 +72,27 @@ function SignupRedirect() {
   return <Navigate to="/student/dashboard" replace />;
 }
 
+function ExternalJobsShareEntry() {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <PageOpeningShimmer />;
+
+  const targetPath = `/student/external-jobs${location.search || ""}`;
+
+  if (!user) {
+    const redirect = encodeURIComponent(targetPath);
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
+  }
+
+  if (user.role === ROLES.SUPER_ADMIN)
+    return <Navigate to="/superadmin/dashboard" replace />;
+  if (user.role === ROLES.ADMIN)
+    return <Navigate to="/admin/dashboard" replace />;
+
+  return <Navigate to={targetPath} replace />;
+}
+
 export default function AppRoutes() {
   const { loading } = useAuth();
   if (loading) return <PageOpeningShimmer />;
@@ -81,6 +102,7 @@ export default function AppRoutes() {
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/login" element={<AuthRedirect />} />
       <Route path="/signup" element={<SignupRedirect />} />
+      <Route path="/external-jobs" element={<ExternalJobsShareEntry />} />
 
       <Route
         element={<ProtectedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} />}

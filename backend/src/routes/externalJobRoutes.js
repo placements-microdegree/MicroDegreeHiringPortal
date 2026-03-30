@@ -10,6 +10,19 @@ const { ROLES } = require("../utils/constants");
 const router = express.Router();
 const ADMIN_ROLES = [ROLES.ADMIN, ROLES.SUPER_ADMIN];
 
+// Public visitors — view active jobs from share links
+router.get(
+  "/public",
+  cacheResponse({ ttlSeconds: 30 }),
+  externalJobController.listPublicActive,
+);
+
+// Public visitors — track landing page open for virality analytics
+router.post("/public/visit", externalJobController.trackPublicVisit);
+
+// Public visitors — track apply-link click from shared links
+router.post("/:id/click/public", externalJobController.trackPublicClick);
+
 // Eligible students — view active jobs
 router.get(
   "/",
@@ -71,6 +84,14 @@ router.post(
   authorizeRole([ROLES.STUDENT]),
   invalidateApiCache(["/api/external-jobs/all"]),
   externalJobController.trackClick,
+);
+
+// Eligible students — track share actions for virality analytics
+router.post(
+  "/:id/share",
+  verifyToken,
+  authorizeRole([ROLES.STUDENT]),
+  externalJobController.trackShare,
 );
 
 // HR/admin — update

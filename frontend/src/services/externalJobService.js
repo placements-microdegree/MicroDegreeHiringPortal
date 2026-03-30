@@ -22,6 +22,12 @@ export async function listActiveExternalJobs() {
   return data.jobs || [];
 }
 
+// Public — list active external jobs for shareable links
+export async function listPublicActiveExternalJobs() {
+  const data = await request("/api/external-jobs/public");
+  return data.jobs || [];
+}
+
 // HR — list all external jobs
 export async function listAllExternalJobs(options = {}) {
   const createdDate = options?.createdDate
@@ -70,9 +76,23 @@ export async function deleteExternalJob(id) {
 }
 
 // Student — track apply click for analytics
-export async function trackExternalJobClick(id) {
+export async function trackExternalJobClick(id, tracking = {}) {
   const data = await request(`/api/external-jobs/${id}/click`, {
     method: "POST",
+    body: tracking,
+  });
+  return {
+    id: data.id,
+    applyClickCount: Number(data.apply_click_count || 0),
+    lastClickedAt: data.last_clicked_at || null,
+  };
+}
+
+// Public — track apply click with referral and UTM metadata
+export async function trackPublicExternalJobClick(id, tracking = {}) {
+  const data = await request(`/api/external-jobs/${id}/click/public`, {
+    method: "POST",
+    body: tracking,
   });
   return {
     id: data.id,
@@ -90,6 +110,24 @@ export async function trackExternalJobsVisit() {
     id: data?.id,
     visitedAt: data?.visitedAt || null,
   };
+}
+
+// Public — track anonymous share-landing visits
+export async function trackPublicExternalJobsVisit(tracking = {}) {
+  const data = await request("/api/external-jobs/public/visit", {
+    method: "POST",
+    body: tracking,
+  });
+  return { ok: Boolean(data?.success || data?.ok) };
+}
+
+// Student — track explicit share action from a job card
+export async function trackExternalJobShare(id, tracking = {}) {
+  const data = await request(`/api/external-jobs/${id}/share`, {
+    method: "POST",
+    body: tracking,
+  });
+  return { ok: Boolean(data?.success || data?.ok) };
 }
 
 // Super admin — list student visit analytics for external jobs page
