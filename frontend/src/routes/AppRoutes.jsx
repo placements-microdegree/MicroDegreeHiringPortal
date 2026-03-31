@@ -73,24 +73,9 @@ function SignupRedirect() {
 }
 
 function ExternalJobsShareEntry() {
-  const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <PageOpeningShimmer />;
-
-  const targetPath = `/student/external-jobs${location.search || ""}`;
-
-  if (!user) {
-    const redirect = encodeURIComponent(targetPath);
-    return <Navigate to={`/login?redirect=${redirect}`} replace />;
-  }
-
-  if (user.role === ROLES.SUPER_ADMIN)
-    return <Navigate to="/superadmin/dashboard" replace />;
-  if (user.role === ROLES.ADMIN)
-    return <Navigate to="/admin/dashboard" replace />;
-
-  return <Navigate to={targetPath} replace />;
+  return <Navigate to={`/jobs${location.search || ""}`} replace />;
 }
 
 function AdminOrSuperAdminLayout() {
@@ -109,6 +94,14 @@ export default function AppRoutes() {
       <Route path="/login" element={<AuthRedirect />} />
       <Route path="/signup" element={<SignupRedirect />} />
       <Route path="/external-jobs" element={<ExternalJobsShareEntry />} />
+      <Route
+        path="/jobs"
+        element={
+          <div className="min-h-screen bg-slate-50 p-6 lg:p-7">
+            <ExternalJobs publicView />
+          </div>
+        }
+      />
 
       <Route
         element={<ProtectedRoute allowedRoles={[ROLES.STUDENT, ROLES.ADMIN]} />}

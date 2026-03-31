@@ -204,6 +204,83 @@ function getFreshness(job) {
   };
 }
 
+function matchesSearch(job, normalizedQuery) {
+  if (!normalizedQuery) return true;
+  const title = String(job?.job_role || "").toLowerCase();
+  const company = String(job?.company || "").toLowerCase();
+  return title.includes(normalizedQuery) || company.includes(normalizedQuery);
+}
+
+function matchesExperience(job, selectedExperience) {
+  if (!Array.isArray(selectedExperience) || selectedExperience.length === 0) {
+    return true;
+  }
+
+  const parsedExperience = parseExperienceRange(job?.experience);
+  const includesNA = selectedExperience.includes("NA");
+  const numericCapsules = selectedExperience.filter(
+    (capsule) => capsule !== "NA",
+  );
+
+  let numericMatched = false;
+  if (parsedExperience && numericCapsules.length > 0) {
+    numericMatched = numericCapsules.some((capsule) => {
+      const range = parseCapsuleRange(capsule);
+      if (!range) return false;
+      return (
+        parsedExperience.max >= range.min && parsedExperience.min <= range.max
+      );
+    });
+  }
+
+  const naMatched = includesNA && isNAExperience(job?.experience);
+  return numericMatched || naMatched;
+}
+
+function matchesDateFilter(job, selectedDateFilter) {
+  if (selectedDateFilter === "all") return true;
+
+  const dayDiff = getJobDayDifference(job);
+  if (!Number.isFinite(dayDiff)) return false;
+
+  switch (selectedDateFilter) {
+    case "today":
+      return dayDiff === 0;
+    case "last3":
+      return dayDiff >= 0 && dayDiff <= 2;
+    case "last7":
+      return dayDiff >= 0 && dayDiff <= 6;
+    default:
+      return true;
+  }
+}
+
+function buildSelectedSkillSet(selectedSkills) {
+  if (!Array.isArray(selectedSkills) || selectedSkills.length === 0) {
+    return new Set();
+  }
+  return new Set(selectedSkills.map(canonicalSkill));
+}
+
+function matchesSkills(job, selectedSkillSet) {
+  if (!selectedSkillSet || selectedSkillSet.size === 0) return true;
+
+  const jobSkills = parseSkills(job?.skills).map(canonicalSkill);
+  if (!jobSkills.length) return false;
+
+  return jobSkills.some((skill) => selectedSkillSet.has(skill));
+}
+
+function getFreshnessBadgeContainer(freshnessTextClass) {
+  if (String(freshnessTextClass || "").includes("emerald")) {
+    return "border-emerald-200 bg-emerald-50";
+  }
+  if (String(freshnessTextClass || "").includes("amber")) {
+    return "border-amber-200 bg-amber-50";
+  }
+  return "border-rose-200 bg-rose-50";
+}
+
 function getOrCreateVisitorToken() {
   const key = "externalJobsVisitorToken";
   let token = localStorage.getItem(key);
@@ -263,71 +340,14 @@ export default function ExternalJobs({ publicView = false }) {
   };
 
   const filteredJobs = useMemo(() => {
+    const normalizedQuery = searchTerm.trim().toLowerCase();
+    const selectedSkillSet = buildSelectedSkillSet(selectedSkills);
+
     return jobs.filter((job) => {
-      const title = String(job?.job_role || "");
-      const company = String(job?.company || "");
-      const normalizedQuery = searchTerm.trim().toLowerCase();
-
-      const searchMatched = !normalizedQuery
-        ? true
-        : title.toLowerCase().includes(normalizedQuery) ||
-          company.toLowerCase().includes(normalizedQuery);
-
-      if (!searchMatched) return false;
-
-      const parsedExperience = parseExperienceRange(job?.experience);
-      const experienceMatched =
-        selectedExperience.length === 0
-          ? true
-          : (() => {
-              const includesNA = selectedExperience.includes("NA");
-              const numericCapsules = selectedExperience.filter(
-                (capsule) => capsule !== "NA",
-              );
-
-              const numericMatched =
-                parsedExperience && numericCapsules.length > 0
-                  ? numericCapsules.some((capsule) => {
-                      const range = parseCapsuleRange(capsule);
-                      if (!range) return false;
-                      return (
-                        parsedExperience.max >= range.min &&
-                        parsedExperience.min <= range.max
-                      );
-                    })
-                  : false;
-
-              const naMatched = includesNA && isNAExperience(job?.experience);
-              return numericMatched || naMatched;
-            })();
-
-      if (!experienceMatched) return false;
-
-      let dateMatched = true;
-      if (selectedDateFilter !== "all") {
-        const dayDiff = getJobDayDifference(job);
-        if (!Number.isFinite(dayDiff)) return false;
-        dateMatched =
-          selectedDateFilter === "today"
-            ? dayDiff === 0
-            : selectedDateFilter === "last3"
-              ? dayDiff >= 0 && dayDiff <= 2
-              : selectedDateFilter === "last7"
-                ? dayDiff >= 0 && dayDiff <= 6
-                : true;
-      }
-
-      if (!dateMatched) return false;
-
-      const selectedSkillSet = new Set(selectedSkills.map(canonicalSkill));
-      if (selectedSkillSet.size === 0) return true;
-
-      const jobSkills = parseSkills(job?.skills).map(canonicalSkill);
-      if (!jobSkills.length) {
-        return false;
-      }
-
-      return jobSkills.some((skill) => selectedSkillSet.has(skill));
+      if (!matchesSearch(job, normalizedQuery)) return false;
+      if (!matchesExperience(job, selectedExperience)) return false;
+      if (!matchesDateFilter(job, selectedDateFilter)) return false;
+      return matchesSkills(job, selectedSkillSet);
     });
   }, [
     jobs,
@@ -408,7 +428,7 @@ export default function ExternalJobs({ publicView = false }) {
       ? jobIdsInput.map(String).filter(Boolean)
       : [String(jobIdsInput || "")].filter(Boolean);
 
-    const url = new URL(`${globalThis.location.origin}/external-jobs`);
+    const url = new URL(`${globalThis.location.origin}/jobs`);
     if (ids.length === 1) {
       url.searchParams.set("jobId", ids[0]);
     } else if (ids.length > 1) {
@@ -592,7 +612,7 @@ export default function ExternalJobs({ publicView = false }) {
               <article
                 key={job.id}
                 className={`group overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-100/60 ${
-                  selectedJobIds.includes(String(job.id)) && !publicView
+                  selectedJobIds.includes(String(job.id))
                     ? "ring-2 ring-blue-400"
                     : ""
                 } ${
@@ -601,37 +621,31 @@ export default function ExternalJobs({ publicView = false }) {
                     : ""
                 }`}
               >
-                <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-400" />
+                <div className="h-1.5 w-full bg-linear-to-r from-blue-600 via-sky-500 to-cyan-400" />
 
                 <div className="space-y-3 p-4">
                   <div className="flex items-center justify-between gap-2">
-                    {!publicView && (
-                      <button
-                        type="button"
-                        onClick={() => toggleJobMultiSelect(job.id)}
-                        className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
-                          selectedJobIds.includes(String(job.id))
-                            ? "border-blue-300 bg-blue-50 text-blue-700"
-                            : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
-                        }`}
-                      >
-                        {selectedJobIds.includes(String(job.id)) ? (
-                          <FiCheckSquare className="h-3.5 w-3.5 text-blue-600" />
-                        ) : (
-                          <FiSquare className="h-3.5 w-3.5" />
-                        )}
-                        Select
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => toggleJobMultiSelect(job.id)}
+                      className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+                        selectedJobIds.includes(String(job.id))
+                          ? "border-blue-300 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      {selectedJobIds.includes(String(job.id)) ? (
+                        <FiCheckSquare className="h-3.5 w-3.5 text-blue-600" />
+                      ) : (
+                        <FiSquare className="h-3.5 w-3.5" />
+                      )}
+                      Select
+                    </button>
 
                     <span
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${freshness.textClass} ${
-                        freshness.textClass.includes("emerald")
-                          ? "border-emerald-200 bg-emerald-50"
-                          : freshness.textClass.includes("amber")
-                            ? "border-amber-200 bg-amber-50"
-                            : "border-rose-200 bg-rose-50"
-                      }`}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${freshness.textClass} ${getFreshnessBadgeContainer(
+                        freshness.textClass,
+                      )}`}
                     >
                       <FiCalendar className="h-3 w-3 text-slate-500" />
                       {formatPostedDayLabel(job)}
@@ -677,25 +691,23 @@ export default function ExternalJobs({ publicView = false }) {
                       Apply Now
                     </a>
 
-                    {!publicView && (
-                      <button
-                        type="button"
-                        onClick={() => onQuickShare(job)}
-                        className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-700 transition hover:border-blue-300"
-                        title={
-                          copiedJobId === String(job.id)
-                            ? "Link copied"
-                            : "Share this job"
-                        }
-                        aria-label={
-                          copiedJobId === String(job.id)
-                            ? "Link copied"
-                            : "Share this job"
-                        }
-                      >
-                        <FiShare2 className="h-4 w-4" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onQuickShare(job)}
+                      className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-blue-700 transition hover:border-blue-300"
+                      title={
+                        copiedJobId === String(job.id)
+                          ? "Link copied"
+                          : "Share this job"
+                      }
+                      aria-label={
+                        copiedJobId === String(job.id)
+                          ? "Link copied"
+                          : "Share this job"
+                      }
+                    >
+                      <FiShare2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </article>
@@ -723,9 +735,7 @@ export default function ExternalJobs({ publicView = false }) {
             External Job Opportunities
           </h1>
           <p className="text-sm text-slate-500">
-            {publicView
-              ? "Browse and share opportunities with your network."
-              : "Here are jobs YOU should apply to TODAY."}
+            Here are jobs YOU should apply to TODAY.
           </p>
           {isSharedSelectionView && (
             <p className="text-xs font-medium text-blue-700">
@@ -743,10 +753,12 @@ export default function ExternalJobs({ publicView = false }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!publicView && isSharedSelectionView && (
+          {isSharedSelectionView && (
             <button
               type="button"
-              onClick={() => navigate("/student/external-jobs")}
+              onClick={() =>
+                navigate(publicView ? "/jobs" : "/student/external-jobs")
+              }
               className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300"
             >
               View All Jobs
@@ -768,7 +780,7 @@ export default function ExternalJobs({ publicView = false }) {
       </section>
 
       {/* Filters */}
-      {!publicView && selectedJobIds.length > 0 && (
+      {selectedJobIds.length > 0 && (
         <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-slate-700 bg-blue-700 px-3 py-2 shadow-2xl ring-1 ring-black/10 backdrop-blur md:bottom-6 md:left-auto md:right-6 md:translate-x-0">
           <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-900">
             {selectedJobIds.length}
