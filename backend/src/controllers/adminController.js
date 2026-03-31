@@ -21,8 +21,12 @@ async function listAdmins(req, res, next) {
 
 async function listFavoriteStudents(req, res, next) {
   try {
+    const favoriteOwnerId = await adminService.resolveFavoriteOwnerId({
+      requesterId: req.user?.id,
+      requesterRole: req.user?.role,
+    });
     const favoriteStudentIds = await adminService.listFavoriteStudentIds({
-      superadminId: req.user?.id,
+      superadminId: favoriteOwnerId,
     });
     res.json({ success: true, favoriteStudentIds });
   } catch (err) {
@@ -33,8 +37,12 @@ async function listFavoriteStudents(req, res, next) {
 async function addFavoriteStudents(req, res, next) {
   try {
     const { studentIds } = req.body || {};
+    const favoriteOwnerId = await adminService.resolveFavoriteOwnerId({
+      requesterId: req.user?.id,
+      requesterRole: req.user?.role,
+    });
     const favoriteStudentIds = await adminService.addFavoriteStudents({
-      superadminId: req.user?.id,
+      superadminId: favoriteOwnerId,
       studentIds,
     });
     res.json({ success: true, favoriteStudentIds });
@@ -46,8 +54,12 @@ async function addFavoriteStudents(req, res, next) {
 async function removeFavoriteStudents(req, res, next) {
   try {
     const { studentIds } = req.body || {};
+    const favoriteOwnerId = await adminService.resolveFavoriteOwnerId({
+      requesterId: req.user?.id,
+      requesterRole: req.user?.role,
+    });
     const favoriteStudentIds = await adminService.removeFavoriteStudents({
-      superadminId: req.user?.id,
+      superadminId: favoriteOwnerId,
       studentIds,
     });
     res.json({ success: true, favoriteStudentIds });

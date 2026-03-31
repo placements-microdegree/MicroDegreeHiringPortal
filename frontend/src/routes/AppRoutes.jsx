@@ -93,6 +93,12 @@ function ExternalJobsShareEntry() {
   return <Navigate to={targetPath} replace />;
 }
 
+function AdminOrSuperAdminLayout() {
+  const { user } = useAuth();
+  const role = user?.role || ROLES.ADMIN;
+  return <DashboardLayout role={role} />;
+}
+
 export default function AppRoutes() {
   const { loading } = useAuth();
   if (loading) return <PageOpeningShimmer />;
@@ -139,6 +145,8 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
         <Route element={<DashboardLayout role={ROLES.ADMIN} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/students" element={<Students />} />
+          <Route path="/admin/favourites" element={<Favourites />} />
           <Route path="/admin/post-jd" element={<PostJD />} />
           <Route
             path="/admin/manage-applications"
@@ -163,6 +171,17 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
+      <Route
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SUPER_ADMIN]} />
+        }
+      >
+        <Route element={<AdminOrSuperAdminLayout />}>
+          <Route path="/superadmin/students" element={<Students />} />
+          <Route path="/superadmin/favourites" element={<Favourites />} />
+        </Route>
+      </Route>
+
       {/* ── Super Admin routes ───────────────────────────────────────── */}
       <Route element={<ProtectedRoute allowedRoles={[ROLES.SUPER_ADMIN]} />}>
         <Route element={<DashboardLayout role={ROLES.SUPER_ADMIN} />}>
@@ -171,8 +190,6 @@ export default function AppRoutes() {
             element={<SuperAdminDashboard />}
           />
           <Route path="/superadmin/manage-hr" element={<ManageHRAdmins />} />
-          <Route path="/superadmin/students" element={<Students />} />
-          <Route path="/superadmin/favourites" element={<Favourites />} />
           <Route path="/superadmin/jobs" element={<SuperAdminJobs />} />
           <Route
             path="/superadmin/applications"

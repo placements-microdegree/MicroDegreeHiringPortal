@@ -348,18 +348,60 @@ function normalizeUuidList(values) {
   return values.map((value) => String(value || "").trim()).filter(Boolean);
 }
 
+async function resolveFavoriteOwnerId({ requesterId, requesterRole }) {
+  const normalizedRequesterId = String(requesterId || "").trim();
+  if (!normalizedRequesterId) {
+    const err = new Error("Unauthenticated");
+    err.status = 401;
+    throw err;
+  }
+
+  if (requesterRole === ROLES.SUPER_ADMIN) {
+    return normalizedRequesterId;
+  }
+
+  if (requesterRole !== ROLES.ADMIN) {
+    const err = new Error("Forbidden");
+    err.status = 403;
+    throw err;
+  }
+
+  const supabase = requireAdminClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", ROLES.SUPER_ADMIN)
+    .order("updated_at", { ascending: true })
+    .limit(1);
+
+  if (error) throw error;
+
+  const superadminId = data?.[0]?.id;
+  if (!superadminId) {
+    const err = new Error("No super admin found to map favourite students");
+    err.status = 400;
+    throw err;
+  }
+
+  return superadminId;
+}
+
 async function listFavoriteStudentIds({ superadminId }) {
   const supabase = requireAdminClient();
 
   const { data, error } = await supabase
     .from("superadmin_favorite_students")
-    .select("student_id")
-    .eq("superadmin_id", superadminId)
+    .select("student_id, created_at")
     .order("created_at", { ascending: false });
 
   if (error) throw error;
 
-  return (data || []).map((row) => row.student_id).filter(Boolean);
+  const unique = new Set();
+  (data || []).forEach((row) => {
+    const studentId = String(row?.student_id || "").trim();
+    if (studentId) unique.add(studentId);
+  });
+  return [...unique];
 }
 
 async function addFavoriteStudents({ superadminId, studentIds }) {
@@ -402,7 +444,6 @@ async function removeFavoriteStudents({ superadminId, studentIds }) {
   const { error } = await supabase
     .from("superadmin_favorite_students")
     .delete()
-    .eq("superadmin_id", superadminId)
     .in("student_id", normalizedIds);
 
   if (error) throw error;
@@ -1204,6 +1245,7 @@ module.exports = {
   promoteByEmail,
   listProfiles,
   listStudentsWithLatestApplication,
+  resolveFavoriteOwnerId,
   listFavoriteStudentIds,
   addFavoriteStudents,
   removeFavoriteStudents,

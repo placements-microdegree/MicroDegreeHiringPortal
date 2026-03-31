@@ -7,36 +7,41 @@ const { ROLES } = require("../utils/constants");
 
 const router = express.Router();
 
-// Super admin only
-router.use(verifyToken, authorizeRole([ROLES.SUPER_ADMIN]));
+router.use(verifyToken);
 
 router.get(
   "/students",
+  authorizeRole([ROLES.ADMIN]),
   cacheResponse({ ttlSeconds: 45 }),
   adminController.listStudents,
 );
 router.get(
   "/favorites/students",
+  authorizeRole([ROLES.ADMIN]),
   cacheResponse({ ttlSeconds: 20 }),
   adminController.listFavoriteStudents,
 );
 router.post(
   "/favorites/students",
+  authorizeRole([ROLES.ADMIN]),
   invalidateApiCache(["/api/admin/favorites/students"]),
   adminController.addFavoriteStudents,
 );
 router.delete(
   "/favorites/students",
+  authorizeRole([ROLES.ADMIN]),
   invalidateApiCache(["/api/admin/favorites/students"]),
   adminController.removeFavoriteStudents,
 );
 router.get(
   "/admins",
+  authorizeRole([ROLES.SUPER_ADMIN]),
   cacheResponse({ ttlSeconds: 45 }),
   adminController.listAdmins,
 );
 router.post(
   "/promote",
+  authorizeRole([ROLES.SUPER_ADMIN]),
   invalidateApiCache([
     "/api/admin/students",
     "/api/admin/admins",
@@ -46,11 +51,13 @@ router.post(
 );
 router.get(
   "/analytics",
+  authorizeRole([ROLES.SUPER_ADMIN]),
   cacheResponse({ ttlSeconds: 20 }),
   adminController.analytics,
 );
 router.get(
   "/checker",
+  authorizeRole([ROLES.SUPER_ADMIN]),
   cacheResponse({ ttlSeconds: 15 }),
   adminController.checker,
 );

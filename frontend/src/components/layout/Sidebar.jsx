@@ -28,7 +28,7 @@ const linkBase =
   "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
 
 export default function Sidebar({ role, isOpen = false, onClose }) {
-  const { logout, profile } = useAuth();
+  const { logout } = useAuth();
   const location = useLocation();
   const isStudent = role === ROLES.STUDENT;
   const isAdmin = role === ROLES.ADMIN;
@@ -130,6 +130,8 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   } else if (role === ROLES.ADMIN) {
     links = [
       { to: "/admin/dashboard", label: "Dashboard" },
+      { to: "/admin/students", label: "View Students" },
+      { to: "/admin/favourites", label: "Favourites" },
       { to: "/admin/post-jd", label: "Post JD" },
       { to: "/admin/cloud-drive", label: "Cloud Drive", icon: FiCloud },
       { to: "/admin/manage-applications", label: "Manage Applications" },
