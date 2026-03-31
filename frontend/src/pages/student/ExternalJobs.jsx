@@ -731,12 +731,27 @@ export default function ExternalJobs({ publicView = false }) {
       {/* Header */}
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="space-y-1">
-          <h1 className="text-lg font-bold text-slate-900">
-            External Job Opportunities
-          </h1>
-          <p className="text-sm text-slate-500">
-            Here are jobs YOU should apply to TODAY.
-          </p>
+          <div className="flex items-center gap-3">
+            {publicView ? (
+              <img
+                src="/Logo.png"
+                alt="MicroDegree"
+                className="h-10 w-10 rounded-xl border border-slate-200 bg-white p-1"
+              />
+            ) : null}
+            <div>
+              <h1 className="text-lg font-bold text-slate-900">
+                {publicView
+                  ? "MicroDegree External Jobs"
+                  : "External Job Opportunities"}
+              </h1>
+              <p className="text-sm text-slate-500">
+                {publicView
+                  ? "Browse and share opportunities with your network."
+                  : "Here are jobs YOU should apply to TODAY."}
+              </p>
+            </div>
+          </div>
           {isSharedSelectionView && (
             <p className="text-xs font-medium text-blue-700">
               Showing shared link: {visibleJobs.length} selected job
@@ -765,6 +780,17 @@ export default function ExternalJobs({ publicView = false }) {
             </button>
           )}
 
+          {publicView ? (
+            <a
+              href="https://portal.microdegree.work/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary hover:text-primary"
+            >
+              <FiExternalLink className="h-4 w-4" />
+              Premium Jobs
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={refresh}
