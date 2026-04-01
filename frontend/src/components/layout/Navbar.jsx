@@ -6,11 +6,7 @@ import {
   FiXCircle,
   FiAlertCircle,
 } from "react-icons/fi";
-import { FaWhatsapp } from "react-icons/fa";
 import NotificationBell from "./NotificationBell";
-
-const WHATSAPP_JOB_ALERTS_URL =
-  "https://whatsapp.com/channel/0029VbBni2CHFxPA411oCA2U";
 
 // ── EligibilityBadge ──────────────────────────────────────────────────────────
 
@@ -83,7 +79,6 @@ function NavbarProfileSection({
   isEligible,
   applicationQuota,
   completionPercent,
-  showJobAlertsCta,
 }) {
   const safePercent = Math.max(
     0,
@@ -93,7 +88,6 @@ function NavbarProfileSection({
     completionPercent !== null && completionPercent !== undefined;
   const shouldShowEligibilityBadge =
     isEligible !== undefined || applicationQuota !== undefined;
-  const shouldShowJobAlertsCta = showJobAlertsCta && isEligible === true;
   const ringStyle = showCompletion
     ? {
         background: `conic-gradient(var(--color-primary, #2563eb) ${safePercent * 3.6}deg, #e2e8f0 0deg)`,
@@ -102,19 +96,6 @@ function NavbarProfileSection({
 
   return (
     <div className="flex items-center gap-2 md:gap-3">
-      {shouldShowJobAlertsCta ? (
-        <a
-          href={WHATSAPP_JOB_ALERTS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100"
-          aria-label="Get job alerts on WhatsApp"
-        >
-          <FaWhatsapp className="h-4 w-4" />
-          Get Job Alerts
-        </a>
-      ) : null}
-
       {/* Eligibility status — shown only when props are provided */}
       {shouldShowEligibilityBadge ? (
         <EligibilityBadge
@@ -172,7 +153,6 @@ export default function Navbar({
   // new props for eligibility
   isEligible,
   applicationQuota,
-  showJobAlertsCta = false,
   actionButton,
 }) {
   return (
@@ -187,7 +167,6 @@ export default function Navbar({
           isEligible={isEligible}
           applicationQuota={applicationQuota}
           completionPercent={completionPercent}
-          showJobAlertsCta={showJobAlertsCta}
         />
       ) : (
         <div className="flex items-center gap-2">
@@ -223,7 +202,6 @@ NavbarProfileSection.propTypes = {
   isEligible: PropTypes.bool,
   applicationQuota: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   completionPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  showJobAlertsCta: PropTypes.bool,
 };
 
 Navbar.propTypes = {
@@ -236,7 +214,6 @@ Navbar.propTypes = {
   completionPercent: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   isEligible: PropTypes.bool,
   applicationQuota: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-  showJobAlertsCta: PropTypes.bool,
   actionButton: PropTypes.shape({
     label: PropTypes.string,
     href: PropTypes.string,

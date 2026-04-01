@@ -105,3 +105,19 @@ body {
     left: 100%;
   }
 }
+
+@keyframes job-alert-float {
+  0%,
+  100% {
+    transform: translateY(0);
+    box-shadow: 0 6px 14px rgba(6, 78, 59, 0.18);
+  }
+  50% {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(6, 78, 59, 0.24);
+  }
+}
+
+.job-alert-cta {
+  animation: job-alert-float 2.8s ease-in-out infinite;
+}

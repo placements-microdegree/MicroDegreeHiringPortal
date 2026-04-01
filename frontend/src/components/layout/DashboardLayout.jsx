@@ -26,6 +26,10 @@ import {
   FiCalendar,
   FiAward,
 } from "react-icons/fi";
+import { FaWhatsapp } from "react-icons/fa";
+
+const WHATSAPP_JOB_ALERTS_URL =
+  "https://whatsapp.com/channel/0029VbBni2CHFxPA411oCA2U";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -372,12 +376,28 @@ function StudentDashboardHome({ profile }) {
     <div className="space-y-8">
       {/* Welcome banner */}
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-lg font-semibold text-slate-900">
-          Welcome back, {profile?.fullName?.split(" ")[0] || "Student"} 👋
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Here's a snapshot of open roles and your recent activity.
-        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">
+              Welcome back, {profile?.fullName?.split(" ")[0] || "Student"} 👋
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Here's a snapshot of open roles and your recent activity.
+            </p>
+          </div>
+          {profile?.isEligible === true ? (
+            <a
+              href={WHATSAPP_JOB_ALERTS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="job-alert-cta inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
+              aria-label="Get job alerts on WhatsApp"
+            >
+              <FaWhatsapp className="h-4 w-4" />
+              Get Job Alerts
+            </a>
+          ) : null}
+        </div>
       </section>
 
       {isLoading ? (
@@ -777,7 +797,6 @@ export default function DashboardLayout({ role }) {
             completionPercent={completionPercent}
             isEligible={profile?.isEligible}
             applicationQuota={profile?.applicationQuota}
-            showJobAlertsCta={isStudentHome}
             actionButton={navbarActionButton}
           />
 
