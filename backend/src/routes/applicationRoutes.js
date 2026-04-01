@@ -120,6 +120,12 @@ router.patch(
   authorizeRole(ADMIN_ROLES),
   applicationController.updateComment,
 );
+router.get(
+  "/:id/comment-history",
+  verifyToken,
+  authorizeRole(ADMIN_ROLES),
+  applicationController.commentHistory,
+);
 router.post(
   "/:id/ai-comment-suggestion",
   verifyToken,

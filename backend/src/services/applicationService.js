@@ -600,6 +600,16 @@ async function updateApplicationComment({
     .single();
   if (error) throw error;
 
+  const { error: historyError } = await supabase
+    .from("application_comment_history")
+    .insert({
+      application_id: applicationId,
+      actor_id: actorId || null,
+      hr_comment: data.hr_comment,
+      hr_comment_2: data.hr_comment_2,
+    });
+  if (historyError) throw historyError;
+
   if (aiSuggestionId || aiApproved === true) {
     await aiCommentService.logAiApprovalEvent({
       applicationId,
@@ -611,6 +621,29 @@ async function updateApplicationComment({
   }
 
   return data;
+}
+
+async function listApplicationCommentHistory({
+  applicationId,
+  jwt,
+  limit = 50,
+}) {
+  const supabase = getClient(jwt);
+
+  const safeLimit = Number.isFinite(Number(limit))
+    ? Math.max(1, Math.min(200, Number(limit)))
+    : 50;
+
+  const { data, error } = await supabase
+    .from("application_comment_history")
+    .select(
+      "id, application_id, actor_id, hr_comment, hr_comment_2, created_at",
+    )
+    .eq("application_id", applicationId)
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
+  if (error) throw error;
+  return data || [];
 }
 
 async function deleteApplication({ applicationId, jwt }) {
@@ -818,6 +851,7 @@ module.exports = {
   listAllApplications,
   updateApplicationStatus,
   updateApplicationComment,
+  listApplicationCommentHistory,
   deleteApplication,
   getStudentAnalytics,
   generateAiCommentSuggestion,

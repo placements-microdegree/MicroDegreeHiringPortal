@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { FiEdit2, FiCheck, FiTrash2, FiX } from "react-icons/fi";
 import { APPLICATION_STATUSES } from "../../utils/constants";
+import { listApplicationCommentHistory } from "../../services/applicationService";
 
 // ── Per-row HR Comment cell ───────────────────────────────────────────────────
 
@@ -23,6 +24,10 @@ function CommentCell({
   const [aiMeta, setAiMeta] = useState(null);
   const [expandHrComment, setExpandHrComment] = useState(false);
   const [expandStudentComment, setExpandStudentComment] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
 
   // Keep draft in sync if parent refreshes and savedComment changes
   // but only when we're NOT currently editing (don't overwrite user's typing)
@@ -61,8 +66,44 @@ function CommentCell({
         aiApproved: Boolean(aiMeta?.id && gatePassed),
       });
       setIsEditing(false);
+
+      if (historyOpen) {
+        setHistoryLoading(true);
+        setHistoryError("");
+        try {
+          const data = await listApplicationCommentHistory(rowId, {
+            limit: 50,
+          });
+          setHistoryItems(Array.isArray(data) ? data : []);
+        } catch (err) {
+          setHistoryError(err?.message || "Failed to load history");
+        } finally {
+          setHistoryLoading(false);
+        }
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  const formatHistoryDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString();
+  };
+
+  const loadHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError("");
+    try {
+      const data = await listApplicationCommentHistory(rowId, { limit: 50 });
+      setHistoryItems(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setHistoryItems([]);
+      setHistoryError(err?.message || "Failed to load history");
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -256,6 +297,53 @@ function CommentCell({
     );
   };
 
+  let historyBody = null;
+  if (historyOpen) {
+    if (historyLoading) {
+      historyBody = (
+        <p className="text-xs text-slate-500">Loading history...</p>
+      );
+    } else if (historyError) {
+      historyBody = <p className="text-xs text-rose-700">{historyError}</p>;
+    } else if (historyItems.length) {
+      historyBody = (
+        <div className="space-y-2">
+          {historyItems.map((item) => {
+            const hr = String(item?.hr_comment || "").trim();
+            const student = String(item?.hr_comment_2 || "").trim();
+            return (
+              <div
+                key={item.id}
+                className="rounded-lg border border-slate-200 bg-slate-50 p-2"
+              >
+                <p className="text-[11px] font-semibold text-slate-500">
+                  {formatHistoryDate(item.created_at) || "-"}
+                </p>
+                {hr ? (
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">
+                    {hr}
+                  </p>
+                ) : null}
+                {student ? (
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">
+                    {student}
+                  </p>
+                ) : null}
+                {!hr && !student ? (
+                  <p className="mt-1 text-xs italic text-slate-400">-</p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      );
+    } else {
+      historyBody = (
+        <p className="text-xs italic text-slate-400">No history yet</p>
+      );
+    }
+  }
+
   // ── Display mode ────────────────────────────────────────────────────────────
   return (
     <div className="group flex min-w-[320px] items-start justify-between gap-2">
@@ -276,6 +364,27 @@ function CommentCell({
           expanded: expandStudentComment,
           onToggle: () => setExpandStudentComment((prev) => !prev),
         })}
+
+        <div className="pt-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              History comment
+            </p>
+            <button
+              type="button"
+              onClick={async () => {
+                const next = !historyOpen;
+                setHistoryOpen(next);
+                if (next) await loadHistory();
+              }}
+              className="text-xs font-semibold text-primary hover:text-primary/80"
+            >
+              {historyOpen ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {historyBody}
+        </div>
       </div>
       <button
         type="button"

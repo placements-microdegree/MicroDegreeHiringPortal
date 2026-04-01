@@ -140,3 +140,20 @@ export async function generateAiCommentSuggestion(
   );
   return data.suggestion || null;
 }
+
+export async function listApplicationCommentHistory(
+  applicationId,
+  options = {},
+) {
+  const limit = options?.limit;
+  const params = new URLSearchParams();
+  if (limit != null) params.set("limit", String(limit));
+
+  const query = params.toString();
+  const path = query
+    ? `/api/applications/${applicationId}/comment-history?${query}`
+    : `/api/applications/${applicationId}/comment-history`;
+
+  const data = await request(path);
+  return data.history || [];
+}

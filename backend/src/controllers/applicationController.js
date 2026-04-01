@@ -103,6 +103,19 @@ async function updateComment(req, res, next) {
   }
 }
 
+async function commentHistory(req, res, next) {
+  try {
+    const history = await applicationService.listApplicationCommentHistory({
+      applicationId: req.params.id,
+      limit: req.query.limit,
+      jwt: req.user.jwt,
+    });
+    res.json({ success: true, history });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function generateAiCommentSuggestion(req, res, next) {
   try {
     const suggestion = await applicationService.generateAiCommentSuggestion({
@@ -272,6 +285,7 @@ module.exports = {
   allApplications,
   updateStatus,
   updateComment,
+  commentHistory,
   generateAiCommentSuggestion,
   deleteOne,
   applyOnBehalf,
