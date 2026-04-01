@@ -739,10 +739,9 @@ export default function DashboardLayout({ role }) {
   const shouldShowEligibilityOverlay =
     isStudent &&
     isNonEligible &&
-    [
-      "/student/career-guide",
-      "/student/cloud-drive",
-    ].includes(location.pathname);
+    ["/student/career-guide", "/student/cloud-drive"].includes(
+      location.pathname,
+    );
 
   useEffect(() => {
     if (!shouldShowEligibilityOverlay) return undefined;
@@ -778,6 +777,7 @@ export default function DashboardLayout({ role }) {
             completionPercent={completionPercent}
             isEligible={profile?.isEligible}
             applicationQuota={profile?.applicationQuota}
+            showJobAlertsCta={isStudentHome}
             actionButton={navbarActionButton}
           />
 

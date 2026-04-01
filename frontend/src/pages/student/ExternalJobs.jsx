@@ -785,7 +785,7 @@ export default function ExternalJobs({ publicView = false }) {
               href="https://portal.microdegree.work/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary hover:text-primary"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
               <FiExternalLink className="h-4 w-4" />
               Premium Jobs
