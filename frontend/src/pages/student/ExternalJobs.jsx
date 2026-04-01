@@ -1,7 +1,7 @@
 // FILE: src/pages/student/ExternalJobs.jsx
 // Route: /student/external-jobs
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import {
   FiExternalLink,
@@ -15,6 +15,7 @@ import {
   FiSquare,
   FiX,
   FiMessageCircle,
+  FiChevronDown,
 } from "react-icons/fi";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -61,7 +62,6 @@ const SKILL_CAPSULES = [
 ];
 
 const DATE_FILTERS = [
-  { key: "all", label: "All" },
   { key: "today", label: "Today" },
   { key: "last3", label: "Last 3 days" },
   { key: "last7", label: "Last 7 days" },
@@ -237,22 +237,26 @@ function matchesExperience(job, selectedExperience) {
   return numericMatched || naMatched;
 }
 
-function matchesDateFilter(job, selectedDateFilter) {
-  if (selectedDateFilter === "all") return true;
+function matchesDateFilter(job, selectedDateFilters) {
+  if (!Array.isArray(selectedDateFilters) || selectedDateFilters.length === 0) {
+    return true;
+  }
 
   const dayDiff = getJobDayDifference(job);
   if (!Number.isFinite(dayDiff)) return false;
 
-  switch (selectedDateFilter) {
-    case "today":
-      return dayDiff === 0;
-    case "last3":
-      return dayDiff >= 0 && dayDiff <= 2;
-    case "last7":
-      return dayDiff >= 0 && dayDiff <= 6;
-    default:
-      return true;
-  }
+  return selectedDateFilters.some((selectedDateFilter) => {
+    switch (selectedDateFilter) {
+      case "today":
+        return dayDiff === 0;
+      case "last3":
+        return dayDiff >= 0 && dayDiff <= 2;
+      case "last7":
+        return dayDiff >= 0 && dayDiff <= 6;
+      default:
+        return true;
+    }
+  });
 }
 
 function buildSelectedSkillSet(selectedSkills) {
@@ -303,11 +307,13 @@ export default function ExternalJobs({ publicView = false }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedExperience, setSelectedExperience] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
-  const [selectedDateFilter, setSelectedDateFilter] = useState("all");
+  const [selectedDateFilters, setSelectedDateFilters] = useState([]);
   const [postedDateSort, setPostedDateSort] = useState("desc");
+  const [openFilter, setOpenFilter] = useState(null);
   const [copiedJobId, setCopiedJobId] = useState(null);
   const [selectedJobIds, setSelectedJobIds] = useState([]);
   const [isMultiCopied, setIsMultiCopied] = useState(false);
+  const filterToolbarRef = useRef(null);
 
   const trackingMeta = useMemo(
     () => ({
@@ -346,7 +352,7 @@ export default function ExternalJobs({ publicView = false }) {
     return jobs.filter((job) => {
       if (!matchesSearch(job, normalizedQuery)) return false;
       if (!matchesExperience(job, selectedExperience)) return false;
-      if (!matchesDateFilter(job, selectedDateFilter)) return false;
+      if (!matchesDateFilter(job, selectedDateFilters)) return false;
       return matchesSkills(job, selectedSkillSet);
     });
   }, [
@@ -354,8 +360,22 @@ export default function ExternalJobs({ publicView = false }) {
     searchTerm,
     selectedExperience,
     selectedSkills,
-    selectedDateFilter,
+    selectedDateFilters,
   ]);
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!filterToolbarRef.current) return;
+      if (!filterToolbarRef.current.contains(event.target)) {
+        setOpenFilter(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
 
   const sortedJobs = useMemo(() => {
     return [...filteredJobs].sort((a, b) => {
@@ -758,14 +778,14 @@ export default function ExternalJobs({ publicView = false }) {
               {visibleJobs.length === 1 ? "" : "s"}
             </p>
           )}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
               Updated Today
             </span>
             <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
               100+ Jobs Added Daily
             </span>
-          </div>
+          </div> */}
         </div>
         <div className="flex items-center gap-2">
           {isSharedSelectionView && (
@@ -807,7 +827,7 @@ export default function ExternalJobs({ publicView = false }) {
 
       {/* Filters */}
       {selectedJobIds.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-slate-700 bg-blue-600 px-4 py-2 shadow-2xl ring-1 ring-black/10 backdrop-blur md:bottom-auto md:top-35 md:left-auto md:right-47 md:translate-x-0">
+        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-slate-700 bg-blue-600 px-4 py-2 shadow-2xl ring-1 ring-black/10 backdrop-blur md:bottom-auto md:top-32 md:left-auto md:right-47 md:translate-x-0">
           <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-900">
             {selectedJobIds.length}
           </span>
@@ -845,31 +865,215 @@ export default function ExternalJobs({ publicView = false }) {
       )}
 
       {!isSharedSelectionView && (
-        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:space-y-2.5">
+        <section
+          ref={filterToolbarRef}
+          className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
+        >
           <div className="flex flex-wrap items-center gap-2">
-            <label className="relative min-w-44 max-w-md flex-1">
+            <label className="relative min-w-52 flex-1">
               <FiSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by job title or company"
-                className="h-8.5 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-3 text-[13px] font-medium text-slate-700 outline-none transition duration-200 hover:border-slate-300 hover:bg-white focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-[13px] font-medium text-slate-700 outline-none transition duration-200 hover:border-slate-300 hover:bg-white focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary/20"
               />
             </label>
 
-            <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
-              <span className="text-[13px] font-semibold text-slate-600">
-                Posted
-              </span>
-              <select
-                value={postedDateSort}
-                onChange={(e) => setPostedDateSort(e.target.value)}
-                className="h-7 rounded-md border border-slate-200 bg-white px-2 text-[13px] font-semibold text-slate-700 outline-none transition hover:border-slate-300"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenFilter((previous) =>
+                    previous === "experience" ? null : "experience",
+                  )
+                }
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
               >
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-              </select>
+                Experience
+                {selectedExperience.length > 0 ? (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                    {selectedExperience.length}
+                  </span>
+                ) : null}
+                <FiChevronDown
+                  className={`h-4 w-4 transition ${openFilter === "experience" ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {openFilter === "experience" ? (
+                <div className="absolute left-0 top-12 z-30 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                  <div className="flex flex-wrap gap-2">
+                    {EXPERIENCE_CAPSULES.map((item) => {
+                      const active = selectedExperience.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() =>
+                            toggleSelection(item, setSelectedExperience)
+                          }
+                          className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
+                            active
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenFilter((previous) =>
+                    previous === "date" ? null : "date",
+                  )
+                }
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+              >
+                Date
+                {selectedDateFilters.length > 0 ? (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                    {selectedDateFilters.length}
+                  </span>
+                ) : null}
+                <FiChevronDown
+                  className={`h-4 w-4 transition ${openFilter === "date" ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {openFilter === "date" ? (
+                <div className="absolute left-0 top-12 z-30 w-64 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                  <div className="flex flex-wrap gap-2">
+                    {DATE_FILTERS.map((item) => {
+                      const active = selectedDateFilters.includes(item.key);
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() =>
+                            toggleSelection(item.key, setSelectedDateFilters)
+                          }
+                          className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
+                            active
+                              ? "border-blue-500 bg-blue-50 text-blue-700"
+                              : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenFilter((previous) =>
+                    previous === "tools" ? null : "tools",
+                  )
+                }
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+              >
+                Tools
+                {selectedSkills.length > 0 ? (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                    {selectedSkills.length}
+                  </span>
+                ) : null}
+                <FiChevronDown
+                  className={`h-4 w-4 transition ${openFilter === "tools" ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {openFilter === "tools" ? (
+                <div className="absolute left-0 top-12 z-30 w-[22rem] max-w-[85vw] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                  <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto pr-1">
+                    {SKILL_CAPSULES.map((item) => {
+                      const active = selectedSkills.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => toggleSelection(item, setSelectedSkills)}
+                          className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
+                            active
+                              ? "border-sky-500 bg-sky-100 text-sky-700"
+                              : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
+                          }`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenFilter((previous) =>
+                    previous === "posted" ? null : "posted",
+                  )
+                }
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-white"
+              >
+                Posted
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                  {postedDateSort === "desc" ? "Newest" : "Oldest"}
+                </span>
+                <FiChevronDown
+                  className={`h-4 w-4 transition ${openFilter === "posted" ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {openFilter === "posted" ? (
+                <div className="absolute left-0 top-12 z-30 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPostedDateSort("desc");
+                      setOpenFilter(null);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition ${
+                      postedDateSort === "desc"
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Newest First
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPostedDateSort("asc");
+                      setOpenFilter(null);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[13px] font-semibold transition ${
+                      postedDateSort === "asc"
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Oldest First
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             <button
@@ -878,93 +1082,48 @@ export default function ExternalJobs({ publicView = false }) {
                 setSearchTerm("");
                 setSelectedExperience([]);
                 setSelectedSkills([]);
-                setSelectedDateFilter("all");
+                setSelectedDateFilters([]);
                 setPostedDateSort("desc");
+                setOpenFilter(null);
               }}
-              className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[13px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
+              className="h-10 rounded-xl border border-blue-200 bg-blue-50 px-4 text-[13px] font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100"
             >
               Clear Filters
             </button>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-2">
-              <p className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
-                Experience
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {EXPERIENCE_CAPSULES.map((item) => {
-                  const active = selectedExperience.includes(item);
-                  return (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() =>
-                        toggleSelection(item, setSelectedExperience)
-                      }
-                      className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
-                        active
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          {(selectedExperience.length > 0 ||
+            selectedDateFilters.length > 0 ||
+            selectedSkills.length > 0) && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {selectedExperience.map((item) => (
+                <span
+                  key={`exp-${item}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary"
+                >
+                  Exp: {item}
+                </span>
+              ))}
 
-            <div className="space-y-2">
-              <p className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
-                Date
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {DATE_FILTERS.map((item) => {
-                  const active = selectedDateFilter === item.key;
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setSelectedDateFilter(item.key)}
-                      className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
-                        active
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+              {selectedDateFilters.map((item) => (
+                <span
+                  key={`date-${item}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700"
+                >
+                  Date: {DATE_FILTERS.find((f) => f.key === item)?.label || item}
+                </span>
+              ))}
 
-          <div className="space-y-2">
-            <p className="text-[12px] font-semibold uppercase tracking-wide text-slate-500">
-              Tools
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {SKILL_CAPSULES.map((item) => {
-                const active = selectedSkills.includes(item);
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => toggleSelection(item, setSelectedSkills)}
-                    className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold transition ${
-                      active
-                        ? "border-sky-500 bg-sky-100 text-sky-700"
-                        : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                );
-              })}
+              {selectedSkills.map((item) => (
+                <span
+                  key={`skill-${item}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700"
+                >
+                  Tool: {item}
+                </span>
+              ))}
             </div>
-          </div>
+          )}
         </section>
       )}
 
