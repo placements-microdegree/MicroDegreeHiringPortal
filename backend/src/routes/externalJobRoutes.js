@@ -91,6 +91,7 @@ router.post(
   "/:id/share",
   verifyToken,
   authorizeRole([ROLES.STUDENT]),
+  invalidateApiCache(["/api/external-jobs/all"]),
   externalJobController.trackShare,
 );
 

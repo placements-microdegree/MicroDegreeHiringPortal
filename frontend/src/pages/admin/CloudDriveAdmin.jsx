@@ -540,9 +540,9 @@ export default function CloudDriveAdmin() {
                 <th className="p-2">Currently Working</th>
                 <th className="p-2">AWS Cert</th>
                 <th className="p-2">DevOps Cert</th>
-                <th className="p-2">Commitment 1</th>
+                {/* <th className="p-2">Commitment 1</th>
                 <th className="p-2">Commitment 2</th>
-                <th className="p-2">Commitment 3</th>
+                <th className="p-2">Commitment 3</th> */}
                 <th className="p-2">Comment</th>
                 <th className="p-2">HR Status</th>
                 <th className="p-2">Registered At</th>
@@ -586,9 +586,9 @@ export default function CloudDriveAdmin() {
                     <td className="p-2">{r.currently_working === null || r.currently_working === undefined ? "-" : r.currently_working ? "Yes" : "No"}</td>
                     <td className="p-2">{r.aws_cert ? "Yes" : "No"}</td>
                     <td className="p-2">{r.devops_cert ? "Yes" : "No"}</td>
-                    <td className="p-2">{r.commitment_full_drive ? "Yes" : "No"}</td>
+                    {/* <td className="p-2">{r.commitment_full_drive ? "Yes" : "No"}</td>
                     <td className="p-2">{r.commitment_serious_roles ? "Yes" : "No"}</td>
-                    <td className="p-2">{r.commitment_selection_performance ? "Yes" : "No"}</td>
+                    <td className="p-2">{r.commitment_selection_performance ? "Yes" : "No"}</td> */}
                     <td className="p-2">
                       <div className="flex min-w-[230px] items-center gap-2">
                         <input

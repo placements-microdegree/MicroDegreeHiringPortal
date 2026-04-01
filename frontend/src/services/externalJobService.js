@@ -127,7 +127,12 @@ export async function trackExternalJobShare(id, tracking = {}) {
     method: "POST",
     body: tracking,
   });
-  return { ok: Boolean(data?.success || data?.ok) };
+  return {
+    ok: Boolean(data?.success || data?.ok),
+    id: data?.id,
+    shareCount: Number(data?.share_count || 0),
+    lastSharedAt: data?.last_shared_at || null,
+  };
 }
 
 // Super admin — list student visit analytics for external jobs page

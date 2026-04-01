@@ -149,6 +149,29 @@ async function updateExternalJobClickCounter({
   return data;
 }
 
+async function updateExternalJobShareCounter({
+  supabase,
+  jobId,
+  currentCount,
+}) {
+  const now = new Date().toISOString();
+  const nextCount = Number(currentCount || 0) + 1;
+
+  const { data, error } = await supabase
+    .from("external_jobs")
+    .update({
+      share_count: nextCount,
+      last_shared_at: now,
+      updated_at: now,
+    })
+    .eq("id", jobId)
+    .select("id, share_count, last_shared_at")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
 async function insertGrowthEvent({
   supabase,
   eventType,
@@ -413,7 +436,7 @@ async function trackExternalJobShare({
 
   const { data: job, error: readError } = await supabase
     .from("external_jobs")
-    .select("id")
+    .select("id, status, share_count")
     .eq("id", jobId)
     .maybeSingle();
 
@@ -421,6 +444,11 @@ async function trackExternalJobShare({
   if (!job) {
     const err = new Error("External job not found");
     err.status = 404;
+    throw err;
+  }
+  if (job.status !== "active") {
+    const err = new Error("External job is not active");
+    err.status = 400;
     throw err;
   }
 
@@ -435,7 +463,18 @@ async function trackExternalJobShare({
     ipAddress,
   });
 
-  return { ok: true };
+  const updated = await updateExternalJobShareCounter({
+    supabase,
+    jobId,
+    currentCount: job.share_count,
+  });
+
+  return {
+    ok: true,
+    id: updated.id,
+    share_count: Number(updated.share_count || 0),
+    last_shared_at: updated.last_shared_at || null,
+  };
 }
 
 async function trackExternalJobsPublicVisit({

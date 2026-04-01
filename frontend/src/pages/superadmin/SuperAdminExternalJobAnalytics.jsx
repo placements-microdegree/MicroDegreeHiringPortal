@@ -107,6 +107,10 @@ export default function SuperAdminExternalJobAnalytics() {
 
   const sortedJobs = useMemo(() => {
     return [...jobs].sort((a, b) => {
+      const aShare = Number(a?.share_count || 0);
+      const bShare = Number(b?.share_count || 0);
+      if (bShare !== aShare) return bShare - aShare;
+
       const aCount = Number(a?.apply_click_count || 0);
       const bCount = Number(b?.apply_click_count || 0);
       if (bCount !== aCount) return bCount - aCount;
@@ -145,7 +149,49 @@ export default function SuperAdminExternalJobAnalytics() {
     [filteredJobs],
   );
 
-  const topJob = filteredJobs[0] || null;
+  const totalShares = useMemo(
+    () =>
+      filteredJobs.reduce((sum, job) => sum + Number(job?.share_count || 0), 0),
+    [filteredJobs],
+  );
+
+  const mostClickedJob = useMemo(() => {
+    const byClicks = [...filteredJobs].sort((a, b) => {
+      const aClick = Number(a?.apply_click_count || 0);
+      const bClick = Number(b?.apply_click_count || 0);
+      if (bClick !== aClick) return bClick - aClick;
+
+      const aShare = Number(a?.share_count || 0);
+      const bShare = Number(b?.share_count || 0);
+      if (bShare !== aShare) return bShare - aShare;
+
+      return (
+        new Date(b?.created_at || 0).getTime() -
+        new Date(a?.created_at || 0).getTime()
+      );
+    });
+
+    return byClicks[0] || null;
+  }, [filteredJobs]);
+
+  const mostSharedJob = useMemo(() => {
+    const byShares = [...filteredJobs].sort((a, b) => {
+      const aShare = Number(a?.share_count || 0);
+      const bShare = Number(b?.share_count || 0);
+      if (bShare !== aShare) return bShare - aShare;
+
+      const aClick = Number(a?.apply_click_count || 0);
+      const bClick = Number(b?.apply_click_count || 0);
+      if (bClick !== aClick) return bClick - aClick;
+
+      return (
+        new Date(b?.created_at || 0).getTime() -
+        new Date(a?.created_at || 0).getTime()
+      );
+    });
+
+    return byShares[0] || null;
+  }, [filteredJobs]);
 
   return (
     <div className="space-y-5">
@@ -153,11 +199,11 @@ export default function SuperAdminExternalJobAnalytics() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold text-slate-900">
-              External Job Click Analytics
+              External Job Engagement Analytics
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               Track which external jobs students are most interested in based on
-              Apply clicks.
+              Apply clicks and Shares.
             </p>
           </div>
           <button
@@ -171,7 +217,7 @@ export default function SuperAdminExternalJobAnalytics() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <div className={cardClass}>
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
             <FiBriefcase className="h-4 w-4" />
@@ -194,18 +240,45 @@ export default function SuperAdminExternalJobAnalytics() {
 
         <div className={cardClass}>
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+            <FiBarChart2 className="h-4 w-4" />
+            Total Shares
+          </div>
+          <div className="mt-2 text-3xl font-bold text-slate-900">
+            {totalShares}
+          </div>
+        </div>
+
+        <div className={cardClass}>
+          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
             <FiTrendingUp className="h-4 w-4" />
             Most Clicked Job
           </div>
           <div className="mt-2 text-base font-semibold text-slate-900">
-            {topJob
-              ? `${topJob.job_role || "-"} @ ${topJob.company || "-"}`
+            {mostClickedJob
+              ? `${mostClickedJob.job_role || "-"} @ ${mostClickedJob.company || "-"}`
               : "-"}
           </div>
           <div className="mt-1 text-xs text-slate-500">
-            {topJob
-              ? `${Number(topJob.apply_click_count || 0)} clicks`
+            {mostClickedJob
+              ? `${Number(mostClickedJob.apply_click_count || 0)} clicks`
               : "No click data yet"}
+          </div>
+        </div>
+
+        <div className={cardClass}>
+          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+            <FiTrendingUp className="h-4 w-4" />
+            Most Shared Job
+          </div>
+          <div className="mt-2 text-base font-semibold text-slate-900">
+            {mostSharedJob
+              ? `${mostSharedJob.job_role || "-"} @ ${mostSharedJob.company || "-"}`
+              : "-"}
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            {mostSharedJob
+              ? `${Number(mostSharedJob.share_count || 0)} shares`
+              : "No share data yet"}
           </div>
         </div>
       </section>
@@ -296,7 +369,9 @@ export default function SuperAdminExternalJobAnalytics() {
                   <th className="px-4 py-3">Experience</th>
                   <th className="px-4 py-3">Location</th>
                   <th className="px-4 py-3">Clicks</th>
+                  <th className="px-4 py-3">Shares</th>
                   <th className="px-4 py-3">Last Clicked</th>
+                  <th className="px-4 py-3">Last Shared</th>
                 </tr>
               </thead>
               <tbody>
@@ -320,8 +395,14 @@ export default function SuperAdminExternalJobAnalytics() {
                     <td className="px-4 py-3 text-slate-900">
                       {Number(job.apply_click_count || 0)}
                     </td>
+                    <td className="px-4 py-3 text-slate-900">
+                      {Number(job.share_count || 0)}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">
                       {formatDateTime(job.last_clicked_at)}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {formatDateTime(job.last_shared_at)}
                     </td>
                   </tr>
                 ))}
@@ -329,7 +410,7 @@ export default function SuperAdminExternalJobAnalytics() {
                 {filteredJobs.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="px-4 py-8 text-center text-slate-500"
                     >
                       No external jobs found for the selected filters.

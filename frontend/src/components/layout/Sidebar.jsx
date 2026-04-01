@@ -16,6 +16,8 @@ import {
   FiChevronDown,
   FiChevronRight,
   FiSend,
+  FiUsers,
+  FiStar,
 } from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
@@ -107,34 +109,45 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
   let links = [];
   if (role === ROLES.SUPER_ADMIN) {
     links = [
-      { to: "/superadmin/dashboard", label: "Dashboard" },
-      { to: "/superadmin/manage-hr", label: "Manage HR Admins" },
-      { to: "/superadmin/students", label: "View Students" },
-      { to: "/superadmin/favourites", label: "Favourites" },
-      { to: "/superadmin/jobs", label: "View Jobs" },
-      { to: "/superadmin/applications", label: "Applications" },
+      { to: "/superadmin/dashboard", label: "Dashboard", icon: FiGrid },
+      {
+        to: "/superadmin/manage-hr",
+        label: "Manage HR Admins",
+        icon: FiUsers,
+      },
+      { to: "/superadmin/students", label: "View Students", icon: FiUsers },
+      { to: "/superadmin/favourites", label: "Favourites", icon: FiStar },
+      { to: "/superadmin/jobs", label: "View Jobs", icon: FiBriefcase },
+      { to: "/superadmin/applications", label: "Applications", icon: FiClipboard },
       {
         to: "/superadmin/external-job-analytics",
         label: "External Job Analytics",
+        icon: FiBriefcase,
       },
       {
         to: "/superadmin/external-jobs-visit-students",
         label: "External Jobs Visit Students",
+        icon: FiUsers,
       },
       {
         to: "/superadmin/resume-builder-analytics",
         label: "Resume Builder Analytics",
+        icon: FiFileText,
       },
-      { to: "/superadmin/checker", label: "Checker" },
+      { to: "/superadmin/checker", label: "Checker", icon: FiHelpCircle },
     ];
   } else if (role === ROLES.ADMIN) {
     links = [
-      { to: "/admin/dashboard", label: "Dashboard" },
-      { to: "/admin/students", label: "View Students" },
-      { to: "/admin/favourites", label: "Favourites" },
-      { to: "/admin/post-jd", label: "Post JD" },
+      { to: "/admin/dashboard", label: "Dashboard", icon: FiGrid },
+      {
+        to: "/admin/manage-applications",
+        label: "Manage Applications",
+        icon: FiClipboard,
+      },
+      { to: "/admin/post-jd", label: "Post JD", icon: FiFileText },
+      { to: "/admin/students", label: "View Students", icon: FiUsers },
+      { to: "/admin/favourites", label: "Favourites", icon: FiStar },
       { to: "/admin/cloud-drive", label: "Cloud Drive", icon: FiCloud },
-      { to: "/admin/manage-applications", label: "Manage Applications" },
       {
         to: "/admin/external-jobs",
         label: "External Jobs",
@@ -328,7 +341,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
               >
                 <span className="inline-flex items-center gap-3">
                   <FiBriefcase className="h-4 w-4 text-slate-500" />
-                  <span>Placement Status Pipeline</span>
+                  <span>Placement Pipeline</span>
                 </span>
                 {placementSectionOpen ? (
                   <FiChevronDown className="h-4 w-4 text-slate-500" />
