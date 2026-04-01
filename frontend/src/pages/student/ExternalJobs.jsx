@@ -807,7 +807,7 @@ export default function ExternalJobs({ publicView = false }) {
 
       {/* Filters */}
       {selectedJobIds.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-slate-700 bg-blue-700 px-3 py-2 shadow-2xl ring-1 ring-black/10 backdrop-blur md:bottom-6 md:left-auto md:right-6 md:translate-x-0">
+        <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-2xl border border-slate-700 bg-blue-600 px-4 py-2 shadow-2xl ring-1 ring-black/10 backdrop-blur md:bottom-auto md:top-35 md:left-auto md:right-47 md:translate-x-0">
           <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-900">
             {selectedJobIds.length}
           </span>
