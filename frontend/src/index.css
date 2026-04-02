@@ -121,3 +121,36 @@ body {
 .job-alert-cta {
   animation: job-alert-float 2.8s ease-in-out infinite;
 }
+
+@keyframes auth-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes auth-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-fade-in {
+  animation: auth-fade-in 0.55s ease-out both;
+}
+
+.auth-fade-up {
+  animation: auth-fade-up 0.55s ease-out both;
+}
+
+.auth-fade-up-delayed {
+  animation: auth-fade-up 0.7s ease-out both;
+  animation-delay: 0.12s;
+}
