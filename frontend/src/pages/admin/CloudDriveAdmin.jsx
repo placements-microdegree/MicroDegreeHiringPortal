@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
+import { FiArrowDown, FiArrowUp } from "react-icons/fi";
 import Button from "../../components/common/Button";
 import Input from "../../components/common/Input";
 import {
@@ -85,6 +86,7 @@ export default function CloudDriveAdmin() {
     status: "",
     track: "",
   });
+  const [registrationSortOrder, setRegistrationSortOrder] = useState("desc");
 
   useEffect(() => {
     void loadData();
@@ -245,6 +247,19 @@ export default function CloudDriveAdmin() {
     });
   }, [registrations, filters]);
 
+  const sortedFilteredRegistrations = useMemo(() => {
+    const toTime = (value) => {
+      const parsed = Date.parse(value || "");
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    return [...filteredRegistrations].sort((a, b) => {
+      const aTime = toTime(a.registered_at);
+      const bTime = toTime(b.registered_at);
+      return registrationSortOrder === "asc" ? aTime - bTime : bTime - aTime;
+    });
+  }, [filteredRegistrations, registrationSortOrder]);
+
   function exportFilteredExcel() {
     if (!filteredRegistrations.length) {
       alert("No registrations available for export.");
@@ -308,6 +323,10 @@ export default function CloudDriveAdmin() {
     () => (showAllSavedDrives ? drives : drives.slice(0, 3)),
     [drives, showAllSavedDrives],
   );
+
+  const toggleRegistrationSortOrder = () => {
+    setRegistrationSortOrder((prev) => (prev === "desc" ? "asc" : "desc"));
+  };
 
   return (
     <div className="space-y-5">
@@ -461,7 +480,12 @@ export default function CloudDriveAdmin() {
 
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">Student Registrations (All Form Data)</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">Student Registrations (All Form Data)</h2>
+            <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+              Total Registered: {registrations.length}
+            </span>
+          </div>
           <Button type="button" variant="outline" onClick={exportFilteredExcel}>
             Export Excel
           </Button>
@@ -515,6 +539,25 @@ export default function CloudDriveAdmin() {
           <table className="min-w-[3400px] table-auto border-collapse">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-700">
+                <th className="p-2">
+                  <button
+                    type="button"
+                    onClick={toggleRegistrationSortOrder}
+                    className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-slate-100"
+                    title={
+                      registrationSortOrder === "desc"
+                        ? "Showing recent first. Click for oldest first"
+                        : "Showing oldest first. Click for recent first"
+                    }
+                  >
+                    SL.No
+                    {registrationSortOrder === "desc" ? (
+                      <FiArrowDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <FiArrowUp className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </th>
                 <th className="p-2">Name</th>
                 <th className="p-2">Email</th>
                 <th className="p-2">Phone</th>
@@ -552,15 +595,16 @@ export default function CloudDriveAdmin() {
               </tr>
             </thead>
             <tbody>
-              {filteredRegistrations.length === 0 ? (
+              {sortedFilteredRegistrations.length === 0 ? (
                 <tr>
-                  <td colSpan={35} className="p-3 text-center text-sm text-slate-500">
+                  <td colSpan={36} className="p-3 text-center text-sm text-slate-500">
                     No registrations found for the current filters.
                   </td>
                 </tr>
               ) : (
-                filteredRegistrations.map((r) => (
+                sortedFilteredRegistrations.map((r, index) => (
                   <tr key={r.id} className="border-b text-xs text-slate-700">
+                    <td className="p-2 font-medium text-slate-900">{index + 1}</td>
                     <td className="p-2">{r.full_name || "-"}</td>
                     <td className="p-2">{r.email || "-"}</td>
                     <td className="p-2">{r.phone || "-"}</td>
