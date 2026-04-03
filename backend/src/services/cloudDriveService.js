@@ -41,6 +41,20 @@ function normalizeHistoryEntries(entries) {
   );
 }
 
+async function getDriveDateById(supabase, driveId) {
+  const normalizedDriveId = String(driveId || "").trim();
+  if (!normalizedDriveId) return null;
+
+  const { data, error } = await supabase
+    .from("cloud_drives")
+    .select("drive_date")
+    .eq("id", normalizedDriveId)
+    .maybeSingle();
+
+  if (error) return null;
+  return data?.drive_date || null;
+}
+
 async function getNextDrive({ withInactive = false } = {}) {
   const supabase = getReadClient();
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -202,8 +216,11 @@ async function updateRegistration(id, changes) {
         .maybeSingle();
 
       if (!profileReadError) {
+        const driveDate = await getDriveDateById(supabase, data.drive_id);
         const entryDate =
+          normalizeDateOnly(driveDate) ||
           normalizeDateOnly(changes.driveClearedDate) ||
+          normalizeDateOnly(data.registered_at) ||
           normalizeDateOnly(new Date().toISOString());
         const nextHistory = normalizeHistoryEntries([
           ...(profileRow?.cloud_drive_status_history || []),
