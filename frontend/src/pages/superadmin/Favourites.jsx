@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiDownload, FiHeart } from "react-icons/fi";
+import { FiDownload, FiHeart, FiChevronDown, FiSearch } from "react-icons/fi";
 import StudentsTable from "../../components/admin/StudentsTable";
+import StudentProfileModal from "../../components/admin/StudentProfileModal";
 import {
   listFavoriteStudents,
   listStudents,
   removeFavoriteStudents,
+  updateStudentCloudDriveProfile,
 } from "../../services/adminService";
 import { showError } from "../../utils/alerts";
 
@@ -66,6 +68,106 @@ function toggleSelection(prev, id) {
   return prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
 }
 
+function isClearedStatus(value) {
+  return ["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(
+    String(value || "").trim(),
+  );
+}
+
+function SearchableMultiSelect({
+  label,
+  options,
+  selectedValues,
+  onToggleValue,
+  onClear,
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredOptions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return options;
+    return options.filter((option) =>
+      String(option.label || "").toLowerCase().includes(query),
+    );
+  }, [options, search]);
+
+  const selectedCount = selectedValues.length;
+
+  return (
+    <div className="relative">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex w-full items-center justify-between rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-slate-700 transition hover:border-indigo-300 focus:border-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+      >
+        <span>
+          {selectedCount > 0
+            ? `${selectedCount} selected`
+            : `Select ${label.toLowerCase()}`}
+        </span>
+        <FiChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open ? (
+        <div className="absolute z-20 mt-2 w-full rounded-xl border border-[#E2E8F0] bg-white p-2 shadow-lg">
+          <div className="relative mb-2">
+            <FiSearch className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search options"
+              className="w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] py-1.5 pl-8 pr-2 text-xs text-slate-700 outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+            />
+          </div>
+
+          <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+            {filteredOptions.length ? (
+              filteredOptions.map((option) => (
+                <label
+                  key={option.id}
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-[#F8FAFC]"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedValues.includes(option.id)}
+                    onChange={() => onToggleValue(option.id)}
+                    className="h-4 w-4 accent-indigo-600"
+                  />
+                  {option.label}
+                </label>
+              ))
+            ) : (
+              <div className="px-2 py-2 text-xs text-slate-500">No matching options.</div>
+            )}
+          </div>
+
+          <div className="mt-2 flex items-center justify-between border-t border-[#E2E8F0] pt-2">
+            <button
+              type="button"
+              onClick={onClear}
+              className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md border border-[#E2E8F0] bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 transition hover:bg-[#F8FAFC]"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function Favourites() {
   const [rows, setRows] = useState([]);
   const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
@@ -77,7 +179,13 @@ export default function Favourites() {
   const [locationFilter, setLocationFilter] = useState("");
   const [preferredLocationFilter, setPreferredLocationFilter] = useState("");
   const [resumeFilter, setResumeFilter] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [eligibilityFilter, setEligibilityFilter] = useState("all");
+  const [cloudDriveFilter, setCloudDriveFilter] = useState("all");
   const [activeOnly, setActiveOnly] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [profileSaving, setProfileSaving] = useState(false);
 
   useEffect(() => {
     Promise.all([listStudents(), listFavoriteStudents()])
@@ -125,6 +233,24 @@ export default function Favourites() {
           r.total_experience ??
           r.totalExperience ??
           null,
+        cloudDriveStatus:
+          r.cloud_drive_status ??
+          r.cloudDriveStatus ??
+          null,
+        driveClearedDate:
+          r.drive_cleared_date ??
+          r.driveClearedDate ??
+          null,
+        driveClearedStatus:
+          r.drive_cleared_status ??
+          r.driveClearedStatus ??
+          [],
+        cloudDriveHistory:
+          r.cloud_drive_status_history ??
+          r.cloudDriveStatusHistory ??
+          [],
+        skills: r.skills ?? [],
+        experienceLevel: r.experience_level || r.experienceLevel || null,
         updatedAt: r.updated_at || r.updatedAt || null,
         lastActiveAt: r.last_active_at || r.lastActiveAt || null,
       })),
@@ -183,6 +309,25 @@ export default function Favourites() {
       }
       if (resumeFilter === "has" && !hasResume) return false;
       if (resumeFilter === "no" && hasResume) return false;
+
+      if (eligibilityFilter === "eligible" && !row.isEligible) return false;
+      if (eligibilityFilter === "not-eligible" && row.isEligible) return false;
+
+      if (cloudDriveFilter === "cleared" && !isClearedStatus(row.cloudDriveStatus)) {
+        return false;
+      }
+      if (cloudDriveFilter === "not-cleared" && isClearedStatus(row.cloudDriveStatus)) {
+        return false;
+      }
+
+      if (searchTerm.trim()) {
+        const search = searchTerm.trim().toLowerCase();
+        const name = String(row.fullName || "").toLowerCase();
+        const email = String(row.email || "").toLowerCase();
+        if (!name.includes(search) && !email.includes(search)) {
+          return false;
+        }
+      }
       return true;
     });
   }, [
@@ -193,6 +338,9 @@ export default function Favourites() {
     locationFilter,
     preferredLocationFilter,
     resumeFilter,
+    searchTerm,
+    eligibilityFilter,
+    cloudDriveFilter,
   ]);
 
   const activeFavoriteCount = useMemo(
@@ -268,6 +416,8 @@ export default function Favourites() {
       "Preferred Location",
       "Phone",
       "Eligibility",
+      "Cloud Drive Status",
+      "Drive Cleared Date",
       "Current CTC (in LPA)",
       "Expected CTC (in LPA)",
       "Total Experience",
@@ -295,6 +445,8 @@ export default function Favourites() {
           row.preferredLocation || "",
           row.phone || "",
           eligibility,
+          row.cloudDriveStatus || "",
+          row.driveClearedDate || "",
           row.currentCtc ?? "",
           row.expectedCtc ?? "",
           row.totalExperience ?? "",
@@ -320,33 +472,148 @@ export default function Favourites() {
     URL.revokeObjectURL(url);
   };
 
+  const openStudentProfile = (student) => {
+    setSelectedStudent(student);
+    setProfileModalOpen(true);
+  };
+
+  const closeStudentProfile = () => {
+    setProfileModalOpen(false);
+    setSelectedStudent(null);
+  };
+
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setEligibilityFilter("all");
+    setCloudDriveFilter("all");
+    setActiveOnly(false);
+    setLocationFilter("");
+    setPreferredLocationFilter("");
+    setResumeFilter("");
+    setSelectedCtcBuckets([]);
+    setSelectedExperienceBuckets([]);
+  };
+
+  const saveStudentCloudDriveProfile = async ({ cloudDriveHistory }) => {
+    if (!selectedStudent?.id) return;
+
+    try {
+      setProfileSaving(true);
+      const updated = await updateStudentCloudDriveProfile(selectedStudent.id, {
+        cloudDriveHistory,
+      });
+
+      setRows((prev) =>
+        prev.map((row) =>
+          row.id === selectedStudent.id
+            ? {
+                ...row,
+                cloud_drive_status: updated?.cloud_drive_status ?? null,
+                drive_cleared_date: updated?.drive_cleared_date ?? null,
+                drive_cleared_status: updated?.drive_cleared_status || [],
+                cloud_drive_status_history:
+                  updated?.cloud_drive_status_history || [],
+              }
+            : row,
+        ),
+      );
+
+      setSelectedStudent((prev) =>
+        prev
+          ? {
+              ...prev,
+              cloudDriveStatus: updated?.cloud_drive_status ?? null,
+              driveClearedDate: updated?.drive_cleared_date ?? null,
+              driveClearedStatus: updated?.drive_cleared_status || [],
+              cloudDriveHistory: updated?.cloud_drive_status_history || [],
+            }
+          : prev,
+      );
+
+      setProfileModalOpen(false);
+    } catch (error) {
+      await showError(
+        error?.message || "Failed to update cloud drive profile fields",
+      );
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const filterControlClass =
+    "w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20";
+
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
-        <div className="mb-3 grid grid-cols-1 gap-2 md:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-            All Favourites: <span className="font-semibold text-slate-900">{favoriteRows.length}</span>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-            Active (last {ACTIVE_WINDOW_DAYS} days): <span className="font-semibold text-slate-900">{activeFavoriteCount}</span>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-            Before Filters: <span className="font-semibold text-slate-900">{baseCountBeforeFilters}</span>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm">
-            After Filters: <span className="font-semibold text-slate-900">{filteredFavoriteRows.length}</span>
+      <section className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 [font-family:Inter,ui-sans-serif,system-ui]">
+        <div className="mb-4 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
+          <div className="grid grid-cols-1 divide-y divide-[#E2E8F0] text-sm md:grid-cols-4 md:divide-x md:divide-y-0">
+            <div className="px-4 py-3 text-slate-700">
+              <div className="text-xs uppercase tracking-wide text-slate-500">All Favourites</div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">{favoriteRows.length}</div>
+            </div>
+            <div className="px-4 py-3 text-slate-700">
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                Active ({ACTIVE_WINDOW_DAYS} days)
+              </div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">{activeFavoriteCount}</div>
+            </div>
+            <div className="px-4 py-3 text-slate-700">
+              <div className="text-xs uppercase tracking-wide text-slate-500">Before Filters</div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">{baseCountBeforeFilters}</div>
+            </div>
+            <div className="px-4 py-3 text-slate-700">
+              <div className="text-xs uppercase tracking-wide text-slate-500">After Filters</div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">{filteredFavoriteRows.length}</div>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-          <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4 xl:grid-cols-5">
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Search Name/Email
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Type name or email"
+              className={filterControlClass}
+            />
+          </label>
+
+          <label className="inline-flex items-center gap-2 rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={activeOnly}
               onChange={(event) => setActiveOnly(event.target.checked)}
+              className="h-4 w-4 accent-indigo-600"
             />
             Active Students Only
           </label>
+
+          <SearchableMultiSelect
+            label="Experience"
+            options={EXPERIENCE_BUCKETS}
+            selectedValues={selectedExperienceBuckets}
+            onToggleValue={(bucketId) =>
+              setSelectedExperienceBuckets((prev) =>
+                toggleSelection(prev, bucketId),
+              )
+            }
+            onClear={() => setSelectedExperienceBuckets([])}
+          />
+
+          <SearchableMultiSelect
+            label="Current CTC"
+            options={CTC_BUCKETS}
+            selectedValues={selectedCtcBuckets}
+            onToggleValue={(bucketId) =>
+              setSelectedCtcBuckets((prev) => toggleSelection(prev, bucketId))
+            }
+            onClear={() => setSelectedCtcBuckets([])}
+          />
 
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -355,7 +622,7 @@ export default function Favourites() {
             <select
               value={locationFilter}
               onChange={(event) => setLocationFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-primary"
+              className={filterControlClass}
             >
               <option value="">All</option>
               {locationOptions.map((value) => (
@@ -368,12 +635,42 @@ export default function Favourites() {
 
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Eligibility
+            </span>
+            <select
+              value={eligibilityFilter}
+              onChange={(event) => setEligibilityFilter(event.target.value)}
+              className={filterControlClass}
+            >
+              <option value="all">All students</option>
+              <option value="eligible">Eligible students</option>
+              <option value="not-eligible">Not eligible students</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Cloud Drive Cleared
+            </span>
+            <select
+              value={cloudDriveFilter}
+              onChange={(event) => setCloudDriveFilter(event.target.value)}
+              className={filterControlClass}
+            >
+              <option value="all">All students</option>
+              <option value="cleared">Cleared only</option>
+              <option value="not-cleared">Not cleared</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
               Preferred Location
             </span>
             <select
               value={preferredLocationFilter}
               onChange={(event) => setPreferredLocationFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-primary"
+              className={filterControlClass}
             >
               <option value="">All</option>
               {preferredLocationOptions.map((value) => (
@@ -391,7 +688,7 @@ export default function Favourites() {
             <select
               value={resumeFilter}
               onChange={(event) => setResumeFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 outline-none focus:border-primary"
+              className={filterControlClass}
             >
               <option value="">All</option>
               <option value="has">Has resume</option>
@@ -399,69 +696,32 @@ export default function Favourites() {
             </select>
           </label>
 
-          <div className="flex items-end">
-            <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2">
-              <button
-                type="button"
-                onClick={removeSelectedFromFavorites}
-                disabled={selectedFavoriteStudentIds.length === 0}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <FiHeart className="h-4 w-4" />
-                Remove Selected
-              </button>
-              <button
-                type="button"
-                onClick={exportFilteredCsv}
-                disabled={filteredFavoriteRows.length === 0}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <FiDownload className="h-4 w-4" />
-                Export CSV
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
-              Experience Filter (Multi-select)
-            </p>
-            <div className="grid gap-1 sm:grid-cols-2">
-              {EXPERIENCE_BUCKETS.map((bucket) => (
-                <label key={bucket.id} className="inline-flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={selectedExperienceBuckets.includes(bucket.id)}
-                    onChange={() =>
-                      setSelectedExperienceBuckets((prev) => toggleSelection(prev, bucket.id))
-                    }
-                  />
-                  {bucket.label}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
-              Current CTC Filter (Multi-select)
-            </p>
-            <div className="grid gap-1 sm:grid-cols-2">
-              {CTC_BUCKETS.map((bucket) => (
-                <label key={bucket.id} className="inline-flex items-center gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={selectedCtcBuckets.includes(bucket.id)}
-                    onChange={() =>
-                      setSelectedCtcBuckets((prev) => toggleSelection(prev, bucket.id))
-                    }
-                  />
-                  {bucket.label}
-                </label>
-              ))}
-            </div>
+          <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end md:col-span-4 xl:col-span-5">
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-transparent px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline"
+            >
+              Clear Filters
+            </button>
+            <button
+              type="button"
+              onClick={removeSelectedFromFavorites}
+              disabled={selectedFavoriteStudentIds.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[200px]"
+            >
+              <FiHeart className="h-4 w-4" />
+              Remove Selected
+            </button>
+            <button
+              type="button"
+              onClick={exportFilteredCsv}
+              disabled={filteredFavoriteRows.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[160px]"
+            >
+              <FiDownload className="h-4 w-4" />
+              Export CSV
+            </button>
           </div>
         </div>
       </section>
@@ -473,6 +733,15 @@ export default function Favourites() {
         selectedRowIds={selectedFavoriteStudentIds}
         onToggleRow={toggleFavoriteSelection}
         onToggleAll={toggleAllFavorites}
+        onNameClick={openStudentProfile}
+      />
+
+      <StudentProfileModal
+        open={profileModalOpen}
+        onClose={closeStudentProfile}
+        student={selectedStudent}
+        saving={profileSaving}
+        onSave={saveStudentCloudDriveProfile}
       />
     </div>
   );

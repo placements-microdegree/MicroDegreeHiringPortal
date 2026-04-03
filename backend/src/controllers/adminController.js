@@ -104,6 +104,23 @@ async function checker(req, res, next) {
   }
 }
 
+async function updateStudentCloudDriveProfile(req, res, next) {
+  try {
+    const { studentId } = req.params || {};
+    const { cloudDriveStatus, driveClearedDate, cloudDriveHistory } =
+      req.body || {};
+    const student = await adminService.updateStudentCloudDriveProfileFields({
+      studentId,
+      cloudDriveStatus,
+      driveClearedDate,
+      cloudDriveHistory,
+    });
+    res.json({ success: true, student });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   listStudents,
   listAdmins,
@@ -113,4 +130,5 @@ module.exports = {
   promote,
   analytics,
   checker,
+  updateStudentCloudDriveProfile,
 };

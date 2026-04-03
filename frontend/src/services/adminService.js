@@ -48,6 +48,20 @@ export async function removeFavoriteStudents(studentIds) {
   return data.favoriteStudentIds || [];
 }
 
+export async function updateStudentCloudDriveProfile(
+  studentId,
+  { cloudDriveStatus, driveClearedDate, cloudDriveHistory },
+) {
+  const data = await request(
+    `/api/admin/students/${studentId}/cloud-drive-profile`,
+    {
+      method: "PUT",
+      body: { cloudDriveStatus, driveClearedDate, cloudDriveHistory },
+    },
+  );
+  return data.student;
+}
+
 export async function listAdmins() {
   const data = await request("/api/admin/admins");
   return data.admins || [];

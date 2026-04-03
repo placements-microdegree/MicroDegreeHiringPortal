@@ -4,6 +4,43 @@ function getReadClient() {
   return getSupabaseAdmin() || getSupabaseAnon();
 }
 
+const PROFILE_CLEARED_STATUSES = new Set([
+  "Cleared",
+  "Cleared AWS Drive",
+  "Cleared DevOps Drive",
+]);
+
+function normalizeDriveClearedStatusArray(values) {
+  if (!Array.isArray(values)) return [];
+  const unique = new Set();
+  values.forEach((value) => {
+    const normalized = String(value || "").trim();
+    if (normalized) unique.add(normalized);
+  });
+  return [...unique];
+}
+
+function normalizeDateOnly(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeHistoryEntries(entries) {
+  if (!Array.isArray(entries)) return [];
+  const byDate = new Map();
+  entries.forEach((entry) => {
+    const status = String(entry?.status || "").trim();
+    const date = String(entry?.date || "").trim();
+    if (!status || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    byDate.set(date, { status, date });
+  });
+  return [...byDate.values()].sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+  );
+}
+
 async function getNextDrive({ withInactive = false } = {}) {
   const supabase = getReadClient();
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -149,5 +186,47 @@ async function updateRegistration(id, changes) {
     .select()
     .single();
   if (error) throw error;
+
+  if (data?.profile_id && typeof changes?.status === "string") {
+    const status = String(changes.status || "").trim();
+    const profilePatch = {
+      cloud_drive_status: status || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (PROFILE_CLEARED_STATUSES.has(status)) {
+      const { data: profileRow, error: profileReadError } = await supabase
+        .from("profiles")
+        .select("drive_cleared_status, cloud_drive_status_history")
+        .eq("id", data.profile_id)
+        .maybeSingle();
+
+      if (!profileReadError) {
+        const entryDate =
+          normalizeDateOnly(changes.driveClearedDate) ||
+          normalizeDateOnly(new Date().toISOString());
+        const nextHistory = normalizeHistoryEntries([
+          ...(profileRow?.cloud_drive_status_history || []),
+          { status, date: entryDate },
+        ]);
+        const latest = nextHistory[0] || null;
+
+        profilePatch.drive_cleared_status = normalizeDriveClearedStatusArray([
+          ...(profileRow?.drive_cleared_status || []),
+          status,
+        ]);
+
+        profilePatch.cloud_drive_status_history = nextHistory;
+        profilePatch.cloud_drive_status = latest?.status || status;
+        profilePatch.drive_cleared_date = latest?.date || entryDate;
+      }
+    }
+
+    await supabase
+      .from("profiles")
+      .update(profilePatch)
+      .eq("id", data.profile_id);
+  }
+
   return data;
 }

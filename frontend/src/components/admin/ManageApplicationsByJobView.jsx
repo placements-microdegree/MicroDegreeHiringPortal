@@ -129,6 +129,8 @@ function mapApplicationRow(row, jobsById) {
     mergedJob?.title || row.jobTitle || jobFromLookup?.title || "Untitled Job";
   const jobCompany = mergedJob?.company || row.company || "-";
   const student = row.student || row.profiles || null;
+  const studentCloudDriveStatus =
+    student?.cloud_drive_status || row.cloud_drive_status || null;
   return {
     ...row,
     job_id: row.job_id || row.jobId || jobId,
@@ -139,6 +141,7 @@ function mapApplicationRow(row, jobsById) {
     studentName: student?.full_name || row.studentName,
     studentPhone: student?.phone,
     studentEmail: student?.email,
+    studentCloudDriveStatus,
     studentLocation: student?.location || "",
     totalExperience:
       student?.total_experience ||

@@ -6,6 +6,15 @@ import { FiEdit2, FiCheck, FiTrash2, FiX } from "react-icons/fi";
 import { APPLICATION_STATUSES } from "../../utils/constants";
 import { listApplicationCommentHistory } from "../../services/applicationService";
 
+function isCloudDriveClearedStatus(value) {
+  const normalized = String(value || "").trim();
+  return (
+    normalized === "Cleared" ||
+    normalized === "Cleared AWS Drive" ||
+    normalized === "Cleared DevOps Drive"
+  );
+}
+
 // ── Per-row HR Comment cell ───────────────────────────────────────────────────
 
 function CommentCell({
@@ -611,7 +620,13 @@ export default function ApplicationsTable({
             ) : (
               rows.map((r) => (
                 <tr key={r.id} className="border-t border-slate-200 align-top">
-                  <td className="px-4 py-3 font-medium text-slate-900">
+                  <td
+                    className={`px-4 py-3 font-medium ${
+                      isCloudDriveClearedStatus(r.studentCloudDriveStatus)
+                        ? "text-emerald-600 font-bold"
+                        : "text-slate-900"
+                    }`}
+                  >
                     <div className="max-w-[220px] whitespace-normal break-words">
                       {r.studentName || "Student"}
                     </div>

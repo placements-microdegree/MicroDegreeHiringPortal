@@ -255,7 +255,7 @@ async function listStudentsWithLatestApplication() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, current_ctc, expected_ctc, total_experience",
+        "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, current_ctc, expected_ctc, total_experience, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
       )
       .eq("role", ROLES.STUDENT)
       .order("updated_at", { ascending: false });
@@ -264,13 +264,25 @@ async function listStudentsWithLatestApplication() {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url",
+          "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
         )
         .eq("role", ROLES.STUDENT)
         .order("updated_at", { ascending: false });
 
-      if (fallbackError) throw fallbackError;
-      students = fallbackData || [];
+      if (fallbackError) {
+        const { data: legacyData, error: legacyError } = await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url",
+          )
+          .eq("role", ROLES.STUDENT)
+          .order("updated_at", { ascending: false });
+
+        if (legacyError) throw legacyError;
+        students = legacyData || [];
+      } else {
+        students = fallbackData || [];
+      }
     } else {
       students = data || [];
     }
@@ -341,6 +353,149 @@ async function listStudentsWithLatestApplication() {
       last_active_at: latestActivityByStudentId.get(student.id) || null,
     };
   });
+}
+
+const ALLOWED_CLOUD_DRIVE_PROFILE_STATUS = new Set([
+  "",
+  "Registered",
+  "Not Cleared",
+  "Cleared",
+  "Cleared AWS Drive",
+  "Cleared DevOps Drive",
+]);
+
+const CLEARED_STATUSES = new Set([
+  "Cleared",
+  "Cleared AWS Drive",
+  "Cleared DevOps Drive",
+]);
+
+function normalizeDriveClearedStatusArray(values) {
+  if (!Array.isArray(values)) return [];
+  const unique = new Set();
+  values.forEach((value) => {
+    const normalized = String(value || "").trim();
+    if (normalized) unique.add(normalized);
+  });
+  return [...unique];
+}
+
+function normalizeCloudDriveStatusInput(status) {
+  const text = String(status || "").trim();
+  if (!ALLOWED_CLOUD_DRIVE_PROFILE_STATUS.has(text)) {
+    const err = new Error("Invalid cloud drive status");
+    err.status = 400;
+    throw err;
+  }
+  return text || null;
+}
+
+function normalizeDriveClearedDateInput(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const raw = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const err = new Error("driveClearedDate must be in YYYY-MM-DD format");
+    err.status = 400;
+    throw err;
+  }
+  return raw;
+}
+
+function normalizeCloudDriveHistoryEntries(entries) {
+  if (!Array.isArray(entries)) return [];
+
+  const byDate = new Map();
+  entries.forEach((entry) => {
+    const statusRaw = String(entry?.status || "").trim();
+    const dateRaw = String(entry?.date || "").trim();
+
+    if (!statusRaw || !dateRaw) return;
+    if (!ALLOWED_CLOUD_DRIVE_PROFILE_STATUS.has(statusRaw)) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) return;
+
+    byDate.set(dateRaw, { status: statusRaw, date: dateRaw });
+  });
+
+  return [...byDate.values()].sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+  );
+}
+
+function deriveDriveClearedStatusesFromHistory(history) {
+  return normalizeDriveClearedStatusArray(
+    (history || [])
+      .map((item) => String(item?.status || "").trim())
+      .filter((status) => CLEARED_STATUSES.has(status)),
+  );
+}
+
+async function updateStudentCloudDriveProfileFields({
+  studentId,
+  cloudDriveStatus,
+  driveClearedDate,
+  cloudDriveHistory,
+}) {
+  const normalizedStudentId = String(studentId || "").trim();
+  if (!normalizedStudentId) {
+    const err = new Error("studentId is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const supabase = requireAdminClient();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("profiles")
+    .select(
+      "id, role, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
+    )
+    .eq("id", normalizedStudentId)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+  if (!existing || existing.role !== ROLES.STUDENT) {
+    const err = new Error("Student not found");
+    err.status = 404;
+    throw err;
+  }
+
+  let nextHistory = normalizeCloudDriveHistoryEntries(
+    existing.cloud_drive_status_history,
+  );
+
+  if (Array.isArray(cloudDriveHistory)) {
+    nextHistory = normalizeCloudDriveHistoryEntries(cloudDriveHistory);
+  } else {
+    const nextStatus = normalizeCloudDriveStatusInput(cloudDriveStatus);
+    const nextDate = normalizeDriveClearedDateInput(driveClearedDate);
+    if (nextStatus && nextDate) {
+      nextHistory = normalizeCloudDriveHistoryEntries([
+        ...nextHistory,
+        { status: nextStatus, date: nextDate },
+      ]);
+    }
+  }
+
+  const latest = nextHistory[0] || null;
+  const nextDriveClearedStatus = deriveDriveClearedStatusesFromHistory(nextHistory);
+
+  const { data: updated, error: updateError } = await supabase
+    .from("profiles")
+    .update({
+      cloud_drive_status: latest?.status || null,
+      drive_cleared_date: latest?.date || null,
+      drive_cleared_status: nextDriveClearedStatus,
+      cloud_drive_status_history: nextHistory,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", normalizedStudentId)
+    .select(
+      "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, is_eligible, eligible_until, updated_at, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
+    )
+    .single();
+
+  if (updateError) throw updateError;
+  return updated;
 }
 
 function normalizeUuidList(values) {
@@ -1245,6 +1400,7 @@ module.exports = {
   promoteByEmail,
   listProfiles,
   listStudentsWithLatestApplication,
+  updateStudentCloudDriveProfileFields,
   resolveFavoriteOwnerId,
   listFavoriteStudentIds,
   addFavoriteStudents,

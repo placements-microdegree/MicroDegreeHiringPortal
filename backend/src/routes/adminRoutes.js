@@ -15,6 +15,12 @@ router.get(
   cacheResponse({ ttlSeconds: 45 }),
   adminController.listStudents,
 );
+router.put(
+  "/students/:studentId/cloud-drive-profile",
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache(["/api/admin/students"]),
+  adminController.updateStudentCloudDriveProfile,
+);
 router.get(
   "/favorites/students",
   authorizeRole([ROLES.ADMIN]),

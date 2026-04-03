@@ -15,6 +15,9 @@ const HR_STATUS_OPTIONS = [
   "Practical Online Task Round",
   "Face-to-Face Round (Live Interview)",
   "Managerial Round",
+  "Cleared",
+  "Cleared AWS Drive",
+  "Cleared DevOps Drive",
   "Rejected",
 ];
 

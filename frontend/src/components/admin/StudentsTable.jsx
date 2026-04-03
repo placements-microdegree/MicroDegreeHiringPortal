@@ -39,6 +39,7 @@ export default function StudentsTable({
   onToggleAll,
   favoriteRowIds = [],
   onToggleFavorite,
+  onNameClick,
 }) {
   const rowList = Array.isArray(rows) ? rows : [];
   const selectedSet = new Set(selectedRowIds);
@@ -46,7 +47,7 @@ export default function StudentsTable({
     rowList.length > 0 && rowList.every((row) => selectedSet.has(row.id));
   const favoriteSet = new Set(Array.isArray(favoriteRowIds) ? favoriteRowIds : []);
   const columnCount =
-    12 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
+    13 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
 
   return (
     <div className="rounded-xl bg-white p-5">
@@ -75,6 +76,7 @@ export default function StudentsTable({
                 <th className="px-4 py-3">Preferred Location</th>
                 <th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">Eligibility</th>
+                <th className="px-4 py-3">Cloud Drive Status</th>
                 <th className="px-4 py-3">Current CTC (in LPA)</th>
                 <th className="px-4 py-3">Expected CTC (in LPA)</th>
                 <th className="px-4 py-3">Total Experience</th>
@@ -119,7 +121,17 @@ export default function StudentsTable({
                       </td>
                     ) : null}
                     <td className="px-4 py-3 font-medium text-slate-900">
-                      {r.fullName || "Student"}
+                      {onNameClick ? (
+                        <button
+                          type="button"
+                          onClick={() => onNameClick(r)}
+                          className="text-left text-primary underline-offset-2 hover:underline"
+                        >
+                          {r.fullName || "Student"}
+                        </button>
+                      ) : (
+                        r.fullName || "Student"
+                      )}
                     </td>
                     <td className="px-4 py-3 text-slate-700">{r.email}</td>
                     <td className="px-4 py-3 text-slate-700">
@@ -144,6 +156,13 @@ export default function StudentsTable({
                           Not eligible
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {r.cloudDriveStatus
+                        ? `${r.cloudDriveStatus}${
+                            r.driveClearedDate ? ` (${new Date(r.driveClearedDate).toLocaleDateString()})` : ""
+                          }`
+                        : "-"}
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {r.currentCtc ?? "-"}
@@ -210,4 +229,5 @@ StudentsTable.propTypes = {
   onToggleAll: PropTypes.func,
   favoriteRowIds: PropTypes.arrayOf(PropTypes.string),
   onToggleFavorite: PropTypes.func,
+  onNameClick: PropTypes.func,
 };
