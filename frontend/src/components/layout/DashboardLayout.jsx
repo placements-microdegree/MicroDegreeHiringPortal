@@ -17,6 +17,7 @@ import { ROLES } from "../../utils/constants";
 import { calculateProfileCompletion } from "../../utils/calculateProfileCompletion";
 import {
   FiBriefcase,
+  FiCloud,
   FiClock,
   FiCheckCircle,
   FiXCircle,
@@ -386,16 +387,28 @@ function StudentDashboardHome({ profile }) {
             </p>
           </div>
           {profile?.isEligible === true ? (
-            <a
-              href={WHATSAPP_JOB_ALERTS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="job-alert-cta inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
-              aria-label="Get job alerts on WhatsApp"
-            >
-              <FaWhatsapp className="h-4 w-4" />
-              Get Job Alerts
-            </a>
+            <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+              <a
+                href={WHATSAPP_JOB_ALERTS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="job-alert-cta inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 md:w-auto"
+                aria-label="Get job alerts on WhatsApp"
+              >
+                <FaWhatsapp className="h-4 w-4" />
+                Get Job Alerts
+              </a>
+
+              <button
+                type="button"
+                onClick={() => navigate("/student/cloud-drive")}
+                className="job-alert-cta inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300 bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 md:w-auto"
+                aria-label="Open Cloud Drive"
+              >
+                <FiCloud className="h-4 w-4" />
+                Cloud Drive
+              </button>
+            </div>
           ) : null}
         </div>
       </section>
