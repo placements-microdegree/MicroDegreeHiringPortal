@@ -24,7 +24,10 @@ import { ROLES } from "../../utils/constants";
 import { useAuth } from "../../context/authStore";
 import { listActiveExternalJobs } from "../../services/externalJobService";
 import { listReferredDataForAdmin } from "../../services/referralService";
-import { trackResumeBuilderClick } from "../../services/resumeBuilderService";
+import {
+  redirectToResumeBuilderWithSession,
+  trackResumeBuilderClick,
+} from "../../services/resumeBuilderService";
 
 const linkBase =
   "group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition";
@@ -101,9 +104,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
     };
   }, [isAdmin]);
 
-  function handleResumeBuilderClick() {
-    void trackResumeBuilderClick().catch(() => {});
+  function handleResumeBuilderClick(event) {
+    event?.preventDefault();
     onClose?.();
+    void trackResumeBuilderClick().catch(() => {});
+    void redirectToResumeBuilderWithSession();
   }
 
   let links = [];
@@ -118,7 +123,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       { to: "/superadmin/students", label: "View Students", icon: FiUsers },
       { to: "/superadmin/favourites", label: "Favourites", icon: FiStar },
       { to: "/superadmin/jobs", label: "View Jobs", icon: FiBriefcase },
-      { to: "/superadmin/applications", label: "Applications", icon: FiClipboard },
+      {
+        to: "/superadmin/applications",
+        label: "Applications",
+        icon: FiClipboard,
+      },
       {
         to: "/superadmin/external-job-analytics",
         label: "External Job Analytics",
@@ -184,8 +193,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         icon: FiFileText,
         betaBadge: true,
         external: true,
-        target: "_blank", // Changed from _self to _blank
-        rel: "noopener noreferrer", // Added for security
+        target: "_self",
         onClick: handleResumeBuilderClick,
       },
       {

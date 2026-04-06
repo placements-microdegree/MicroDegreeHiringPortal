@@ -288,6 +288,27 @@ async function me(req, res) {
   });
 }
 
+async function session(req, res) {
+  if (!req.user?.jwt) {
+    return res.json({
+      success: true,
+      session: null,
+    });
+  }
+
+  return res.json({
+    success: true,
+    session: {
+      access_token: req.user.jwt,
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+      },
+    },
+  });
+}
+
 async function login(req, res, next) {
   try {
     const { email, password } = req.body || {};
@@ -654,6 +675,7 @@ async function googleCallback(req, res, next) {
 
 module.exports = {
   me,
+  session,
   login,
   signup,
   logout,
