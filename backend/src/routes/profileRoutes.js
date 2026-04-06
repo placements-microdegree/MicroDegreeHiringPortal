@@ -32,4 +32,21 @@ router.post(
   profileController.uploadPhoto,
 );
 
+router.patch(
+  "/me/email-subscription",
+  verifyToken,
+  invalidateApiCache(["/api/profile/me"]),
+  profileController.updateMyEmailSubscription,
+);
+
+router.get(
+  "/email-subscription/by-token",
+  profileController.getEmailSubscriptionByToken,
+);
+
+router.post(
+  "/email-subscription/by-token",
+  profileController.updateEmailSubscriptionByToken,
+);
+
 module.exports = router;

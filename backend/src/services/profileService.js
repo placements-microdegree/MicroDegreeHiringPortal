@@ -62,6 +62,10 @@ async function upsertProfile({ userId, jwt, payload }) {
         : null,
     total_experience: payload.totalExperience,
     profile_photo_url: payload.profilePhotoUrl,
+    email_subscribe:
+      typeof payload.emailSubscribe === "boolean"
+        ? payload.emailSubscribe
+        : undefined,
     updated_at: new Date().toISOString(),
   };
 

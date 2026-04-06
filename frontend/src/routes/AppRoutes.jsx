@@ -38,6 +38,7 @@ import SuperAdminExternalJobAnalytics from "../pages/superadmin/SuperAdminExtern
 import SuperAdminResumeBuilderAnalytics from "../pages/superadmin/SuperAdminResumeBuilderAnalytics";
 import SuperAdminExternalJobsVisitStudents from "../pages/superadmin/SuperAdminExternalJobsVisitStudents";
 import PageOpeningShimmer from "../components/common/PageOpeningShimmer";
+import EmailSubscription from "../pages/common/EmailSubscription";
 
 function HomeRedirect() {
   const { user, loading } = useAuth();
@@ -94,6 +95,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<AuthRedirect />} />
       <Route path="/signup" element={<SignupRedirect />} />
       <Route path="/external-jobs" element={<ExternalJobsShareEntry />} />
+      <Route path="/email-subscription" element={<EmailSubscription />} />
       <Route
         path="/jobs"
         element={

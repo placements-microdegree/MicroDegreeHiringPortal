@@ -1,8 +1,7 @@
 // FILE: services/emailService.js
 
 const nodemailer = require("nodemailer");
-const { getSupabaseAdmin } = require("../config/db");
-const { ROLES } = require("../utils/constants");
+const emailSubscriptionService = require("./emailSubscriptionService");
 
 /**
  * Lazy-initialised transporter so env vars are definitely loaded
@@ -35,34 +34,9 @@ function getTransporter() {
 }
 
 /**
- * Fetch emails of all eligible students (is_eligible = true).
- */
-async function getEligibleStudentEmails() {
-  const supabase = getSupabaseAdmin();
-  if (!supabase) return [];
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("email")
-    .eq("role", ROLES.STUDENT)
-    .eq("is_eligible", true)
-    .not("email", "is", null);
-
-  if (error) {
-    console.error(
-      "[emailService] Failed to fetch eligible students:",
-      error.message,
-    );
-    return [];
-  }
-
-  return (data || []).map((row) => row.email).filter(Boolean);
-}
-
-/**
  * Build the HTML email body for a new job posting.
  */
-function buildJobEmailHtml(job) {
+function buildJobEmailHtml(job, { unsubscribeUrl }) {
   const skills = Array.isArray(job.skills)
     ? job.skills.join(", ")
     : job.skills || "N/A";
@@ -171,7 +145,12 @@ function buildJobEmailHtml(job) {
             <tr>
               <td style="background-color:#f9fafb;padding:20px 32px;text-align:center;border-top:1px solid #e5e7eb;">
                 <p style="margin:0 0 4px;font-size:13px;color:#9ca3af;">
-                  You're receiving this because you're an eligible student on <strong>MicroDegree</strong>.
+                  You're receiving this because you're an eligible student on <strong>MicroDegree</strong> and opted in for premium job alerts.
+                </p>
+                <p style="margin:0 0 8px;font-size:12px;">
+                  <a href="${unsubscribeUrl}" style="color:#6b7280;text-decoration:underline;">
+                    Unsubscribe from premium job emails
+                  </a>
                 </p>
                 <p style="margin:0;font-size:12px;color:#d1d5db;">
                   © ${new Date().getFullYear()} MicroDegree. All rights reserved.
@@ -188,11 +167,9 @@ function buildJobEmailHtml(job) {
 
 /**
  * Send new-job email to all eligible students.
- * AWS SES limits BCC to 50 recipients per call, so we batch accordingly.
+ * Emails are sent individually to embed a secure unsubscribe token per student.
  * Runs in the background — failures are logged, never thrown.
  */
-const SES_BCC_LIMIT = 50;
-
 async function notifyEligibleStudentsByEmail(job) {
   try {
     const transporter = getTransporter();
@@ -203,33 +180,42 @@ async function notifyEligibleStudentsByEmail(job) {
       return;
     }
 
-    const emails = await getEligibleStudentEmails();
+    const emails =
+      await emailSubscriptionService.listSubscribedEligibleStudentEmails();
     if (emails.length === 0) {
-      console.log("[emailService] No eligible students to notify.");
+      console.log("[emailService] No subscribed eligible students to notify.");
       return;
     }
 
-    const html = buildJobEmailHtml(job);
     const subject = `🚀 New Job Alert: ${job.title} at ${job.company}`;
     const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+    const frontendOrigin =
+      (process.env.FRONTEND_ORIGIN || "http://localhost:5173").replace(/\/$/, "");
 
-    // Send in batches of 50 to stay within SES recipient limit
-    for (let i = 0; i < emails.length; i += SES_BCC_LIMIT) {
-      const batch = emails.slice(i, i + SES_BCC_LIMIT);
+    for (let i = 0; i < emails.length; i += 1) {
+      const email = emails[i];
+      const token = emailSubscriptionService.createEmailSubscriptionToken(email);
+      const unsubscribeUrl =
+        `${frontendOrigin}/email-subscription?token=` + encodeURIComponent(token);
+      const html = buildJobEmailHtml(job, { unsubscribeUrl });
+
       // eslint-disable-next-line no-await-in-loop
       const info = await transporter.sendMail({
         from,
-        bcc: batch,
+        to: email,
         subject,
         html,
       });
-      console.log(
-        `[emailService] Batch ${Math.floor(i / SES_BCC_LIMIT) + 1} sent to ${batch.length} student(s). MessageId: ${info.messageId}`,
-      );
+
+      if ((i + 1) % 25 === 0 || i === emails.length - 1) {
+        console.log(
+          `[emailService] Sent ${i + 1}/${emails.length} premium job emails. Last MessageId: ${info.messageId}`,
+        );
+      }
     }
 
     console.log(
-      `[emailService] Job alert sent to ${emails.length} eligible student(s) in ${Math.ceil(emails.length / SES_BCC_LIMIT)} batch(es).`,
+      `[emailService] Job alert sent to ${emails.length} subscribed eligible student(s).`,
     );
   } catch (err) {
     console.error(

@@ -1,6 +1,7 @@
 const profileService = require("../services/profileService");
 const resumeService = require("../services/resumeService");
 const { uploadProfilePhoto } = require("../services/profilePhotoService");
+const emailSubscriptionService = require("../services/emailSubscriptionService");
 
 function mapProfileRow(row, resumes = []) {
   if (!row) return null;
@@ -26,6 +27,7 @@ function mapProfileRow(row, resumes = []) {
     eligibleUntil: row.eligible_until,
     applicationQuota: row.application_quota,
     courseFee: row.course_fee,
+    emailSubscribe: row.email_subscribe,
     resumes,
   };
 }
@@ -109,8 +111,62 @@ async function uploadPhoto(req, res, next) {
   }
 }
 
+async function updateMyEmailSubscription(req, res, next) {
+  try {
+    const subscribed = Boolean(req.body?.emailSubscribe);
+    const result = await emailSubscriptionService.setSubscriptionByUserId({
+      userId: req.user.id,
+      subscribe: subscribed,
+    });
+    res.json({ success: true, subscription: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function getEmailSubscriptionByToken(req, res, next) {
+  try {
+    const token = String(req.query?.token || "").trim();
+    if (!token) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing subscription token" });
+    }
+
+    const result = await emailSubscriptionService.getSubscriptionStateByToken(
+      token,
+    );
+    res.json({ success: true, subscription: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function updateEmailSubscriptionByToken(req, res, next) {
+  try {
+    const token = String(req.body?.token || "").trim();
+    if (!token) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Missing subscription token" });
+    }
+
+    const subscribed = Boolean(req.body?.emailSubscribe);
+    const result = await emailSubscriptionService.setSubscriptionByToken({
+      token,
+      subscribe: subscribed,
+    });
+    res.json({ success: true, subscription: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   getMyProfile,
   upsertMyProfile,
   uploadPhoto,
+  updateMyEmailSubscription,
+  getEmailSubscriptionByToken,
+  updateEmailSubscriptionByToken,
 };

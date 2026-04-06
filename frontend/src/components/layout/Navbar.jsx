@@ -8,9 +8,26 @@ import {
 } from "react-icons/fi";
 import NotificationBell from "./NotificationBell";
 
+const NOT_STUDENT_HELP_TEXT =
+  "Credits are used to apply for premium jobs. Each application costs one credit. To become an eligible student, please contact our support team with your student details for verification.";
+
 // ── EligibilityBadge ──────────────────────────────────────────────────────────
 
 function EligibilityBadge({ isEligible, applicationQuota }) {
+  const quota = Number(applicationQuota ?? 0);
+
+  if (isEligible === false) {
+    return (
+      <span
+        className="hidden sm:flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
+        title={NOT_STUDENT_HELP_TEXT}
+      >
+        <FiXCircle className="h-3.5 w-3.5" />
+        Not a Student · Free Credits Left: {quota}
+      </span>
+    );
+  }
+
   if (isEligible === true) {
     return (
       <span className="hidden sm:flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -20,21 +37,22 @@ function EligibilityBadge({ isEligible, applicationQuota }) {
     );
   }
 
-  const quota = Number(applicationQuota ?? 0);
-
   if (quota > 0) {
     return (
       <span className="hidden sm:flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
         <FiAlertCircle className="h-3.5 w-3.5" />
-        Quota: {quota}
+        Free Credits Left: {quota}
       </span>
     );
   }
 
   return (
-    <span className="hidden sm:flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+    <span
+      className="hidden sm:flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
+      title={NOT_STUDENT_HELP_TEXT}
+    >
       <FiXCircle className="h-3.5 w-3.5" />
-      Not Eligible
+      Not a Student · Free Credits Left: {quota}
     </span>
   );
 }
@@ -96,7 +114,7 @@ function NavbarProfileSection({
 
   return (
     <div className="flex items-center gap-2 md:gap-3">
-      {/* Eligibility status — shown only when props are provided */}
+      {/* Eligibility status — desktop */}
       {shouldShowEligibilityBadge ? (
         <EligibilityBadge
           isEligible={isEligible}

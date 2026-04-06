@@ -88,6 +88,33 @@ export async function updateProfile(nextProfile) {
   return data.profile;
 }
 
+export async function updateEmailSubscription(emailSubscribe) {
+  const data = await request("/api/profile/me/email-subscription", {
+    method: "PATCH",
+    body: { emailSubscribe: Boolean(emailSubscribe) },
+  });
+  return data.subscription;
+}
+
+export async function getEmailSubscriptionByToken(token) {
+  const encodedToken = encodeURIComponent(String(token || ""));
+  const data = await request(
+    `/api/profile/email-subscription/by-token?token=${encodedToken}`,
+  );
+  return data.subscription;
+}
+
+export async function updateEmailSubscriptionByToken({ token, emailSubscribe }) {
+  const data = await request("/api/profile/email-subscription/by-token", {
+    method: "POST",
+    body: {
+      token: String(token || ""),
+      emailSubscribe: Boolean(emailSubscribe),
+    },
+  });
+  return data.subscription;
+}
+
 // export async function updateProfile(nextProfile) {
 //   console.log("skills being sent:", nextProfile?.skills);
 //   const data = await request("/api/profile/me", {

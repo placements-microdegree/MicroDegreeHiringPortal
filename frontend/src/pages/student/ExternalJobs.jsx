@@ -44,6 +44,7 @@ const EXPERIENCE_CAPSULES = [
 
 const SKILL_CAPSULES = [
   "DevOps",
+  "DevSecOps",
   "CI/CD",
   "AWS",
   "Azure",

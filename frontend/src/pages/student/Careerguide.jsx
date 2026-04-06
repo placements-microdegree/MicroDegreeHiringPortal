@@ -11,6 +11,32 @@ import {
 const NOTION_URL =
   "https://career-assistance.notion.site/Career-Assistance-Guide-21752af69e2c803f8024d55d973cd5bf";
 
+const RESUME_SAMPLES_URL =
+  "https://drive.google.com/drive/folders/10VuLUOv8jy4d72bhFzm7BG9cet4ZN2dO";
+
+const resumeSampleCards = [
+  {
+    label: "Fresher",
+    caption: "Entry-level resumes focused on clarity, projects, and learning outcomes.",
+    theme: "from-sky-50 to-cyan-50 border-sky-200",
+  },
+  {
+    label: "IT Experienced",
+    caption: "Professional formats highlighting impact, ownership, and domain depth.",
+    theme: "from-emerald-50 to-teal-50 border-emerald-200",
+  },
+  {
+    label: "Non IT & IT",
+    caption: "Transition-ready resume structures that connect prior experience to cloud roles.",
+    theme: "from-amber-50 to-orange-50 border-amber-200",
+  },
+  {
+    label: "Recently Placed",
+    caption: "Latest placed-student CV samples with modern formatting and crisp storytelling.",
+    theme: "from-rose-50 to-pink-50 border-rose-200",
+  },
+];
+
 const startHereLinks = [
   {
     label: "Your 4-Week Onboarding Journey",
@@ -170,6 +196,51 @@ export default function CareerGuide() {
               WhatsApp: 6366983877
             </a>
           </span>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Refer to Resume Samples</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Check out CVs of students who got placed through MicroDegree. Use them for content ideas, formatting, and clarity.
+              </p>
+            </div>
+            <a
+              href={RESUME_SAMPLES_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary hover:text-white"
+            >
+              Open All Samples
+              <FiExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {resumeSampleCards.map((card) => (
+              <a
+                key={card.label}
+                href={RESUME_SAMPLES_URL}
+                target="_blank"
+                rel="noreferrer"
+                className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 transition duration-300 hover:-translate-y-0.5 hover:shadow-lg ${card.theme}`}
+              >
+                <div className="absolute right-0 top-0 h-16 w-16 translate-x-6 -translate-y-6 rounded-full bg-white/40 blur-xl" />
+                <div className="relative">
+                  <div className="inline-flex items-center rounded-full border border-white/70 bg-white/70 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-slate-700">
+                    Resume Category
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-slate-900">{card.label}</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-700">{card.caption}</p>
+                  <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800 group-hover:text-primary">
+                    View Samples
+                    <FiExternalLink className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
       </section>
 

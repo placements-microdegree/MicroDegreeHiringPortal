@@ -1,7 +1,15 @@
 // FILE: src/components/student/ProfileDrawer.jsx
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FiEdit2, FiCheck, FiX, FiAlertTriangle } from "react-icons/fi";
+import {
+  FiEdit2,
+  FiCheck,
+  FiX,
+  FiAlertTriangle,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiXCircle,
+} from "react-icons/fi";
 import Button from "../common/Button";
 import Input from "../common/Input";
 import { uploadProfilePhoto } from "../../services/profileService";
@@ -290,6 +298,9 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
   };
 
   const displayEmail = form.email || profile?.email || "";
+  const quota = Number(profile?.applicationQuota ?? 0);
+  const notStudentHelpText =
+    "Credits are used to apply for premium jobs. Each application costs one credit. To become an eligible student, please contact our support team with your student details for verification.";
 
   return (
     <>
@@ -356,6 +367,29 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
               <p className="mt-1 text-[11px] text-slate-400">
                 Email cannot be changed. Contact support if needed.
               </p>
+            </div>
+
+            {/* Mobile-only eligibility and credits */}
+            <div className="md:hidden">
+              {profile?.isEligible === true ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  <FiCheckCircle className="h-3.5 w-3.5" />
+                  Eligible
+                </div>
+              ) : profile?.isEligible === false ? (
+                <div
+                  className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
+                  title={notStudentHelpText}
+                >
+                  <FiXCircle className="h-3.5 w-3.5" />
+                  Not a Student · Free Credits Left: {quota}
+                </div>
+              ) : quota > 0 ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                  <FiAlertCircle className="h-3.5 w-3.5" />
+                  Free Credits Left: {quota}
+                </div>
+              ) : null}
             </div>
 
             {/* Basic fields */}

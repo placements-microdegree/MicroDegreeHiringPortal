@@ -8,15 +8,31 @@ import Loader from "../../components/common/Loader";
 import { listApplicationsByStudent } from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
 import { showError, showInfo } from "../../utils/alerts";
+import { confirmDanger } from "../../utils/alerts";
 import { FiRefreshCw } from "react-icons/fi";
 
 export default function JobListings() {
-  const { profile } = useAuth();
+  const { profile, updateEmailSubscription } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [apps, setApps] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [applyOpen, setApplyOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [emailSubscribe, setEmailSubscribe] = useState(false);
+  const [isUpdatingSubscription, setIsUpdatingSubscription] = useState(false);
+
+  useEffect(() => {
+    if (profile?.isEligible === true) {
+      setEmailSubscribe(
+        typeof profile?.emailSubscribe === "boolean"
+          ? profile.emailSubscribe
+          : true,
+      );
+      return;
+    }
+
+    setEmailSubscribe(false);
+  }, [profile?.isEligible, profile?.emailSubscribe]);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -70,6 +86,42 @@ export default function JobListings() {
 
     setSelectedJob(job);
     setApplyOpen(true);
+  };
+
+  const onToggleEmailSubscription = async (event) => {
+    const nextChecked = Boolean(event.target.checked);
+
+    if (profile?.isEligible !== true) {
+      return;
+    }
+
+    if (!nextChecked) {
+      const confirmed = await confirmDanger({
+        title: "Are you sure you want to unsubscribe?",
+        text: "If you unsubscribe, you will stop receiving premium job email alerts.",
+        confirmButtonText: "Yes, Unsubscribe",
+        cancelButtonText: "No, Keep Subscribed",
+      });
+
+      if (!confirmed) {
+        setEmailSubscribe(true);
+        return;
+      }
+    }
+
+    setEmailSubscribe(nextChecked);
+    setIsUpdatingSubscription(true);
+    try {
+      const saved = await updateEmailSubscription(nextChecked);
+      setEmailSubscribe(Boolean(saved?.emailSubscribe));
+    } catch (error) {
+      setEmailSubscribe((prev) => !prev);
+      await showError(
+        error?.message || "Failed to update premium job email preference",
+      );
+    } finally {
+      setIsUpdatingSubscription(false);
+    }
   };
 
   const safeJobs = Array.isArray(jobs) ? jobs : [];
@@ -133,25 +185,58 @@ export default function JobListings() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <section className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Jobs (JD)</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Browse open opportunities and apply to matching roles.
-          </p>
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">Jobs (JD)</h1>
+            <p className="mt-1 text-sm text-slate-600">
+              Browse open opportunities and apply to matching roles.
+            </p>
+
+            <label
+              className={`mt-3 flex w-full items-start gap-2 rounded-xl border px-3 py-2.5 text-sm leading-5 sm:inline-flex sm:w-auto sm:items-center ${
+                profile?.isEligible === true
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500"
+              }`}
+              title={
+                profile?.isEligible === true
+                  ? "Receive premium job email alerts. Uncheck to stop receiving emails."
+                  : "To use this feature, become a MicroDegree eligible student and contact the support team."
+              }
+            >
+              <input
+                type="checkbox"
+                checked={emailSubscribe}
+                disabled={profile?.isEligible !== true || isUpdatingSubscription}
+                onChange={onToggleEmailSubscription}
+                className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0"
+              />
+              <span className="font-medium">
+                Receive email updates of premium jobs
+              </span>
+            </label>
+
+            {profile?.isEligible !== true ? (
+              <p className="mt-2 text-xs text-slate-500">
+                To use this feature, become a MicroDegree eligible student and contact support.
+              </p>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={refresh}
+            disabled={isLoading}
+            title="Refresh jobs"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-primary hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FiRefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={refresh}
-          disabled={isLoading}
-          title="Refresh jobs"
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-primary hover:bg-primary/5 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <FiRefreshCw
-            className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-          />
-          {isLoading ? "Refreshing..." : "Refresh"}
-        </button>
       </section>
 
       {/* Jobs grid */}

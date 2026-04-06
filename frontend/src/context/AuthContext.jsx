@@ -6,6 +6,7 @@ import {
   loginWithPassword,
   logout as logoutService,
   signupWithPassword,
+  updateEmailSubscription as updateEmailSubscriptionService,
   updateProfile as updateProfileService,
 } from "../services/authService";
 import { AuthContext } from "./authStore";
@@ -77,6 +78,20 @@ export function AuthProvider({ children }) {
     return saved;
   }, []);
 
+  const updateEmailSubscription = useCallback(async (emailSubscribe) => {
+    const subscription = await updateEmailSubscriptionService(emailSubscribe);
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            emailSubscribe: subscription?.emailSubscribe,
+            isEligible: subscription?.isEligible,
+          }
+        : prev,
+    );
+    return subscription;
+  }, []);
+
   const logout = useCallback(async () => {
     await logoutService();
     setUser(null);
@@ -93,6 +108,7 @@ export function AuthProvider({ children }) {
       googleLogin,
       logout,
       updateProfile,
+      updateEmailSubscription,
       refresh,
     }),
     [
@@ -104,6 +120,7 @@ export function AuthProvider({ children }) {
       googleLogin,
       logout,
       updateProfile,
+      updateEmailSubscription,
       refresh,
     ],
   );
