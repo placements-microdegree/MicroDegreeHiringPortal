@@ -14,6 +14,9 @@ const NOTION_URL =
 const RESUME_SAMPLES_URL =
   "https://drive.google.com/drive/folders/10VuLUOv8jy4d72bhFzm7BG9cet4ZN2dO";
 
+const PROJECT_BUILDING_SESSION_URL =
+  "https://courses.microdegree.work/courses/take/placement-prep-course/multimedia/42031566-student-success-story-shridhar";
+
 const resumeSampleCards = [
   {
     label: "Fresher",
@@ -196,6 +199,33 @@ export default function CareerGuide() {
               WhatsApp: 6366983877
             </a>
           </span>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-sky-50 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Career Assistance Project Building Session
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                Join this guided session to understand how successful students built project stories,
+                presented outcomes clearly, and improved their placement readiness.
+              </p>
+            </div>
+            <a
+              href={PROJECT_BUILDING_SESSION_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-violet-100 px-3 py-2 text-xs font-semibold text-violet-800 transition hover:bg-violet-600 hover:text-white"
+            >
+              Watch Session
+              <FiExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+
+          {/* <div className="mt-3 rounded-xl border border-violet-200 bg-white/80 px-3 py-2 text-xs text-slate-600">
+            Recommended before interviews and final profile submissions.
+          </div> */}
         </div>
 
         <div className="mt-5 rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 sm:p-5">
