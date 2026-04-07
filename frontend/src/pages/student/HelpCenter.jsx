@@ -60,6 +60,9 @@ const socials = [
 ];
 
 export default function HelpCenter() {
+  const supportWhatsAppUrl =
+    "https://api.whatsapp.com/send?phone=916366983877&text=Hello%2C%20I%20have%20a%20question%20regarding%20Courses%2FCertification%2FOthers";
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -90,11 +93,14 @@ export default function HelpCenter() {
               <div className="mt-0.5 text-sm font-semibold text-slate-900">
                 0804-710-9999
               </div>
+              <div className="mt-1 text-xs text-slate-500">
+                For queries, help, or concerns, please select option 2.
+              </div>
             </div>
           </a>
 
           <a
-            href="mailto:hello@microdegree.work"
+            href="mailto:support@mictodegree.work"
             className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 transition hover:border-primary hover:bg-primary/5"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -105,11 +111,29 @@ export default function HelpCenter() {
                 Email Us
               </div>
               <div className="mt-0.5 text-sm font-semibold text-slate-900">
-                hello@microdegree.work
+                support@mictodegree.work
               </div>
             </div>
           </a>
         </div>
+      </section>
+
+      <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          💬 Chat with Support Team
+        </h2>
+        <a
+          href={supportWhatsAppUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex w-full items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+        >
+          <span className="inline-flex items-center gap-2">
+            <FaWhatsapp className="h-4 w-4" />
+            Start WhatsApp Chat
+          </span>
+          <FiExternalLink className="h-4 w-4 shrink-0" />
+        </a>
       </section>
 
       {/* Offices */}
@@ -205,7 +229,7 @@ export default function HelpCenter() {
 
       <a
         id="fixedWALink"
-        href="https://api.whatsapp.com/send?phone=916366983877&text=Hello%2C%20I%20have%20a%20question%20regarding%20Courses%2FCertification%2FOthers"
+        href={supportWhatsAppUrl}
         target="_blank"
         rel="noreferrer"
         aria-label="Chat on WhatsApp"
