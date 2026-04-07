@@ -542,7 +542,14 @@ export default function ApplyJobModal({
   return (
     <>
       <Modal
-        title={`Apply for ${job?.title || "Job"}`}
+        title={
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <span>{`Apply for ${job?.title || "Job"}`}</span>
+            <span className="inline-flex items-center rounded-md bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white animate-pulse sm:text-xs">
+              Kindly update your resume as per the JD
+            </span>
+          </div>
+        }
         open={open}
         onClose={onClose}
         maxWidthClass="max-w-[1000px]"
