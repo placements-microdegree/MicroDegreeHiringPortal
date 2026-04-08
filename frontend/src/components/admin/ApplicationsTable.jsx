@@ -415,6 +415,7 @@ export default function ApplicationsTable({
   onCommentChange,
   onGenerateAiComment,
   onDeleteApplication,
+  onStudentClick,
 }) {
   // ── CSV export ─────────────────────────────────────────────────────────────
 
@@ -596,6 +597,8 @@ export default function ApplicationsTable({
               <th className="w-[220px] px-4 py-3 whitespace-nowrap">
                 Student Name
               </th>
+              <th className="px-4 py-3 whitespace-nowrap">Eligibility</th>
+              <th className="px-4 py-3 whitespace-nowrap">Cloud Drive</th>
               <th className="px-4 py-3 whitespace-nowrap">Phone</th>
               <th className="px-4 py-3 whitespace-nowrap">Email</th>
               <th className="px-4 py-3 whitespace-nowrap">Resume</th>
@@ -613,7 +616,7 @@ export default function ApplicationsTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-slate-600" colSpan={9}>
+                <td className="px-4 py-4 text-slate-600" colSpan={11}>
                   No applications yet.
                 </td>
               </tr>
@@ -628,8 +631,32 @@ export default function ApplicationsTable({
                     }`}
                   >
                     <div className="max-w-[220px] whitespace-normal break-words">
-                      {r.studentName || "Student"}
+                      {onStudentClick ? (
+                        <button
+                          type="button"
+                          onClick={() => onStudentClick(r)}
+                          className="text-left text-primary underline-offset-2 hover:underline"
+                        >
+                          {r.studentName || "Student"}
+                        </button>
+                      ) : (
+                        r.studentName || "Student"
+                      )}
                     </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {r.studentIsEligible ? (
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                        Eligible
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700">
+                        Not Eligible
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                    {r.studentCloudDriveStatus || "-"}
                   </td>
                   <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
                     {r.studentPhone || "-"}
@@ -728,4 +755,5 @@ ApplicationsTable.propTypes = {
   onCommentChange: PropTypes.func,
   onGenerateAiComment: PropTypes.func,
   onDeleteApplication: PropTypes.func,
+  onStudentClick: PropTypes.func,
 };

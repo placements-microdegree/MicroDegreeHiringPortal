@@ -13,6 +13,7 @@ import {
 } from "react-icons/fi";
 import { confirmDanger, showError } from "../../utils/alerts";
 import ApplicationsTable from "./ApplicationsTable";
+import StudentProfileModal from "./StudentProfileModal";
 import {
   deleteApplication,
   listAllApplications,
@@ -27,6 +28,7 @@ import {
   deleteResumeForStudent,
 } from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
+import { updateStudentCloudDriveProfile } from "../../services/adminService";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -71,6 +73,86 @@ function formatPostedDate(value) {
     month: "short",
     year: "numeric",
   });
+}
+
+function parseExperienceYears(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const text = String(value).toLowerCase();
+  if (text.includes("fresher")) return 0;
+  const numbers = text.match(/\d+(\.\d+)?/g);
+  if (!numbers || numbers.length === 0) return null;
+  const first = Number(numbers[0]);
+  return Number.isFinite(first) ? first : null;
+}
+
+function monthKey(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+const JOB_EXPERIENCE_BUCKETS = [
+  { id: "0to1", label: "0-1" },
+  { id: "2to3", label: "2-3" },
+  { id: "4to5", label: "4-5" },
+  { id: "6to7", label: "6-7" },
+  { id: "8to9", label: "8-9" },
+  { id: "10", label: "10" },
+  { id: "10plus", label: "10+" },
+];
+
+const ENTRY_LEVEL_TAGS = [
+  { id: "internship", label: "Internship" },
+  { id: "fresher", label: "Fresher" },
+];
+
+function classifyJobExperience(rawExperience) {
+  const text = String(rawExperience || "")
+    .trim()
+    .toLowerCase();
+
+  const entryTags = [];
+  if (/\bintern(ship)?\b/.test(text)) entryTags.push("internship");
+  if (/\bfresher(s)?\b/.test(text)) entryTags.push("fresher");
+
+  const rangeMatch = text.match(/(\d+(?:\.\d+)?)\s*[-to]+\s*(\d+(?:\.\d+)?)/);
+  const plusMatch = text.match(/(\d+(?:\.\d+)?)\s*\+/);
+  const numericMatches = text.match(/\d+(?:\.\d+)?/g) || [];
+
+  let start = null;
+  let hasPlus = false;
+
+  if (rangeMatch) {
+    start = Number(rangeMatch[1]);
+  } else if (plusMatch) {
+    start = Number(plusMatch[1]);
+    hasPlus = true;
+  } else if (numericMatches.length) {
+    start = Number(numericMatches[0]);
+  }
+
+  if (!Number.isFinite(start)) {
+    return { bucket: null, entryTags };
+  }
+
+  if (hasPlus && start >= 10) return { bucket: "10plus", entryTags };
+  if (start > 10) return { bucket: "10plus", entryTags };
+  if (start === 10) return { bucket: "10", entryTags };
+  if (start >= 8) return { bucket: "8to9", entryTags };
+  if (start >= 6) return { bucket: "6to7", entryTags };
+  if (start >= 4) return { bucket: "4to5", entryTags };
+  if (start >= 2) return { bucket: "2to3", entryTags };
+  return { bucket: "0to1", entryTags };
+}
+
+function toggleMultiValue(list, value) {
+  return list.includes(value)
+    ? list.filter((item) => item !== value)
+    : [...list, value];
 }
 
 function getStageFromStatus(status) {
@@ -139,10 +221,22 @@ function mapApplicationRow(row, jobsById) {
       mergedJob ||
       (jobId ? { id: jobId, title: jobTitle, company: jobCompany } : null),
     studentName: student?.full_name || row.studentName,
+    studentId: student?.id || row.student_id || row.studentId || null,
     studentPhone: student?.phone,
     studentEmail: student?.email,
     studentCloudDriveStatus,
+    driveClearedDate: student?.drive_cleared_date || row.drive_cleared_date || null,
+    studentCloudDriveHistory:
+      student?.cloud_drive_status_history || row.cloud_drive_status_history || [],
+    studentIsEligible:
+      typeof student?.is_eligible === "boolean"
+        ? student.is_eligible
+        : Boolean(row.is_eligible || row.student_is_eligible),
+    studentEligibleUntil:
+      student?.eligible_until || row.eligible_until || row.student_eligible_until || null,
     studentLocation: student?.location || "",
+    studentPreferredLocation:
+      student?.preferred_location || row.preferred_location || "",
     totalExperience:
       student?.total_experience ||
       row.total_experience ||
@@ -1110,10 +1204,22 @@ export default function ManageApplicationsByJobView({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [searchApplicant, setSearchApplicant] = useState("");
+  const [experienceFilter, setExperienceFilter] = useState("all");
+  const [eligibilityFilter, setEligibilityFilter] = useState("all");
+  const [cloudDriveFilter, setCloudDriveFilter] = useState("all");
+  const [applicationMonthFilter, setApplicationMonthFilter] = useState("all");
+  const [applicationDateSort, setApplicationDateSort] = useState("latest");
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedStudentProfile, setSelectedStudentProfile] = useState(null);
+  const [selectedStudentAppliedJobs, setSelectedStudentAppliedJobs] = useState([]);
+  const [profileSaving, setProfileSaving] = useState(false);
 
   // ── Search + Sort (jobs grid only) ────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" | "oldest"
+  const [jobExperienceFilters, setJobExperienceFilters] = useState([]);
+  const [jobEntryLevelFilters, setJobEntryLevelFilters] = useState([]);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -1213,6 +1319,110 @@ export default function ManageApplicationsByJobView({
     [rows, jobsById],
   );
 
+  const openStudentProfile = (row) => {
+    const studentId = String(row.studentId || "").trim();
+    if (!studentId) return;
+
+    const matchingRows = normalizedRows.filter(
+      (item) => String(item.studentId || "") === studentId,
+    );
+
+    const source = matchingRows[0] || row;
+    setSelectedStudentProfile({
+      id: studentId,
+      fullName: source.studentName || "Student",
+      email: source.studentEmail || "",
+      phone: source.studentPhone || "",
+      location: source.studentLocation || "",
+      preferredLocation: source.studentPreferredLocation || "",
+      isEligible: Boolean(source.studentIsEligible),
+      eligibleUntil: source.studentEligibleUntil || null,
+      currentCtc: source.currentCTC || null,
+      expectedCtc: source.expectedCTC || null,
+      totalExperience: source.totalExperience || null,
+      cloudDriveStatus: source.studentCloudDriveStatus || null,
+      driveClearedDate: source.driveClearedDate || null,
+      cloudDriveHistory: source.studentCloudDriveHistory || [],
+    });
+
+    const appliedJobs = matchingRows
+      .map((item) => ({
+        applicationId: item.id,
+        jobId: item.job_id,
+        company: item.job?.company || item.jobs?.company || "-",
+        title: item.jobTitle || item.job?.title || item.jobs?.title || "-",
+        status: item.sub_stage || item.status || "Applied",
+        appliedAt: item.appliedAt || null,
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.appliedAt || 0).getTime() -
+          new Date(a.appliedAt || 0).getTime(),
+      );
+    setSelectedStudentAppliedJobs(appliedJobs);
+    setProfileModalOpen(true);
+  };
+
+  const closeStudentProfile = () => {
+    setProfileModalOpen(false);
+    setSelectedStudentProfile(null);
+    setSelectedStudentAppliedJobs([]);
+  };
+
+  const saveStudentCloudDriveProfile = async ({ cloudDriveHistory }) => {
+    if (!selectedStudentProfile?.id) return;
+
+    try {
+      setProfileSaving(true);
+      const updated = await updateStudentCloudDriveProfile(selectedStudentProfile.id, {
+        cloudDriveHistory,
+      });
+
+      setRows((prev) =>
+        prev.map((row) =>
+          String(row.student?.id || row.student_id || "") ===
+          String(selectedStudentProfile.id)
+            ? {
+                ...row,
+                student: {
+                  ...(row.student || {}),
+                  cloud_drive_status: updated?.cloud_drive_status ?? null,
+                  drive_cleared_date: updated?.drive_cleared_date ?? null,
+                  cloud_drive_status_history:
+                    updated?.cloud_drive_status_history || [],
+                },
+                profiles: {
+                  ...(row.profiles || {}),
+                  cloud_drive_status: updated?.cloud_drive_status ?? null,
+                  drive_cleared_date: updated?.drive_cleared_date ?? null,
+                  cloud_drive_status_history:
+                    updated?.cloud_drive_status_history || [],
+                },
+              }
+            : row,
+        ),
+      );
+
+      setSelectedStudentProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              cloudDriveStatus: updated?.cloud_drive_status ?? null,
+              driveClearedDate: updated?.drive_cleared_date ?? null,
+              cloudDriveHistory: updated?.cloud_drive_status_history || [],
+            }
+          : prev,
+      );
+      setProfileModalOpen(false);
+    } catch (error) {
+      await showError(
+        error?.message || "Failed to update cloud drive profile fields",
+      );
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   // Build raw job cards from applications
   const jobCards = useMemo(() => {
     const jobsMap = new Map();
@@ -1221,10 +1431,16 @@ export default function ManageApplicationsByJobView({
       if (!jobId) continue;
       const existing = jobsMap.get(jobId);
       if (!existing) {
+        const classified = classifyJobExperience(
+          row.jobs?.experience || row.job?.experience || "",
+        );
         jobsMap.set(jobId, {
           id: jobId,
           title: getJobTitle(row),
           company: row.jobs?.company || row.company || "-",
+          experience: row.jobs?.experience || row.job?.experience || "",
+          experienceBucket: classified.bucket,
+          entryTags: classified.entryTags,
           createdAt: row.jobs?.created_at || row.job?.created_at || null,
           status: normalizeJobStatus(row.jobs?.status || row.job?.status),
           applicationsCount: 1,
@@ -1254,12 +1470,26 @@ export default function ManageApplicationsByJobView({
         )
       : jobCards;
 
-    return [...filtered].sort((a, b) => {
+    const byExperience = jobExperienceFilters.length
+      ? filtered.filter((job) =>
+          job.experienceBucket &&
+          jobExperienceFilters.includes(String(job.experienceBucket)),
+        )
+      : filtered;
+
+    const byEntryLevel = jobEntryLevelFilters.length
+      ? byExperience.filter((job) =>
+          Array.isArray(job.entryTags) &&
+          job.entryTags.some((tag) => jobEntryLevelFilters.includes(tag)),
+        )
+      : byExperience;
+
+    return [...byEntryLevel].sort((a, b) => {
       const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
       const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return sortOrder === "newest" ? db - da : da - db;
     });
-  }, [jobCards, search, sortOrder]);
+  }, [jobCards, search, sortOrder, jobExperienceFilters, jobEntryLevelFilters]);
 
   if (isLoading) {
     return (
@@ -1328,6 +1558,85 @@ export default function ManageApplicationsByJobView({
               </button>
             )}
           </div>
+
+          <div className="min-w-[240px] rounded-xl border border-slate-200 bg-white p-3">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Job Experience (Multi-select)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {JOB_EXPERIENCE_BUCKETS.map((option) => {
+                const active = jobExperienceFilters.includes(option.id);
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() =>
+                      setJobExperienceFilters((prev) =>
+                        toggleMultiValue(prev, option.id),
+                      )
+                    }
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary text-white" : "border-slate-300 bg-white text-slate-700 hover:border-primary"}`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setJobExperienceFilters([])}
+              disabled={jobExperienceFilters.length === 0}
+              className="mt-2 text-xs font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              Clear Experience Filter
+            </button>
+          </div>
+
+          <div className="min-w-[220px] rounded-xl border border-slate-200 bg-white p-3">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Internship / Fresher
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {ENTRY_LEVEL_TAGS.map((option) => {
+                const active = jobEntryLevelFilters.includes(option.id);
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() =>
+                      setJobEntryLevelFilters((prev) =>
+                        toggleMultiValue(prev, option.id),
+                      )
+                    }
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "border-primary bg-primary text-white" : "border-slate-300 bg-white text-slate-700 hover:border-primary"}`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setJobEntryLevelFilters([])}
+              disabled={jobEntryLevelFilters.length === 0}
+              className="mt-2 text-xs font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              Clear Internship/Fresher Filter
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              setSortOrder("newest");
+              setJobExperienceFilters([]);
+              setJobEntryLevelFilters([]);
+            }}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary hover:text-primary"
+          >
+            Clear All Job Filters
+          </button>
 
           {/* Sort toggle */}
           <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
@@ -1421,9 +1730,63 @@ export default function ManageApplicationsByJobView({
     filteredRows[0]?.jobs?.company ||
     selectedJob?.company ||
     "";
+  const selectedJobRows = filteredRows
+    .filter((row) => {
+      const q = searchApplicant.trim().toLowerCase();
+      if (q) {
+        const inName = String(row.studentName || "").toLowerCase().includes(q);
+        const inEmail = String(row.studentEmail || "").toLowerCase().includes(q);
+        if (!inName && !inEmail) return false;
+      }
+
+      const expYears = parseExperienceYears(row.totalExperience);
+      if (experienceFilter === "fresher" && (expYears === null || expYears > 0)) {
+        return false;
+      }
+      if (experienceFilter === "experienced" && (expYears === null || expYears <= 0)) {
+        return false;
+      }
+
+      if (eligibilityFilter === "eligible" && !row.studentIsEligible) return false;
+      if (eligibilityFilter === "not-eligible" && row.studentIsEligible) return false;
+
+      const cloudStatus = String(row.studentCloudDriveStatus || "").trim();
+      if (cloudDriveFilter === "cleared") {
+        if (!["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(cloudStatus)) {
+          return false;
+        }
+      }
+      if (cloudDriveFilter === "not-cleared") {
+        if (["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(cloudStatus)) {
+          return false;
+        }
+      }
+
+      if (applicationMonthFilter !== "all") {
+        if (monthKey(row.appliedAt) !== applicationMonthFilter) return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      const aTime = new Date(a.appliedAt || 0).getTime();
+      const bTime = new Date(b.appliedAt || 0).getTime();
+      return applicationDateSort === "oldest" ? aTime - bTime : bTime - aTime;
+    });
+
+  const monthOptions = [...new Set(filteredRows.map((row) => monthKey(row.appliedAt)).filter(Boolean))]
+    .sort((a, b) => (a > b ? -1 : 1));
 
   return (
     <div className="space-y-4 min-w-0">
+      <StudentProfileModal
+        open={profileModalOpen}
+        onClose={closeStudentProfile}
+        student={selectedStudentProfile}
+        appliedJobs={selectedStudentAppliedJobs}
+        saving={profileSaving}
+        onSave={saveStudentCloudDriveProfile}
+      />
       {showApplyModal && (
         <ApplyOnBehalfModal
           job={selectedJob}
@@ -1465,12 +1828,99 @@ export default function ManageApplicationsByJobView({
           </button>
         </div>
       </div>
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-6">
+        <label className="block md:col-span-2">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Search Candidate
+          </span>
+          <input
+            type="text"
+            value={searchApplicant}
+            onChange={(event) => setSearchApplicant(event.target.value)}
+            placeholder="Name or email"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Experience
+          </span>
+          <select
+            value={experienceFilter}
+            onChange={(event) => setExperienceFilter(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="all">All</option>
+            <option value="fresher">Fresher</option>
+            <option value="experienced">Experienced</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Eligibility
+          </span>
+          <select
+            value={eligibilityFilter}
+            onChange={(event) => setEligibilityFilter(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="all">All</option>
+            <option value="eligible">Eligible</option>
+            <option value="not-eligible">Not Eligible</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Cloud Drive
+          </span>
+          <select
+            value={cloudDriveFilter}
+            onChange={(event) => setCloudDriveFilter(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="all">All</option>
+            <option value="cleared">Cleared</option>
+            <option value="not-cleared">Not Cleared</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Application Month
+          </span>
+          <select
+            value={applicationMonthFilter}
+            onChange={(event) => setApplicationMonthFilter(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="all">All</option>
+            {monthOptions.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Sort by Applied Date
+          </span>
+          <select
+            value={applicationDateSort}
+            onChange={(event) => setApplicationDateSort(event.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-primary"
+          >
+            <option value="latest">Latest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </label>
+      </div>
       <ApplicationsTable
-        rows={filteredRows}
+        rows={selectedJobRows}
         onStatusChange={onStatusChange}
         onCommentChange={onCommentChange}
         onGenerateAiComment={onGenerateAiComment}
         onDeleteApplication={onDeleteApplication}
+        onStudentClick={openStudentProfile}
       />
     </div>
   );

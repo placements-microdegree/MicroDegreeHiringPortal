@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FiDownload, FiChevronDown, FiSearch } from "react-icons/fi";
 import StudentsTable from "../../components/admin/StudentsTable";
 import StudentProfileModal from "../../components/admin/StudentProfileModal";
+import { listAllApplications } from "../../services/applicationService";
 import {
   addFavoriteStudents,
   removeFavoriteStudents,
@@ -173,12 +174,14 @@ function SearchableMultiSelect({
 
 export default function Students() {
   const [rows, setRows] = useState([]);
+  const [allApplications, setAllApplications] = useState([]);
   const [selectedCtcBuckets, setSelectedCtcBuckets] = useState([]);
   const [selectedExperienceBuckets, setSelectedExperienceBuckets] = useState([]);
   const [locationFilter, setLocationFilter] = useState("");
   const [preferredLocationFilter, setPreferredLocationFilter] = useState("");
   const [resumeFilter, setResumeFilter] = useState(""); // "" | "has" | "no"
-  const [dateSort, setDateSort] = useState("latest"); // "latest" | "oldest"
+  const [dateSort, setDateSort] = useState("latest-profile");
+  const [applicationMonthFilter, setApplicationMonthFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
   const [cloudDriveFilter, setCloudDriveFilter] = useState("all");
@@ -190,14 +193,16 @@ export default function Students() {
   const [profileSaving, setProfileSaving] = useState(false);
 
   useEffect(() => {
-    Promise.all([listStudents(), listFavoriteStudents()])
-      .then(([students, favoriteIds]) => {
+    Promise.all([listStudents(), listFavoriteStudents(), listAllApplications()])
+      .then(([students, favoriteIds, applications]) => {
         setRows(Array.isArray(students) ? students : []);
         setFavoriteStudentIds(Array.isArray(favoriteIds) ? favoriteIds : []);
+        setAllApplications(Array.isArray(applications) ? applications : []);
       })
       .catch(async (error) => {
         setRows([]);
         setFavoriteStudentIds([]);
+        setAllApplications([]);
         await showError(error?.message || "Failed to load students");
       });
   }, []);
@@ -254,10 +259,58 @@ export default function Students() {
         skills: r.skills ?? [],
         experienceLevel: r.experience_level || r.experienceLevel || null,
         updatedAt: r.updated_at || r.updatedAt || null,
+        recentApplicationAt:
+          r.recent_application_created_at || r.recentApplicationCreatedAt || null,
         lastActiveAt: r.last_active_at || r.lastActiveAt || null,
       })),
     [rows],
   );
+
+  const appliedJobsByStudentId = useMemo(() => {
+    const byStudent = new Map();
+    allApplications.forEach((row) => {
+      const studentId = String(
+        row?.student?.id || row?.student_id || row?.studentId || "",
+      ).trim();
+      if (!studentId) return;
+
+      const existing = byStudent.get(studentId) || [];
+      existing.push({
+        applicationId: row?.id || null,
+        jobId: row?.job?.id || row?.job_id || row?.jobId || null,
+        company: row?.job?.company || row?.jobs?.company || "-",
+        title: row?.job?.title || row?.jobs?.title || row?.jobTitle || "-",
+        status: row?.sub_stage || row?.status || "Applied",
+        appliedAt: row?.created_at || row?.createdAt || null,
+      });
+      byStudent.set(studentId, existing);
+    });
+
+    byStudent.forEach((items, studentId) => {
+      byStudent.set(
+        studentId,
+        items.sort(
+          (a, b) =>
+            new Date(b.appliedAt || 0).getTime() -
+            new Date(a.appliedAt || 0).getTime(),
+        ),
+      );
+    });
+
+    return byStudent;
+  }, [allApplications]);
+
+  const monthOptions = useMemo(() => {
+    const values = new Set();
+    mapped.forEach((row) => {
+      if (!row.recentApplicationAt) return;
+      const date = new Date(row.recentApplicationAt);
+      if (Number.isNaN(date.getTime())) return;
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      values.add(key);
+    });
+    return [...values].sort((a, b) => (a > b ? -1 : 1));
+  }, [mapped]);
 
   const locationOptions = useMemo(() => {
     const values = new Set();
@@ -308,6 +361,13 @@ export default function Students() {
       if (resumeFilter === "has" && !hasResume) return false;
       if (resumeFilter === "no" && hasResume) return false;
 
+      if (applicationMonthFilter !== "all") {
+        const applied = new Date(row.recentApplicationAt || "");
+        if (Number.isNaN(applied.getTime())) return false;
+        const key = `${applied.getFullYear()}-${String(applied.getMonth() + 1).padStart(2, "0")}`;
+        if (key !== applicationMonthFilter) return false;
+      }
+
       if (eligibilityFilter === "eligible" && !row.isEligible) return false;
       if (eligibilityFilter === "not-eligible" && row.isEligible) return false;
 
@@ -336,9 +396,15 @@ export default function Students() {
     };
 
     return filtered.sort((a, b) => {
-      const aTime = toTime(a.updatedAt);
-      const bTime = toTime(b.updatedAt);
-      return dateSort === "oldest" ? aTime - bTime : bTime - aTime;
+      const aProfileTime = toTime(a.updatedAt);
+      const bProfileTime = toTime(b.updatedAt);
+      const aAppliedTime = toTime(a.recentApplicationAt);
+      const bAppliedTime = toTime(b.recentApplicationAt);
+
+      if (dateSort === "latest-application") return bAppliedTime - aAppliedTime;
+      if (dateSort === "oldest-application") return aAppliedTime - bAppliedTime;
+      if (dateSort === "oldest-profile") return aProfileTime - bProfileTime;
+      return bProfileTime - aProfileTime;
     });
   }, [
     mapped,
@@ -348,6 +414,7 @@ export default function Students() {
     locationFilter,
     preferredLocationFilter,
     resumeFilter,
+    applicationMonthFilter,
     searchTerm,
     eligibilityFilter,
     cloudDriveFilter,
@@ -506,7 +573,8 @@ export default function Students() {
     setLocationFilter("");
     setPreferredLocationFilter("");
     setResumeFilter("");
-    setDateSort("latest");
+    setDateSort("latest-profile");
+    setApplicationMonthFilter("all");
     setSelectedCtcBuckets([]);
     setSelectedExperienceBuckets([]);
   };
@@ -715,6 +783,24 @@ export default function Students() {
 
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Application Month
+            </span>
+            <select
+              value={applicationMonthFilter}
+              onChange={(event) => setApplicationMonthFilter(event.target.value)}
+              className={filterControlClass}
+            >
+              <option value="all">All</option>
+              {monthOptions.map((value) => (
+                <option key={`app-month-${value}`} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
               Sort By
             </span>
             <select
@@ -722,8 +808,10 @@ export default function Students() {
               onChange={(event) => setDateSort(event.target.value)}
               className={filterControlClass}
             >
-              <option value="latest">Latest profile update</option>
-              <option value="oldest">Oldest profile update</option>
+              <option value="latest-profile">Latest profile update</option>
+              <option value="oldest-profile">Oldest profile update</option>
+              <option value="latest-application">Latest application date</option>
+              <option value="oldest-application">Oldest application date</option>
             </select>
           </label>
 
@@ -771,6 +859,11 @@ export default function Students() {
         open={profileModalOpen}
         onClose={closeStudentProfile}
         student={selectedStudent}
+        appliedJobs={
+          selectedStudent
+            ? appliedJobsByStudentId.get(String(selectedStudent.id || "")) || []
+            : []
+        }
         saving={profileSaving}
         onSave={saveStudentCloudDriveProfile}
       />

@@ -21,6 +21,13 @@ function formatDate(value) {
   return date.toLocaleDateString();
 }
 
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString();
+}
+
 function InfoRow({ label, value }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
@@ -45,6 +52,7 @@ export default function StudentProfileModal({
   open,
   onClose,
   student,
+  appliedJobs = [],
   saving,
   onSave,
 }) {
@@ -337,6 +345,59 @@ export default function StudentProfileModal({
           <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-slate-900">
+                Student Applied Jobs
+              </div>
+              <div className="text-xs text-slate-500">
+                {appliedJobs.length} application{appliedJobs.length === 1 ? "" : "s"}
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              <div className="max-h-72 overflow-auto">
+                <table className="w-full min-w-[620px] text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-600">
+                    <tr>
+                      <th className="px-3 py-2">Company</th>
+                      <th className="px-3 py-2">Job Title</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Applied On</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {appliedJobs.length ? (
+                      appliedJobs.map((job, index) => (
+                        <tr
+                          key={`${job.jobId || "job"}-${job.applicationId || index}`}
+                          className="border-t border-slate-200"
+                        >
+                          <td className="px-3 py-2 text-slate-700">{job.company || "-"}</td>
+                          <td className="px-3 py-2 text-slate-900">{job.title || "-"}</td>
+                          <td className="px-3 py-2">
+                            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                              {job.status || "Applied"}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-700">
+                            {formatDateTime(job.appliedAt)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td className="px-3 py-4 text-sm text-slate-500" colSpan={4}>
+                          No applications found for this student.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-semibold text-slate-900">
                 Cloud Drive Status History
               </div>
               <Button
@@ -520,6 +581,16 @@ StudentProfileModal.propTypes = {
     ),
     driveClearedStatus: PropTypes.arrayOf(PropTypes.string),
   }),
+  appliedJobs: PropTypes.arrayOf(
+    PropTypes.shape({
+      applicationId: PropTypes.string,
+      jobId: PropTypes.string,
+      company: PropTypes.string,
+      title: PropTypes.string,
+      status: PropTypes.string,
+      appliedAt: PropTypes.string,
+    }),
+  ),
   saving: PropTypes.bool,
   onSave: PropTypes.func,
 };
@@ -528,6 +599,7 @@ StudentProfileModal.defaultProps = {
   open: false,
   onClose: undefined,
   student: null,
+  appliedJobs: [],
   saving: false,
   onSave: undefined,
 };

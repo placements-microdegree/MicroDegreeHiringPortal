@@ -47,7 +47,7 @@ export default function StudentsTable({
     rowList.length > 0 && rowList.every((row) => selectedSet.has(row.id));
   const favoriteSet = new Set(Array.isArray(favoriteRowIds) ? favoriteRowIds : []);
   const columnCount =
-    13 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
+    14 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
 
   return (
     <div className="rounded-xl bg-white p-5">
@@ -80,6 +80,7 @@ export default function StudentsTable({
                 <th className="px-4 py-3">Current CTC (in LPA)</th>
                 <th className="px-4 py-3">Expected CTC (in LPA)</th>
                 <th className="px-4 py-3">Total Experience</th>
+                <th className="px-4 py-3">Recent Application</th>
                 <th className="px-4 py-3">Profile Last Updated</th>
                 <th className="px-4 py-3">Last Active</th>
                 <th className="px-4 py-3">Resume</th>
@@ -172,6 +173,9 @@ export default function StudentsTable({
                     </td>
                     <td className="px-4 py-3 text-slate-700">
                       {r.totalExperience ?? "-"}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-700">
+                      {formatDateTime(r.recentApplicationAt)}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-700">
                       {formatDateTime(r.updatedAt)}

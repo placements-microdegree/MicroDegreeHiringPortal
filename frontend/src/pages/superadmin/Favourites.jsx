@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import StudentsTable from "../../components/admin/StudentsTable";
 import StudentProfileModal from "../../components/admin/StudentProfileModal";
 import Modal from "../../components/common/Modal";
+import { listAllApplications } from "../../services/applicationService";
 import {
   addStudentsToFavoritePlaylist,
   createFavoritePlaylist,
@@ -186,6 +187,7 @@ export default function Favourites() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [allApplications, setAllApplications] = useState([]);
   const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
   const [playlists, setPlaylists] = useState([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
@@ -199,6 +201,8 @@ export default function Favourites() {
   const [locationFilter, setLocationFilter] = useState("");
   const [preferredLocationFilter, setPreferredLocationFilter] = useState("");
   const [resumeFilter, setResumeFilter] = useState("");
+  const [applicationMonthFilter, setApplicationMonthFilter] = useState("all");
+  const [dateSort, setDateSort] = useState("latest-profile");
   const [searchTerm, setSearchTerm] = useState("");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
   const [cloudDriveFilter, setCloudDriveFilter] = useState("all");
@@ -215,10 +219,12 @@ export default function Favourites() {
       listStudents(),
       listFavoriteStudents(),
       listFavoritePlaylists(),
+      listAllApplications(),
     ])
-      .then(([students, favoriteIds, favoritePlaylists]) => {
+      .then(([students, favoriteIds, favoritePlaylists, applications]) => {
         setRows(Array.isArray(students) ? students : []);
         setFavoriteStudentIds(Array.isArray(favoriteIds) ? favoriteIds : []);
+        setAllApplications(Array.isArray(applications) ? applications : []);
         const nextPlaylists = Array.isArray(favoritePlaylists)
           ? favoritePlaylists
           : [];
@@ -232,6 +238,7 @@ export default function Favourites() {
       .catch(async (error) => {
         setRows([]);
         setFavoriteStudentIds([]);
+        setAllApplications([]);
         setPlaylists([]);
         await showError(error?.message || "Failed to load favourite students");
       });
@@ -279,15 +286,63 @@ export default function Favourites() {
         skills: r.skills ?? [],
         experienceLevel: r.experience_level || r.experienceLevel || null,
         updatedAt: r.updated_at || r.updatedAt || null,
+        recentApplicationAt:
+          r.recent_application_created_at || r.recentApplicationCreatedAt || null,
         lastActiveAt: r.last_active_at || r.lastActiveAt || null,
       })),
     [rows],
   );
 
+  const appliedJobsByStudentId = useMemo(() => {
+    const byStudent = new Map();
+    allApplications.forEach((row) => {
+      const studentId = String(
+        row?.student?.id || row?.student_id || row?.studentId || "",
+      ).trim();
+      if (!studentId) return;
+
+      const existing = byStudent.get(studentId) || [];
+      existing.push({
+        applicationId: row?.id || null,
+        jobId: row?.job?.id || row?.job_id || row?.jobId || null,
+        company: row?.job?.company || row?.jobs?.company || "-",
+        title: row?.job?.title || row?.jobs?.title || row?.jobTitle || "-",
+        status: row?.sub_stage || row?.status || "Applied",
+        appliedAt: row?.created_at || row?.createdAt || null,
+      });
+      byStudent.set(studentId, existing);
+    });
+
+    byStudent.forEach((items, studentId) => {
+      byStudent.set(
+        studentId,
+        items.sort(
+          (a, b) =>
+            new Date(b.appliedAt || 0).getTime() -
+            new Date(a.appliedAt || 0).getTime(),
+        ),
+      );
+    });
+
+    return byStudent;
+  }, [allApplications]);
+
   const favoriteRows = useMemo(() => {
     const favoriteSet = new Set(favoriteStudentIds);
     return mapped.filter((row) => favoriteSet.has(row.id));
   }, [mapped, favoriteStudentIds]);
+
+  const monthOptions = useMemo(() => {
+    const values = new Set();
+    favoriteRows.forEach((row) => {
+      if (!row.recentApplicationAt) return;
+      const date = new Date(row.recentApplicationAt);
+      if (Number.isNaN(date.getTime())) return;
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      values.add(key);
+    });
+    return [...values].sort((a, b) => (a > b ? -1 : 1));
+  }, [favoriteRows]);
 
   const locationOptions = useMemo(() => {
     const values = new Set();
@@ -344,6 +399,13 @@ export default function Favourites() {
       if (resumeFilter === "has" && !hasResume) return false;
       if (resumeFilter === "no" && hasResume) return false;
 
+      if (applicationMonthFilter !== "all") {
+        const applied = new Date(row.recentApplicationAt || "");
+        if (Number.isNaN(applied.getTime())) return false;
+        const key = `${applied.getFullYear()}-${String(applied.getMonth() + 1).padStart(2, "0")}`;
+        if (key !== applicationMonthFilter) return false;
+      }
+
       if (eligibilityFilter === "eligible" && !row.isEligible) return false;
       if (eligibilityFilter === "not-eligible" && row.isEligible) return false;
 
@@ -369,6 +431,20 @@ export default function Favourites() {
         }
       }
       return true;
+    }).sort((a, b) => {
+      const toTime = (value) => {
+        const parsed = Date.parse(value || "");
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const aProfileTime = toTime(a.updatedAt);
+      const bProfileTime = toTime(b.updatedAt);
+      const aAppliedTime = toTime(a.recentApplicationAt);
+      const bAppliedTime = toTime(b.recentApplicationAt);
+
+      if (dateSort === "latest-application") return bAppliedTime - aAppliedTime;
+      if (dateSort === "oldest-application") return aAppliedTime - bAppliedTime;
+      if (dateSort === "oldest-profile") return aProfileTime - bProfileTime;
+      return bProfileTime - aProfileTime;
     });
   }, [
     favoriteRows,
@@ -378,6 +454,8 @@ export default function Favourites() {
     locationFilter,
     preferredLocationFilter,
     resumeFilter,
+    applicationMonthFilter,
+    dateSort,
     searchTerm,
     eligibilityFilter,
     cloudDriveFilter,
@@ -607,6 +685,8 @@ export default function Favourites() {
     setLocationFilter("");
     setPreferredLocationFilter("");
     setResumeFilter("");
+    setApplicationMonthFilter("all");
+    setDateSort("latest-profile");
     setSelectedCtcBuckets([]);
     setSelectedExperienceBuckets([]);
   };
@@ -816,6 +896,40 @@ export default function Favourites() {
 
           <label className="block">
             <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Application Month
+            </span>
+            <select
+              value={applicationMonthFilter}
+              onChange={(event) => setApplicationMonthFilter(event.target.value)}
+              className={filterControlClass}
+            >
+              <option value="all">All</option>
+              {monthOptions.map((value) => (
+                <option key={`fav-app-month-${value}`} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Sort By
+            </span>
+            <select
+              value={dateSort}
+              onChange={(event) => setDateSort(event.target.value)}
+              className={filterControlClass}
+            >
+              <option value="latest-profile">Latest profile update</option>
+              <option value="oldest-profile">Oldest profile update</option>
+              <option value="latest-application">Latest application date</option>
+              <option value="oldest-application">Oldest application date</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
               Resume
             </span>
             <select
@@ -957,6 +1071,11 @@ export default function Favourites() {
         open={profileModalOpen}
         onClose={closeStudentProfile}
         student={selectedStudent}
+        appliedJobs={
+          selectedStudent
+            ? appliedJobsByStudentId.get(String(selectedStudent.id || "")) || []
+            : []
+        }
         saving={profileSaving}
         onSave={saveStudentCloudDriveProfile}
       />
