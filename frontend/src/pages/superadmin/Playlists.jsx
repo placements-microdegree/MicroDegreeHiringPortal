@@ -14,6 +14,7 @@ import {
   deleteFavoritePlaylist,
   listFavoritePlaylists,
   listStudents,
+  removeStudentsFromFavoritePlaylist,
   updateStudentCloudDriveProfile,
 } from "../../services/adminService";
 import { showError } from "../../utils/alerts";
@@ -157,6 +158,10 @@ export default function Playlists() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [deletingPlaylistId, setDeletingPlaylistId] = useState(null);
+  const [selectedMoveOutStudentIds, setSelectedMoveOutStudentIds] = useState(
+    [],
+  );
+  const [movingOut, setMovingOut] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
 
@@ -279,10 +284,79 @@ export default function Playlists() {
     setSelectedStudent(null);
   };
 
+  useEffect(() => {
+    setSelectedMoveOutStudentIds([]);
+  }, [playlistId]);
+
+  useEffect(() => {
+    if (!selectedPlaylist) {
+      setSelectedMoveOutStudentIds([]);
+      return;
+    }
+    const availableIds = new Set(selectedPlaylist.studentIds || []);
+    setSelectedMoveOutStudentIds((prev) =>
+      prev.filter((id) => availableIds.has(id)),
+    );
+  }, [selectedPlaylist]);
+
   const removePlaylistFromState = (targetPlaylistId) => {
     setPlaylists((prev) =>
       prev.filter((item) => String(item.id) !== String(targetPlaylistId)),
     );
+  };
+
+  const updatePlaylistInState = (updatedPlaylist) => {
+    if (!updatedPlaylist?.id) return;
+    setPlaylists((prev) =>
+      prev.map((item) =>
+        String(item.id) === String(updatedPlaylist.id) ? updatedPlaylist : item,
+      ),
+    );
+  };
+
+  const toggleMoveOutSelection = (studentId, checked) => {
+    setSelectedMoveOutStudentIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(studentId);
+      } else {
+        next.delete(studentId);
+      }
+      return [...next];
+    });
+  };
+
+  const toggleMoveOutSelectionAll = (checked) => {
+    if (!checked) {
+      setSelectedMoveOutStudentIds([]);
+      return;
+    }
+    setSelectedMoveOutStudentIds(
+      selectedPlaylistStudents.map((student) => student.id).filter(Boolean),
+    );
+  };
+
+  const moveOutSelectedStudents = async () => {
+    if (!selectedPlaylist?.id) return;
+    if (!selectedMoveOutStudentIds.length) {
+      await showError("Select at least one student to move out");
+      return;
+    }
+
+    try {
+      setMovingOut(true);
+      const updatedPlaylist = await removeStudentsFromFavoritePlaylist(
+        selectedPlaylist.id,
+        selectedMoveOutStudentIds,
+      );
+      updatePlaylistInState(updatedPlaylist);
+      setSelectedMoveOutStudentIds([]);
+      toast.success("Selected students moved out of playlist");
+    } catch (error) {
+      await showError(error?.message || "Failed to move students out");
+    } finally {
+      setMovingOut(false);
+    }
   };
 
   const requestDeletePlaylist = (playlist) => {
@@ -408,7 +482,15 @@ export default function Playlists() {
         </div>
 
         {isDetailPage && selectedPlaylist ? (
-          <div className="mb-3 flex justify-end">
+          <div className="mb-3 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={moveOutSelectedStudents}
+              disabled={!selectedMoveOutStudentIds.length || movingOut}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Move Out
+            </button>
             <button
               type="button"
               onClick={() => requestDeletePlaylist(selectedPlaylist)}
@@ -524,6 +606,10 @@ export default function Playlists() {
         <StudentsTable
           rows={selectedPlaylistStudents}
           title={`${selectedPlaylist.name} (${selectedPlaylistStudents.length})`}
+          selectable
+          selectedRowIds={selectedMoveOutStudentIds}
+          onToggleRow={toggleMoveOutSelection}
+          onToggleAll={toggleMoveOutSelectionAll}
           onNameClick={openStudentProfile}
         />
       ) : null}

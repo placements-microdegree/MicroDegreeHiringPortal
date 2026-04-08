@@ -61,6 +61,12 @@ router.post(
   adminController.addStudentsToFavoritePlaylist,
 );
 router.delete(
+  "/favorites/playlists/:playlistId/students",
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache(["/api/admin/favorites/playlists"]),
+  adminController.removeStudentsFromFavoritePlaylist,
+);
+router.delete(
   "/favorites/playlists/:playlistId",
   authorizeRole([ROLES.ADMIN]),
   invalidateApiCache(["/api/admin/favorites/playlists"]),

@@ -120,6 +120,20 @@ async function addStudentsToFavoritePlaylist(req, res, next) {
   }
 }
 
+async function removeStudentsFromFavoritePlaylist(req, res, next) {
+  try {
+    const { playlistId } = req.params || {};
+    const { studentIds } = req.body || {};
+    const playlist = await adminService.removeStudentsFromFavoritePlaylist({
+      playlistId,
+      studentIds,
+    });
+    res.json({ success: true, playlist });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function deleteFavoritePlaylist(req, res, next) {
   try {
     const { playlistId } = req.params || {};
@@ -192,6 +206,7 @@ module.exports = {
   listFavoritePlaylists,
   createFavoritePlaylist,
   addStudentsToFavoritePlaylist,
+  removeStudentsFromFavoritePlaylist,
   deleteFavoritePlaylist,
   promote,
   analytics,

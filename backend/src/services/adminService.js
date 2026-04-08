@@ -788,6 +788,47 @@ async function addStudentsToFavoritePlaylist({ playlistId, studentIds }) {
   };
 }
 
+async function removeStudentsFromFavoritePlaylist({ playlistId, studentIds }) {
+  const supabase = requireAdminClient();
+  const normalizedStudentIds = [...new Set(normalizeUuidList(studentIds))];
+
+  if (!normalizedStudentIds.length) {
+    const err = new Error("studentIds is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const playlist = await ensurePlaylistExists({ supabase, playlistId });
+
+  const { error } = await supabase
+    .from("superadmin_favorite_playlist_students")
+    .delete()
+    .eq("playlist_id", playlist.id)
+    .in("student_id", normalizedStudentIds);
+
+  if (error) throw error;
+
+  const { data: items, error: itemError } = await supabase
+    .from("superadmin_favorite_playlist_students")
+    .select("student_id")
+    .eq("playlist_id", playlist.id)
+    .order("created_at", { ascending: true });
+
+  if (itemError) throw itemError;
+
+  const nextStudentIds = (items || [])
+    .map((item) => String(item?.student_id || "").trim())
+    .filter(Boolean);
+
+  return {
+    id: playlist.id,
+    name: playlist.name,
+    createdAt: playlist.created_at,
+    studentIds: nextStudentIds,
+    studentCount: nextStudentIds.length,
+  };
+}
+
 async function deleteFavoritePlaylist({ playlistId }) {
   const supabase = requireAdminClient();
   const playlist = await ensurePlaylistExists({ supabase, playlistId });
@@ -1607,6 +1648,7 @@ module.exports = {
   listFavoritePlaylists,
   createFavoritePlaylist,
   addStudentsToFavoritePlaylist,
+  removeStudentsFromFavoritePlaylist,
   deleteFavoritePlaylist,
   analytics,
   findStudentWithApplications,

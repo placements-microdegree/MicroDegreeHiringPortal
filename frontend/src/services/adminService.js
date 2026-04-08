@@ -72,6 +72,20 @@ export async function addStudentsToFavoritePlaylist(playlistId, studentIds) {
   return data.playlist || null;
 }
 
+export async function removeStudentsFromFavoritePlaylist(
+  playlistId,
+  studentIds,
+) {
+  const data = await request(
+    `/api/admin/favorites/playlists/${playlistId}/students`,
+    {
+      method: "DELETE",
+      body: { studentIds },
+    },
+  );
+  return data.playlist || null;
+}
+
 export async function deleteFavoritePlaylist(playlistId) {
   const data = await request(`/api/admin/favorites/playlists/${playlistId}`, {
     method: "DELETE",

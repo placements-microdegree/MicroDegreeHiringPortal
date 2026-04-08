@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiDownload, FiHeart, FiChevronDown, FiSearch } from "react-icons/fi";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import StudentsTable from "../../components/admin/StudentsTable";
 import StudentProfileModal from "../../components/admin/StudentProfileModal";
@@ -501,6 +502,10 @@ export default function Favourites() {
         prev.map((playlist) =>
           String(playlist.id) === String(updated.id) ? updated : playlist,
         ),
+      );
+
+      toast.success(
+        `${selectedFavoriteStudentIds.length} student${selectedFavoriteStudentIds.length === 1 ? "" : "s"} added to ${updated.name || "playlist"}`,
       );
     } catch (error) {
       await showError(error?.message || "Failed to add students to playlist");
