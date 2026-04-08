@@ -477,7 +477,8 @@ async function updateStudentCloudDriveProfileFields({
   }
 
   const latest = nextHistory[0] || null;
-  const nextDriveClearedStatus = deriveDriveClearedStatusesFromHistory(nextHistory);
+  const nextDriveClearedStatus =
+    deriveDriveClearedStatusesFromHistory(nextHistory);
 
   const { data: updated, error: updateError } = await supabase
     .from("profiles")
@@ -501,6 +502,10 @@ async function updateStudentCloudDriveProfileFields({
 function normalizeUuidList(values) {
   if (!Array.isArray(values)) return [];
   return values.map((value) => String(value || "").trim()).filter(Boolean);
+}
+
+function normalizePlaylistName(value) {
+  return String(value || "").trim();
 }
 
 async function resolveFavoriteOwnerId({ requesterId, requesterRole }) {
@@ -604,6 +609,200 @@ async function removeFavoriteStudents({ superadminId, studentIds }) {
   if (error) throw error;
 
   return listFavoriteStudentIds({ superadminId });
+}
+
+async function ensurePlaylistExists({ supabase, playlistId }) {
+  const normalizedPlaylistId = Number(playlistId);
+
+  if (!Number.isInteger(normalizedPlaylistId) || normalizedPlaylistId <= 0) {
+    const err = new Error("Valid playlistId is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const { data, error } = await supabase
+    .from("superadmin_favorite_playlists")
+    .select("id, name, created_at")
+    .eq("id", normalizedPlaylistId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  if (!data?.id) {
+    const err = new Error("Playlist not found");
+    err.status = 404;
+    throw err;
+  }
+
+  return data;
+}
+
+async function listFavoritePlaylists() {
+  const supabase = requireAdminClient();
+
+  const { data: playlists, error: playlistError } = await supabase
+    .from("superadmin_favorite_playlists")
+    .select("id, name, created_at")
+    .order("created_at", { ascending: false });
+
+  if (playlistError) throw playlistError;
+
+  const playlistIds = (playlists || []).map((playlist) => playlist.id);
+  if (!playlistIds.length) return [];
+
+  const { data: items, error: itemError } = await supabase
+    .from("superadmin_favorite_playlist_students")
+    .select("playlist_id, student_id, created_at")
+    .in("playlist_id", playlistIds)
+    .order("created_at", { ascending: true });
+
+  if (itemError) throw itemError;
+
+  const byPlaylist = new Map();
+  (items || []).forEach((item) => {
+    const playlistId = item?.playlist_id;
+    const studentId = String(item?.student_id || "").trim();
+    if (!playlistId || !studentId) return;
+    if (!byPlaylist.has(playlistId)) byPlaylist.set(playlistId, []);
+    byPlaylist.get(playlistId).push(studentId);
+  });
+
+  return (playlists || []).map((playlist) => {
+    const studentIds = byPlaylist.get(playlist.id) || [];
+    return {
+      id: playlist.id,
+      name: playlist.name,
+      createdAt: playlist.created_at,
+      studentIds,
+      studentCount: studentIds.length,
+    };
+  });
+}
+
+async function createFavoritePlaylist({ superadminId, name, studentIds }) {
+  const supabase = requireAdminClient();
+  const normalizedSuperadminId = String(superadminId || "").trim();
+  const normalizedName = normalizePlaylistName(name);
+  const normalizedStudentIds = [...new Set(normalizeUuidList(studentIds))];
+
+  if (!normalizedSuperadminId) {
+    const err = new Error("superadminId is required");
+    err.status = 400;
+    throw err;
+  }
+
+  if (!normalizedName) {
+    const err = new Error("Playlist name is required");
+    err.status = 400;
+    throw err;
+  }
+
+  if (normalizedStudentIds.length === 0) {
+    const err = new Error("Select at least one student to create playlist");
+    err.status = 400;
+    throw err;
+  }
+
+  const { data: playlist, error: insertError } = await supabase
+    .from("superadmin_favorite_playlists")
+    .insert({
+      superadmin_id: normalizedSuperadminId,
+      name: normalizedName,
+    })
+    .select("id, name, created_at")
+    .single();
+
+  if (insertError) {
+    if (insertError.code === "23505") {
+      const err = new Error("Playlist name already exists");
+      err.status = 409;
+      throw err;
+    }
+    throw insertError;
+  }
+
+  const rows = normalizedStudentIds.map((studentId) => ({
+    playlist_id: playlist.id,
+    student_id: studentId,
+  }));
+
+  const { error: itemError } = await supabase
+    .from("superadmin_favorite_playlist_students")
+    .insert(rows);
+
+  if (itemError) throw itemError;
+
+  return {
+    id: playlist.id,
+    name: playlist.name,
+    createdAt: playlist.created_at,
+    studentIds: normalizedStudentIds,
+    studentCount: normalizedStudentIds.length,
+  };
+}
+
+async function addStudentsToFavoritePlaylist({ playlistId, studentIds }) {
+  const supabase = requireAdminClient();
+  const normalizedStudentIds = [...new Set(normalizeUuidList(studentIds))];
+
+  if (!normalizedStudentIds.length) {
+    const err = new Error("studentIds is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const playlist = await ensurePlaylistExists({ supabase, playlistId });
+
+  const rows = normalizedStudentIds.map((studentId) => ({
+    playlist_id: playlist.id,
+    student_id: studentId,
+  }));
+
+  const { error } = await supabase
+    .from("superadmin_favorite_playlist_students")
+    .upsert(rows, {
+      onConflict: "playlist_id,student_id",
+      ignoreDuplicates: true,
+    });
+
+  if (error) throw error;
+
+  const { data: items, error: itemError } = await supabase
+    .from("superadmin_favorite_playlist_students")
+    .select("student_id")
+    .eq("playlist_id", playlist.id)
+    .order("created_at", { ascending: true });
+
+  if (itemError) throw itemError;
+
+  const nextStudentIds = (items || [])
+    .map((item) => String(item?.student_id || "").trim())
+    .filter(Boolean);
+
+  return {
+    id: playlist.id,
+    name: playlist.name,
+    createdAt: playlist.created_at,
+    studentIds: nextStudentIds,
+    studentCount: nextStudentIds.length,
+  };
+}
+
+async function deleteFavoritePlaylist({ playlistId }) {
+  const supabase = requireAdminClient();
+  const playlist = await ensurePlaylistExists({ supabase, playlistId });
+
+  const { error } = await supabase
+    .from("superadmin_favorite_playlists")
+    .delete()
+    .eq("id", playlist.id);
+
+  if (error) throw error;
+
+  return {
+    id: playlist.id,
+    name: playlist.name,
+  };
 }
 
 function startOfUtcDay(inputDate = new Date()) {
@@ -1405,6 +1604,10 @@ module.exports = {
   listFavoriteStudentIds,
   addFavoriteStudents,
   removeFavoriteStudents,
+  listFavoritePlaylists,
+  createFavoritePlaylist,
+  addStudentsToFavoritePlaylist,
+  deleteFavoritePlaylist,
   analytics,
   findStudentWithApplications,
 };

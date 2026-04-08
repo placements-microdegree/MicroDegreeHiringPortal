@@ -48,6 +48,37 @@ export async function removeFavoriteStudents(studentIds) {
   return data.favoriteStudentIds || [];
 }
 
+export async function listFavoritePlaylists() {
+  const data = await request("/api/admin/favorites/playlists");
+  return data.playlists || [];
+}
+
+export async function createFavoritePlaylist({ name, studentIds }) {
+  const data = await request("/api/admin/favorites/playlists", {
+    method: "POST",
+    body: { name, studentIds },
+  });
+  return data.playlist || null;
+}
+
+export async function addStudentsToFavoritePlaylist(playlistId, studentIds) {
+  const data = await request(
+    `/api/admin/favorites/playlists/${playlistId}/students`,
+    {
+      method: "POST",
+      body: { studentIds },
+    },
+  );
+  return data.playlist || null;
+}
+
+export async function deleteFavoritePlaylist(playlistId) {
+  const data = await request(`/api/admin/favorites/playlists/${playlistId}`, {
+    method: "DELETE",
+  });
+  return data.playlist || null;
+}
+
 export async function updateStudentCloudDriveProfile(
   studentId,
   { cloudDriveStatus, driveClearedDate, cloudDriveHistory },

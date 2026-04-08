@@ -31,6 +31,7 @@ import SuperAdminDashboard from "../pages/superadmin/SuperAdminDashboard";
 import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
 import Students from "../pages/superadmin/Students";
 import Favourites from "../pages/superadmin/Favourites";
+import Playlists from "../pages/superadmin/Playlists";
 import SuperAdminJobs from "../pages/superadmin/SuperAdminJobs";
 import SuperAdminApplications from "../pages/superadmin/SuperAdminApplications";
 import SuperAdminChecker from "../pages/superadmin/SuperAdminChecker";
@@ -142,6 +143,8 @@ export default function AppRoutes() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/students" element={<Students />} />
           <Route path="/admin/favourites" element={<Favourites />} />
+          <Route path="/admin/playlist" element={<Playlists />} />
+          <Route path="/admin/playlist/:playlistId" element={<Playlists />} />
           <Route path="/admin/post-jd" element={<PostJD />} />
           <Route
             path="/admin/manage-applications"
@@ -174,6 +177,11 @@ export default function AppRoutes() {
         <Route element={<AdminOrSuperAdminLayout />}>
           <Route path="/superadmin/students" element={<Students />} />
           <Route path="/superadmin/favourites" element={<Favourites />} />
+          <Route path="/superadmin/playlist" element={<Playlists />} />
+          <Route
+            path="/superadmin/playlist/:playlistId"
+            element={<Playlists />}
+          />
         </Route>
       </Route>
 

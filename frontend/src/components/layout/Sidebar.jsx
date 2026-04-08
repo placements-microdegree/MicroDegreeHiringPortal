@@ -122,6 +122,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       },
       { to: "/superadmin/students", label: "View Students", icon: FiUsers },
       { to: "/superadmin/favourites", label: "Favourites", icon: FiStar },
+      { to: "/superadmin/playlist", label: "Playlist", icon: FiBookOpen },
       { to: "/superadmin/jobs", label: "View Jobs", icon: FiBriefcase },
       {
         to: "/superadmin/applications",
@@ -156,6 +157,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       { to: "/admin/post-jd", label: "Post JD", icon: FiFileText },
       { to: "/admin/students", label: "View Students", icon: FiUsers },
       { to: "/admin/favourites", label: "Favourites", icon: FiStar },
+      { to: "/admin/playlist", label: "Playlist", icon: FiBookOpen },
       { to: "/admin/cloud-drive", label: "Cloud Drive", icon: FiCloud },
       {
         to: "/admin/external-jobs",

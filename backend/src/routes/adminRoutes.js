@@ -40,6 +40,33 @@ router.delete(
   adminController.removeFavoriteStudents,
 );
 router.get(
+  "/favorites/playlists",
+  authorizeRole([ROLES.ADMIN]),
+  cacheResponse({ ttlSeconds: 20 }),
+  adminController.listFavoritePlaylists,
+);
+router.post(
+  "/favorites/playlists",
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache([
+    "/api/admin/favorites/playlists",
+    "/api/admin/favorites/students",
+  ]),
+  adminController.createFavoritePlaylist,
+);
+router.post(
+  "/favorites/playlists/:playlistId/students",
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache(["/api/admin/favorites/playlists"]),
+  adminController.addStudentsToFavoritePlaylist,
+);
+router.delete(
+  "/favorites/playlists/:playlistId",
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache(["/api/admin/favorites/playlists"]),
+  adminController.deleteFavoritePlaylist,
+);
+router.get(
   "/admins",
   authorizeRole([ROLES.SUPER_ADMIN]),
   cacheResponse({ ttlSeconds: 45 }),

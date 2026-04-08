@@ -68,6 +68,68 @@ async function removeFavoriteStudents(req, res, next) {
   }
 }
 
+async function listFavoritePlaylists(req, res, next) {
+  try {
+    const favoriteOwnerId = await adminService.resolveFavoriteOwnerId({
+      requesterId: req.user?.id,
+      requesterRole: req.user?.role,
+    });
+    const playlists = await adminService.listFavoritePlaylists({
+      superadminId: favoriteOwnerId,
+    });
+    res.json({ success: true, playlists });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function createFavoritePlaylist(req, res, next) {
+  try {
+    const { name, studentIds } = req.body || {};
+    const favoriteOwnerId = await adminService.resolveFavoriteOwnerId({
+      requesterId: req.user?.id,
+      requesterRole: req.user?.role,
+    });
+    const playlist = await adminService.createFavoritePlaylist({
+      superadminId: favoriteOwnerId,
+      name,
+      studentIds,
+    });
+    res.status(201).json({ success: true, playlist });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function addStudentsToFavoritePlaylist(req, res, next) {
+  try {
+    const { playlistId } = req.params || {};
+    const { studentIds } = req.body || {};
+    const favoriteOwnerId = await adminService.resolveFavoriteOwnerId({
+      requesterId: req.user?.id,
+      requesterRole: req.user?.role,
+    });
+    const playlist = await adminService.addStudentsToFavoritePlaylist({
+      superadminId: favoriteOwnerId,
+      playlistId,
+      studentIds,
+    });
+    res.json({ success: true, playlist });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteFavoritePlaylist(req, res, next) {
+  try {
+    const { playlistId } = req.params || {};
+    const playlist = await adminService.deleteFavoritePlaylist({ playlistId });
+    res.json({ success: true, playlist });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function promote(req, res, next) {
   try {
     const { email, role } = req.body || {};
@@ -127,6 +189,10 @@ module.exports = {
   listFavoriteStudents,
   addFavoriteStudents,
   removeFavoriteStudents,
+  listFavoritePlaylists,
+  createFavoritePlaylist,
+  addStudentsToFavoritePlaylist,
+  deleteFavoritePlaylist,
   promote,
   analytics,
   checker,

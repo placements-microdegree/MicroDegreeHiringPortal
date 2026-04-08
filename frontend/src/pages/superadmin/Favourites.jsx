@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { FiDownload, FiHeart, FiChevronDown, FiSearch } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 import StudentsTable from "../../components/admin/StudentsTable";
 import StudentProfileModal from "../../components/admin/StudentProfileModal";
+import Modal from "../../components/common/Modal";
 import {
+  addStudentsToFavoritePlaylist,
+  createFavoritePlaylist,
+  listFavoritePlaylists,
   listFavoriteStudents,
   listStudents,
   removeFavoriteStudents,
   updateStudentCloudDriveProfile,
 } from "../../services/adminService";
 import { showError } from "../../utils/alerts";
+import { useAuth } from "../../context/authStore";
+import { ROLES } from "../../utils/constants";
 
 const ACTIVE_WINDOW_DAYS = 7;
 
@@ -88,7 +95,9 @@ function SearchableMultiSelect({
     const query = search.trim().toLowerCase();
     if (!query) return options;
     return options.filter((option) =>
-      String(option.label || "").toLowerCase().includes(query),
+      String(option.label || "")
+        .toLowerCase()
+        .includes(query),
     );
   }, [options, search]);
 
@@ -109,7 +118,9 @@ function SearchableMultiSelect({
             ? `${selectedCount} selected`
             : `Select ${label.toLowerCase()}`}
         </span>
-        <FiChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
+        <FiChevronDown
+          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open ? (
@@ -142,7 +153,9 @@ function SearchableMultiSelect({
                 </label>
               ))
             ) : (
-              <div className="px-2 py-2 text-xs text-slate-500">No matching options.</div>
+              <div className="px-2 py-2 text-xs text-slate-500">
+                No matching options.
+              </div>
             )}
           </div>
 
@@ -169,13 +182,19 @@ function SearchableMultiSelect({
 }
 
 export default function Favourites() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
   const [selectedFavoriteStudentIds, setSelectedFavoriteStudentIds] = useState(
     [],
   );
   const [selectedCtcBuckets, setSelectedCtcBuckets] = useState([]);
-  const [selectedExperienceBuckets, setSelectedExperienceBuckets] = useState([]);
+  const [selectedExperienceBuckets, setSelectedExperienceBuckets] = useState(
+    [],
+  );
   const [locationFilter, setLocationFilter] = useState("");
   const [preferredLocationFilter, setPreferredLocationFilter] = useState("");
   const [resumeFilter, setResumeFilter] = useState("");
@@ -186,16 +205,33 @@ export default function Favourites() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [playlistModalOpen, setPlaylistModalOpen] = useState(false);
+  const [playlistNameDraft, setPlaylistNameDraft] = useState("");
+  const [playlistCreating, setPlaylistCreating] = useState(false);
 
   useEffect(() => {
-    Promise.all([listStudents(), listFavoriteStudents()])
-      .then(([students, favoriteIds]) => {
+    Promise.all([
+      listStudents(),
+      listFavoriteStudents(),
+      listFavoritePlaylists(),
+    ])
+      .then(([students, favoriteIds, favoritePlaylists]) => {
         setRows(Array.isArray(students) ? students : []);
         setFavoriteStudentIds(Array.isArray(favoriteIds) ? favoriteIds : []);
+        const nextPlaylists = Array.isArray(favoritePlaylists)
+          ? favoritePlaylists
+          : [];
+        setPlaylists(nextPlaylists);
+        setSelectedPlaylistId((prev) =>
+          prev && nextPlaylists.some((playlist) => String(playlist.id) === prev)
+            ? prev
+            : String(nextPlaylists[0]?.id || ""),
+        );
       })
       .catch(async (error) => {
         setRows([]);
         setFavoriteStudentIds([]);
+        setPlaylists([]);
         await showError(error?.message || "Failed to load favourite students");
       });
   }, []);
@@ -233,22 +269,12 @@ export default function Favourites() {
           r.total_experience ??
           r.totalExperience ??
           null,
-        cloudDriveStatus:
-          r.cloud_drive_status ??
-          r.cloudDriveStatus ??
-          null,
-        driveClearedDate:
-          r.drive_cleared_date ??
-          r.driveClearedDate ??
-          null,
+        cloudDriveStatus: r.cloud_drive_status ?? r.cloudDriveStatus ?? null,
+        driveClearedDate: r.drive_cleared_date ?? r.driveClearedDate ?? null,
         driveClearedStatus:
-          r.drive_cleared_status ??
-          r.driveClearedStatus ??
-          [],
+          r.drive_cleared_status ?? r.driveClearedStatus ?? [],
         cloudDriveHistory:
-          r.cloud_drive_status_history ??
-          r.cloudDriveStatusHistory ??
-          [],
+          r.cloud_drive_status_history ?? r.cloudDriveStatusHistory ?? [],
         skills: r.skills ?? [],
         experienceLevel: r.experience_level || r.experienceLevel || null,
         updatedAt: r.updated_at || r.updatedAt || null,
@@ -297,10 +323,17 @@ export default function Favourites() {
       if (!belongsToAnyBucket(rowCurrent, selectedCtcBuckets, CTC_BUCKETS)) {
         return false;
       }
-      if (!belongsToAnyBucket(rowExperience, selectedExperienceBuckets, EXPERIENCE_BUCKETS)) {
+      if (
+        !belongsToAnyBucket(
+          rowExperience,
+          selectedExperienceBuckets,
+          EXPERIENCE_BUCKETS,
+        )
+      ) {
         return false;
       }
-      if (locationFilter && String(row.location || "") !== locationFilter) return false;
+      if (locationFilter && String(row.location || "") !== locationFilter)
+        return false;
       if (
         preferredLocationFilter &&
         String(row.preferredLocation || "") !== preferredLocationFilter
@@ -313,10 +346,16 @@ export default function Favourites() {
       if (eligibilityFilter === "eligible" && !row.isEligible) return false;
       if (eligibilityFilter === "not-eligible" && row.isEligible) return false;
 
-      if (cloudDriveFilter === "cleared" && !isClearedStatus(row.cloudDriveStatus)) {
+      if (
+        cloudDriveFilter === "cleared" &&
+        !isClearedStatus(row.cloudDriveStatus)
+      ) {
         return false;
       }
-      if (cloudDriveFilter === "not-cleared" && isClearedStatus(row.cloudDriveStatus)) {
+      if (
+        cloudDriveFilter === "not-cleared" &&
+        isClearedStatus(row.cloudDriveStatus)
+      ) {
         return false;
       }
 
@@ -344,7 +383,8 @@ export default function Favourites() {
   ]);
 
   const activeFavoriteCount = useMemo(
-    () => favoriteRows.filter((row) => isRecentlyActive(row.lastActiveAt)).length,
+    () =>
+      favoriteRows.filter((row) => isRecentlyActive(row.lastActiveAt)).length,
     [favoriteRows],
   );
 
@@ -392,6 +432,78 @@ export default function Favourites() {
       setSelectedFavoriteStudentIds([]);
     } catch (error) {
       await showError(error?.message || "Failed to remove favourite students");
+    }
+  };
+
+  const openCreatePlaylistModal = async () => {
+    if (selectedFavoriteStudentIds.length === 0) {
+      await showError(
+        "Select at least one favourite student to create playlist",
+      );
+      return;
+    }
+
+    setPlaylistNameDraft("");
+    setPlaylistModalOpen(true);
+  };
+
+  const createPlaylistFromSelection = async () => {
+    const trimmedName = String(playlistNameDraft || "").trim();
+
+    if (!trimmedName) {
+      await showError("Playlist name is required");
+      return;
+    }
+
+    try {
+      setPlaylistCreating(true);
+      const created = await createFavoritePlaylist({
+        name: trimmedName,
+        studentIds: selectedFavoriteStudentIds,
+      });
+
+      if (!created) return;
+
+      setPlaylists((prev) => [created, ...prev]);
+      setSelectedPlaylistId(String(created.id));
+      setPlaylistModalOpen(false);
+      setPlaylistNameDraft("");
+
+      const rolePrefix =
+        user?.role === ROLES.SUPER_ADMIN ? "/superadmin" : "/admin";
+      navigate(`${rolePrefix}/playlist/${created.id}`);
+    } catch (error) {
+      await showError(error?.message || "Failed to create playlist");
+    } finally {
+      setPlaylistCreating(false);
+    }
+  };
+
+  const addSelectionToExistingPlaylist = async () => {
+    if (selectedFavoriteStudentIds.length === 0) {
+      await showError("Select at least one favourite student to add");
+      return;
+    }
+
+    if (!selectedPlaylistId) {
+      await showError("Select a playlist first");
+      return;
+    }
+
+    try {
+      const updated = await addStudentsToFavoritePlaylist(
+        selectedPlaylistId,
+        selectedFavoriteStudentIds,
+      );
+      if (!updated) return;
+
+      setPlaylists((prev) =>
+        prev.map((playlist) =>
+          String(playlist.id) === String(updated.id) ? updated : playlist,
+        ),
+      );
+    } catch (error) {
+      await showError(error?.message || "Failed to add students to playlist");
     }
   };
 
@@ -545,26 +657,40 @@ export default function Favourites() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 [font-family:Inter,ui-sans-serif,system-ui]">
+      <section className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 font-[Inter,ui-sans-serif,system-ui]">
         <div className="mb-4 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
           <div className="grid grid-cols-1 divide-y divide-[#E2E8F0] text-sm md:grid-cols-4 md:divide-x md:divide-y-0">
             <div className="px-4 py-3 text-slate-700">
-              <div className="text-xs uppercase tracking-wide text-slate-500">All Favourites</div>
-              <div className="mt-1 text-lg font-semibold text-slate-900">{favoriteRows.length}</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                All Favourites
+              </div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">
+                {favoriteRows.length}
+              </div>
             </div>
             <div className="px-4 py-3 text-slate-700">
               <div className="text-xs uppercase tracking-wide text-slate-500">
                 Active ({ACTIVE_WINDOW_DAYS} days)
               </div>
-              <div className="mt-1 text-lg font-semibold text-slate-900">{activeFavoriteCount}</div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">
+                {activeFavoriteCount}
+              </div>
             </div>
             <div className="px-4 py-3 text-slate-700">
-              <div className="text-xs uppercase tracking-wide text-slate-500">Before Filters</div>
-              <div className="mt-1 text-lg font-semibold text-slate-900">{baseCountBeforeFilters}</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                Before Filters
+              </div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">
+                {baseCountBeforeFilters}
+              </div>
             </div>
             <div className="px-4 py-3 text-slate-700">
-              <div className="text-xs uppercase tracking-wide text-slate-500">After Filters</div>
-              <div className="mt-1 text-lg font-semibold text-slate-900">{filteredFavoriteRows.length}</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                After Filters
+              </div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">
+                {filteredFavoriteRows.length}
+              </div>
             </div>
           </div>
         </div>
@@ -669,7 +795,9 @@ export default function Favourites() {
             </span>
             <select
               value={preferredLocationFilter}
-              onChange={(event) => setPreferredLocationFilter(event.target.value)}
+              onChange={(event) =>
+                setPreferredLocationFilter(event.target.value)
+              }
               className={filterControlClass}
             >
               <option value="">All</option>
@@ -697,6 +825,36 @@ export default function Favourites() {
           </label>
 
           <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end md:col-span-4 xl:col-span-5">
+            <select
+              value={selectedPlaylistId}
+              onChange={(event) => setSelectedPlaylistId(event.target.value)}
+              className="rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 sm:min-w-[220px]"
+            >
+              <option value="">Select existing playlist</option>
+              {playlists.map((playlist) => (
+                <option key={playlist.id} value={String(playlist.id)}>
+                  {playlist.name} ({playlist.studentCount || 0})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={addSelectionToExistingPlaylist}
+              disabled={
+                selectedFavoriteStudentIds.length === 0 || !selectedPlaylistId
+              }
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[210px]"
+            >
+              Add To Existing Playlist
+            </button>
+            <button
+              type="button"
+              onClick={openCreatePlaylistModal}
+              disabled={selectedFavoriteStudentIds.length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[170px]"
+            >
+              Create Playlist
+            </button>
             <button
               type="button"
               onClick={clearAllFilters}
@@ -735,6 +893,60 @@ export default function Favourites() {
         onToggleAll={toggleAllFavorites}
         onNameClick={openStudentProfile}
       />
+
+      <Modal
+        open={playlistModalOpen}
+        onClose={() => {
+          if (playlistCreating) return;
+          setPlaylistModalOpen(false);
+        }}
+        title="Create Playlist"
+        maxWidthClass="max-w-[480px]"
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (playlistCreating) return;
+                setPlaylistModalOpen(false);
+              }}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              disabled={playlistCreating}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={createPlaylistFromSelection}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={playlistCreating}
+            >
+              {playlistCreating ? "Creating..." : "Create"}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label
+            htmlFor="create-playlist-name"
+            className="block text-sm font-semibold text-slate-700"
+          >
+            Playlist Name
+          </label>
+          <input
+            id="create-playlist-name"
+            type="text"
+            value={playlistNameDraft}
+            onChange={(event) => setPlaylistNameDraft(event.target.value)}
+            placeholder="Enter playlist name"
+            className="w-full rounded-xl border border-[#E2E8F0] bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20"
+            autoFocus
+          />
+          <p className="text-xs text-slate-500">
+            Selected students: {selectedFavoriteStudentIds.length}
+          </p>
+        </div>
+      </Modal>
 
       <StudentProfileModal
         open={profileModalOpen}
