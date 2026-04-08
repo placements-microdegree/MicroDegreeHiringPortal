@@ -15,6 +15,11 @@ import { confirmDanger, showError } from "../../utils/alerts";
 import ApplicationsTable from "./ApplicationsTable";
 import StudentProfileModal from "./StudentProfileModal";
 import {
+  addFavoriteStudents,
+  listFavoriteStudents,
+  removeFavoriteStudents,
+} from "../../services/adminService";
+import {
   deleteApplication,
   listAllApplications,
   updateApplicationStatus,
@@ -1214,6 +1219,8 @@ export default function ManageApplicationsByJobView({
   const [selectedStudentProfile, setSelectedStudentProfile] = useState(null);
   const [selectedStudentAppliedJobs, setSelectedStudentAppliedJobs] = useState([]);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
 
   // ── Search + Sort (jobs grid only) ────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -1225,15 +1232,18 @@ export default function ManageApplicationsByJobView({
     setIsLoading(true);
     setLoadError("");
     try {
-      const [all, allJobs] = await Promise.all([
+      const [all, allJobs, favoriteIds] = await Promise.all([
         listAllApplications(),
         listJobs(),
+        listFavoriteStudents(),
       ]);
       setRows(Array.isArray(all) ? all : []);
       setJobs(Array.isArray(allJobs) ? allJobs : []);
+      setFavoriteStudentIds(Array.isArray(favoriteIds) ? favoriteIds : []);
     } catch (error) {
       setRows([]);
       setJobs([]);
+      setFavoriteStudentIds([]);
       setLoadError(error?.message || "Failed to load applications");
     } finally {
       setIsLoading(false);
@@ -1774,6 +1784,57 @@ export default function ManageApplicationsByJobView({
       return applicationDateSort === "oldest" ? aTime - bTime : bTime - aTime;
     });
 
+  const toggleStudentSelection = (studentId, checked) => {
+    if (!studentId) return;
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(studentId);
+      else next.delete(studentId);
+      return [...next];
+    });
+  };
+
+  const toggleAllStudents = (checked) => {
+    if (!checked) {
+      setSelectedStudentIds([]);
+      return;
+    }
+    setSelectedStudentIds(
+      selectedJobRows.map((row) => row.studentId).filter(Boolean),
+    );
+  };
+
+  const toggleFavorite = async (studentId) => {
+    if (!studentId) return;
+    try {
+      const isFav = favoriteStudentIds.includes(studentId);
+      if (isFav) {
+        const next = await removeFavoriteStudents([studentId]);
+        setFavoriteStudentIds(Array.isArray(next) ? next : []);
+      } else {
+        const next = await addFavoriteStudents([studentId]);
+        setFavoriteStudentIds(Array.isArray(next) ? next : []);
+      }
+    } catch (error) {
+      await showError(error?.message || "Failed to update favorite student");
+    }
+  };
+
+  const addSelectedToFavorites = async () => {
+    if (selectedStudentIds.length === 0) {
+      await showError("Select at least one student from the application list.");
+      return;
+    }
+
+    try {
+      const next = await addFavoriteStudents(selectedStudentIds);
+      setFavoriteStudentIds(Array.isArray(next) ? next : []);
+      setSelectedStudentIds([]);
+    } catch (error) {
+      await showError(error?.message || "Failed to add selected students to favorites");
+    }
+  };
+
   const monthOptions = [...new Set(filteredRows.map((row) => monthKey(row.appliedAt)).filter(Boolean))]
     .sort((a, b) => (a > b ? -1 : 1));
 
@@ -1808,6 +1869,14 @@ export default function ManageApplicationsByJobView({
           {selectedJobCompany ? ` @ ${selectedJobCompany}` : ""}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={addSelectedToFavorites}
+            disabled={selectedStudentIds.length === 0}
+            className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Add Selected to Favourites
+          </button>
           <button
             type="button"
             onClick={() => setShowApplyModal(true)}
@@ -1921,6 +1990,12 @@ export default function ManageApplicationsByJobView({
         onGenerateAiComment={onGenerateAiComment}
         onDeleteApplication={onDeleteApplication}
         onStudentClick={openStudentProfile}
+        selectable
+        selectedRowIds={selectedStudentIds}
+        onToggleRow={toggleStudentSelection}
+        onToggleAll={toggleAllStudents}
+        favoriteRowIds={favoriteStudentIds}
+        onToggleFavorite={toggleFavorite}
       />
     </div>
   );

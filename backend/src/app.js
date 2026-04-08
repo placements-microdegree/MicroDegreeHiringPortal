@@ -18,6 +18,7 @@ const externalJobRoutes = require("./routes/externalJobRoutes"); // ← moved he
 const cloudDriveRoutes = require("./routes/cloudDriveRoutes");
 const referralRoutes = require("./routes/referralRoutes");
 const resumeBuilderRoutes = require("./routes/resumeBuilderRoutes");
+const dailySessionRoutes = require("./routes/dailySessionRoutes");
 
 const app = express();
 
@@ -63,6 +64,7 @@ app.use("/api/external-jobs", externalJobRoutes); // ← moved here
 app.use("/api/cloud-drive", cloudDriveRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/resume-builder", resumeBuilderRoutes);
+app.use("/api/daily-sessions", dailySessionRoutes);
 
 app.use(errorHandler);
 

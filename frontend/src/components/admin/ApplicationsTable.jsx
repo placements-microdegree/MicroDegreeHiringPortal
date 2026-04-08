@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { FiEdit2, FiCheck, FiTrash2, FiX } from "react-icons/fi";
+import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
 import { APPLICATION_STATUSES } from "../../utils/constants";
 import { listApplicationCommentHistory } from "../../services/applicationService";
 
@@ -416,6 +417,12 @@ export default function ApplicationsTable({
   onGenerateAiComment,
   onDeleteApplication,
   onStudentClick,
+  selectable = false,
+  selectedRowIds = [],
+  onToggleRow,
+  onToggleAll,
+  favoriteRowIds = [],
+  onToggleFavorite,
 }) {
   // ── CSV export ─────────────────────────────────────────────────────────────
 
@@ -574,6 +581,16 @@ export default function ApplicationsTable({
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  const selectedSet = new Set(Array.isArray(selectedRowIds) ? selectedRowIds : []);
+  const favoriteSet = new Set(Array.isArray(favoriteRowIds) ? favoriteRowIds : []);
+  const allSelected =
+    rows.length > 0 &&
+    rows
+      .filter((row) => Boolean(row?.studentId))
+      .every((row) => selectedSet.has(row.studentId));
+  const columnCount =
+    12 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
+
   return (
     <div className="rounded-xl bg-white p-5">
       <div className="flex items-center justify-between gap-3">
@@ -594,6 +611,20 @@ export default function ApplicationsTable({
         <table className="w-full min-w-[980px] text-left text-sm">
           <thead className="bg-bgLight text-xs uppercase text-slate-600">
             <tr>
+              <th className="px-4 py-3 whitespace-nowrap">SL.NO</th>
+              {selectable ? (
+                <th className="px-4 py-3 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={(event) => onToggleAll?.(event.target.checked)}
+                    aria-label="Select all applications"
+                  />
+                </th>
+              ) : null}
+              {onToggleFavorite ? (
+                <th className="px-4 py-3 whitespace-nowrap">Fav</th>
+              ) : null}
               <th className="w-[220px] px-4 py-3 whitespace-nowrap">
                 Student Name
               </th>
@@ -616,13 +647,50 @@ export default function ApplicationsTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-4 text-slate-600" colSpan={11}>
+                <td className="px-4 py-4 text-slate-600" colSpan={columnCount}>
                   No applications yet.
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
+              rows.map((r, index) => (
                 <tr key={r.id} className="border-t border-slate-200 align-top">
+                  <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                    {index + 1}
+                  </td>
+                  {selectable ? (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(r.studentId)}
+                        disabled={!r.studentId}
+                        onChange={(event) =>
+                          onToggleRow?.(r.studentId, event.target.checked)
+                        }
+                        aria-label={`Select ${r.studentName || "student"}`}
+                      />
+                    </td>
+                  ) : null}
+                  {onToggleFavorite ? (
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => r.studentId && onToggleFavorite?.(r.studentId)}
+                        disabled={!r.studentId}
+                        className="inline-flex items-center justify-center rounded-full p-1 text-slate-400 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={
+                          favoriteSet.has(r.studentId)
+                            ? "Remove from favorites"
+                            : "Add to favorites"
+                        }
+                      >
+                        {favoriteSet.has(r.studentId) ? (
+                          <AiFillHeart className="h-5 w-5 text-rose-600" />
+                        ) : (
+                          <AiOutlineHeart className="h-5 w-5" />
+                        )}
+                      </button>
+                    </td>
+                  ) : null}
                   <td
                     className={`px-4 py-3 font-medium ${
                       isCloudDriveClearedStatus(r.studentCloudDriveStatus)
@@ -756,4 +824,10 @@ ApplicationsTable.propTypes = {
   onGenerateAiComment: PropTypes.func,
   onDeleteApplication: PropTypes.func,
   onStudentClick: PropTypes.func,
+  selectable: PropTypes.bool,
+  selectedRowIds: PropTypes.arrayOf(PropTypes.string),
+  onToggleRow: PropTypes.func,
+  onToggleAll: PropTypes.func,
+  favoriteRowIds: PropTypes.arrayOf(PropTypes.string),
+  onToggleFavorite: PropTypes.func,
 };

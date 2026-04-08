@@ -100,7 +100,7 @@ export default function HelpCenter() {
           </a>
 
           <a
-            href="mailto:support@mictodegree.work"
+            href="mailto:support@microdegree.work"
             className="flex items-center gap-4 rounded-xl border border-slate-200 p-4 transition hover:border-primary hover:bg-primary/5"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
@@ -111,7 +111,7 @@ export default function HelpCenter() {
                 Email Us
               </div>
               <div className="mt-0.5 text-sm font-semibold text-slate-900">
-                support@mictodegree.work
+                support@microdegree.work
               </div>
             </div>
           </a>

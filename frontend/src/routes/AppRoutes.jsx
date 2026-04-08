@@ -17,6 +17,7 @@ import CloudDrive from "../pages/student/Clouddrive";
 import ExternalJobs from "../pages/student/ExternalJobs"; // ← NEW
 import ReferJobOpening from "../pages/student/ReferJobOpening";
 import ReferJobOpeningFollowUp from "../pages/student/ReferJobOpeningFollowUp";
+import DailySessions from "../pages/student/DailySessions";
 
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import PostJD from "../pages/admin/PostJD";
@@ -26,6 +27,7 @@ import PlacementMasterDashboard from "../pages/admin/PlacementMasterDashboard";
 import InterviewMappedCandidates from "../pages/admin/InterviewMappedCandidates";
 import ReferredData from "../pages/admin/ReferredData";
 import CloudDriveAdmin from "../pages/admin/CloudDriveAdmin";
+import DailySessionSetting from "../pages/admin/DailySessionSetting";
 
 import SuperAdminDashboard from "../pages/superadmin/SuperAdminDashboard";
 import ManageHRAdmins from "../pages/superadmin/ManageHRAdmins";
@@ -117,6 +119,7 @@ export default function AppRoutes() {
         <Route element={<DashboardLayout role={ROLES.STUDENT} />}>
           <Route path="/student/dashboard" element={<StudentDashboard />} />
           <Route path="/student/jobs" element={<JobListings />} />
+          <Route path="/student/daily-sessions" element={<DailySessions />} />
           <Route path="/student/applications" element={<ApplicationStatus />} />
           <Route path="/student/help" element={<HelpCenter />} />
           <Route path="/student/career-guide" element={<CareerGuide />} />
@@ -141,6 +144,10 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
         <Route element={<DashboardLayout role={ROLES.ADMIN} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route
+            path="/admin/daily-session-setting"
+            element={<DailySessionSetting />}
+          />
           <Route path="/admin/students" element={<Students />} />
           <Route path="/admin/favourites" element={<Favourites />} />
           <Route path="/admin/playlist" element={<Playlists />} />

@@ -18,6 +18,7 @@ import {
   FiSend,
   FiUsers,
   FiStar,
+  FiCalendar,
 } from "react-icons/fi";
 import Button from "../common/Button";
 import { ROLES } from "../../utils/constants";
@@ -160,6 +161,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       { to: "/admin/playlist", label: "Playlist", icon: FiBookOpen },
       { to: "/admin/cloud-drive", label: "Cloud Drive", icon: FiCloud },
       {
+        to: "/admin/daily-session-setting",
+        label: "Daily Session Setting",
+        icon: FiCalendar,
+      },
+      {
         to: "/admin/external-jobs",
         label: "External Jobs",
         icon: FiBriefcase,
@@ -179,6 +185,11 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         icon: FiBriefcase,
       },
       { to: "/student/jobs", label: "Premium Jobs", icon: FiBookOpen },
+      {
+        to: "/student/daily-sessions",
+        label: "Daily Sessions",
+        icon: FiCalendar,
+      },
       {
         to: "/student/applications",
         label: "My Applications",

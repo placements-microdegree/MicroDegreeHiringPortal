@@ -772,7 +772,11 @@ export default function DashboardLayout({ role }) {
   const shouldShowEligibilityOverlay =
     isStudent &&
     isNonEligible &&
-    ["/student/career-guide", "/student/cloud-drive"].includes(
+    [
+      "/student/career-guide",
+      "/student/cloud-drive",
+      "/student/daily-sessions",
+    ].includes(
       location.pathname,
     );
 
