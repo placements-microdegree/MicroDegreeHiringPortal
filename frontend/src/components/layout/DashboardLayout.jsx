@@ -310,6 +310,8 @@ function StudentDashboardHome({ profile }) {
   const [apps, setApps] = useState([]);
   const [careerProgressBoard, setCareerProgressBoard] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [applyMode, setApplyMode] = useState("apply");
   const [applyOpen, setApplyOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -348,12 +350,32 @@ function StudentDashboardHome({ profile }) {
     [apps],
   );
 
+  const appliedByJobId = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(apps) ? apps : []).forEach((application) => {
+      const jobId = String(application?.job_id || application?.jobId || "");
+      if (jobId) map.set(jobId, application);
+    });
+    return map;
+  }, [apps]);
+
   const safeJobs = Array.isArray(jobs) ? jobs : [];
   const safeApps = Array.isArray(apps) ? apps : [];
   const previewJobs = safeJobs.slice(0, 3);
   const previewApps = safeApps.slice(0, 3);
 
   const apply = async (job) => {
+    const jobId = String(job?.id || "");
+    const existingApplication = appliedByJobId.get(jobId) || null;
+
+    if (existingApplication) {
+      setSelectedJob(job);
+      setSelectedApplication(existingApplication);
+      setApplyMode("update");
+      setApplyOpen(true);
+      return;
+    }
+
     const hasEligibilityWindow = profile?.isEligible === true;
     const remainingQuota = Number(profile?.applicationQuota ?? 0);
     const hasQuotaAccess = !hasEligibilityWindow && remainingQuota > 0;
@@ -365,11 +387,9 @@ function StudentDashboardHome({ profile }) {
       );
       return;
     }
-    if (appliedJobIds.has(String(job?.id))) {
-      await showInfo("You already applied for this job.", "Already Applied");
-      return;
-    }
     setSelectedJob(job);
+    setSelectedApplication(null);
+    setApplyMode("apply");
     setApplyOpen(true);
   };
 
@@ -455,6 +475,7 @@ function StudentDashboardHome({ profile }) {
                     job={job}
                     onApply={apply}
                     applied={appliedJobIds.has(String(job?.id))}
+                    updateAllowed={appliedJobIds.has(String(job?.id))}
                   />
                 ))}
               </div>
@@ -655,6 +676,8 @@ function StudentDashboardHome({ profile }) {
         open={applyOpen}
         onClose={() => setApplyOpen(false)}
         job={selectedJob}
+        mode={applyMode}
+        existingApplication={selectedApplication}
         profile={profile}
         onApplied={refresh}
       />
@@ -776,9 +799,7 @@ export default function DashboardLayout({ role }) {
       "/student/career-guide",
       "/student/cloud-drive",
       "/student/daily-sessions",
-    ].includes(
-      location.pathname,
-    );
+    ].includes(location.pathname);
 
   useEffect(() => {
     if (!shouldShowEligibilityOverlay) return undefined;

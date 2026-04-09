@@ -91,6 +91,7 @@ export default function StudentDashboard() {
     eligibility: null,
   });
   const [recentJobs, setRecentJobs] = useState([]);
+  const [allApplications, setAllApplications] = useState([]);
   const [recentApplications, setRecentApplications] = useState([]);
   const [careerProgressBoard, setCareerProgressBoard] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,12 +99,13 @@ export default function StudentDashboard() {
   const refresh = async () => {
     setIsLoading(true);
     try {
-      const [analyticsData, jobsData, appsData, progressData] = await Promise.all([
-        getStudentAnalytics(),
-        listJobs(),
-        listApplicationsByStudent(),
-        listCareerProgressBoard(),
-      ]);
+      const [analyticsData, jobsData, appsData, progressData] =
+        await Promise.all([
+          getStudentAnalytics(),
+          listJobs(),
+          listApplicationsByStudent(),
+          listCareerProgressBoard(),
+        ]);
 
       setAnalytics({
         totalJobs: Number(analyticsData?.totalJobs || 0),
@@ -116,6 +118,7 @@ export default function StudentDashboard() {
       const safeApps = Array.isArray(appsData) ? appsData : [];
 
       setRecentJobs([...safeJobs].sort(sortJobsForStudent).slice(0, 4));
+      setAllApplications(safeApps);
 
       setRecentApplications(
         [...safeApps]
@@ -136,6 +139,7 @@ export default function StudentDashboard() {
         eligibility: null,
       });
       setRecentJobs([]);
+      setAllApplications([]);
       setRecentApplications([]);
       setCareerProgressBoard([]);
     } finally {
@@ -166,6 +170,17 @@ export default function StudentDashboard() {
       ),
     }),
     [analytics],
+  );
+
+  const appliedJobIds = useMemo(
+    () =>
+      new Set(
+        (Array.isArray(allApplications) ? allApplications : []).map(
+          (application) =>
+            String(application?.job_id || application?.jobId || ""),
+        ),
+      ),
+    [allApplications],
   );
 
   if (isLoading) {
@@ -224,30 +239,50 @@ export default function StudentDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {recentJobs.map((job) => (
-                <article
-                  key={job.id}
-                  className="rounded-xl border border-slate-200 px-4 py-3 transition hover:border-primary/20 hover:bg-slate-50"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <h3 className="font-semibold text-slate-900">
-                        {job?.title || "Job"}
-                      </h3>
-                      <p className="text-sm text-slate-600">
-                        {job?.company || "Company"} |{" "}
-                        {job?.location || "Location not specified"}
-                      </p>
+              {recentJobs.map((job) => {
+                const isApplied = appliedJobIds.has(String(job?.id || ""));
+                const isClosed =
+                  String(job?.status || "")
+                    .trim()
+                    .toLowerCase() === "closed";
+                let actionLabel = "Apply";
+                if (isApplied) actionLabel = "Update";
+                else if (isClosed) actionLabel = "Closed";
+
+                return (
+                  <article
+                    key={job.id}
+                    className="rounded-xl border border-slate-200 px-4 py-3 transition hover:border-primary/20 hover:bg-slate-50"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-semibold text-slate-900">
+                          {job?.title || "Job"}
+                        </h3>
+                        <p className="text-sm text-slate-600">
+                          {job?.company || "Company"} |{" "}
+                          {job?.location || "Location not specified"}
+                        </p>
+                      </div>
+                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                        {job?.ctc || "CTC not specified"}
+                      </span>
                     </div>
-                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                      {job?.ctc || "CTC not specified"}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-xs text-slate-500">
-                    Valid till: {formatDate(job?.valid_till || job?.validTill)}
-                  </div>
-                </article>
-              ))}
+                    <div className="mt-2 text-xs text-slate-500">
+                      Valid till:{" "}
+                      {formatDate(job?.valid_till || job?.validTill)}
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <Link
+                        to="/student/jobs"
+                        className={`inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-semibold transition ${isApplied ? "bg-primary text-white hover:bg-primary/90" : "border border-slate-200 text-slate-700 hover:border-primary hover:text-primary"}`}
+                      >
+                        {actionLabel}
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
@@ -328,7 +363,8 @@ export default function StudentDashboard() {
               Our Students • Career Progress Board
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              See how students are progressing in interview and placement stages.
+              See how students are progressing in interview and placement
+              stages.
             </p>
           </div>
           {/* <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -358,13 +394,13 @@ export default function StudentDashboard() {
                       </p>
                     </div>
                     <span className="rounded-full border border-indigo-200 px-2.5 py-1 text-xs font-semibold text-amber-900">
-                    {Array.isArray(company.students)
-                      ? company.students.length
-                      : 0} {" "}
-                    {Array.isArray(company.students) &&
-                    company.students.length === 1
-                      ? "Student"
-                      : "Students"}
+                      {Array.isArray(company.students)
+                        ? company.students.length
+                        : 0}{" "}
+                      {Array.isArray(company.students) &&
+                      company.students.length === 1
+                        ? "Student"
+                        : "Students"}
                     </span>
                   </div>
                 </div>
