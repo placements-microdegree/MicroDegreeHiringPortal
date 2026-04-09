@@ -230,15 +230,21 @@ function mapApplicationRow(row, jobsById) {
     studentPhone: student?.phone,
     studentEmail: student?.email,
     studentCloudDriveStatus,
-    driveClearedDate: student?.drive_cleared_date || row.drive_cleared_date || null,
+    driveClearedDate:
+      student?.drive_cleared_date || row.drive_cleared_date || null,
     studentCloudDriveHistory:
-      student?.cloud_drive_status_history || row.cloud_drive_status_history || [],
+      student?.cloud_drive_status_history ||
+      row.cloud_drive_status_history ||
+      [],
     studentIsEligible:
       typeof student?.is_eligible === "boolean"
         ? student.is_eligible
         : Boolean(row.is_eligible || row.student_is_eligible),
     studentEligibleUntil:
-      student?.eligible_until || row.eligible_until || row.student_eligible_until || null,
+      student?.eligible_until ||
+      row.eligible_until ||
+      row.student_eligible_until ||
+      null,
     studentLocation: student?.location || "",
     studentPreferredLocation:
       student?.preferred_location || row.preferred_location || "",
@@ -1217,7 +1223,9 @@ export default function ManageApplicationsByJobView({
   const [applicationDateSort, setApplicationDateSort] = useState("latest");
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [selectedStudentProfile, setSelectedStudentProfile] = useState(null);
-  const [selectedStudentAppliedJobs, setSelectedStudentAppliedJobs] = useState([]);
+  const [selectedStudentAppliedJobs, setSelectedStudentAppliedJobs] = useState(
+    [],
+  );
   const [profileSaving, setProfileSaving] = useState(false);
   const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
@@ -1384,9 +1392,12 @@ export default function ManageApplicationsByJobView({
 
     try {
       setProfileSaving(true);
-      const updated = await updateStudentCloudDriveProfile(selectedStudentProfile.id, {
-        cloudDriveHistory,
-      });
+      const updated = await updateStudentCloudDriveProfile(
+        selectedStudentProfile.id,
+        {
+          cloudDriveHistory,
+        },
+      );
 
       setRows((prev) =>
         prev.map((row) =>
@@ -1481,16 +1492,18 @@ export default function ManageApplicationsByJobView({
       : jobCards;
 
     const byExperience = jobExperienceFilters.length
-      ? filtered.filter((job) =>
-          job.experienceBucket &&
-          jobExperienceFilters.includes(String(job.experienceBucket)),
+      ? filtered.filter(
+          (job) =>
+            job.experienceBucket &&
+            jobExperienceFilters.includes(String(job.experienceBucket)),
         )
       : filtered;
 
     const byEntryLevel = jobEntryLevelFilters.length
-      ? byExperience.filter((job) =>
-          Array.isArray(job.entryTags) &&
-          job.entryTags.some((tag) => jobEntryLevelFilters.includes(tag)),
+      ? byExperience.filter(
+          (job) =>
+            Array.isArray(job.entryTags) &&
+            job.entryTags.some((tag) => jobEntryLevelFilters.includes(tag)),
         )
       : byExperience;
 
@@ -1740,34 +1753,60 @@ export default function ManageApplicationsByJobView({
     filteredRows[0]?.jobs?.company ||
     selectedJob?.company ||
     "";
+  const selectedJobJdLink = String(
+    filteredRows[0]?.job?.jd_link ||
+      filteredRows[0]?.jobs?.jd_link ||
+      selectedJob?.jd_link ||
+      "",
+  ).trim();
   const selectedJobRows = filteredRows
     .filter((row) => {
       const q = searchApplicant.trim().toLowerCase();
       if (q) {
-        const inName = String(row.studentName || "").toLowerCase().includes(q);
-        const inEmail = String(row.studentEmail || "").toLowerCase().includes(q);
+        const inName = String(row.studentName || "")
+          .toLowerCase()
+          .includes(q);
+        const inEmail = String(row.studentEmail || "")
+          .toLowerCase()
+          .includes(q);
         if (!inName && !inEmail) return false;
       }
 
       const expYears = parseExperienceYears(row.totalExperience);
-      if (experienceFilter === "fresher" && (expYears === null || expYears > 0)) {
+      if (
+        experienceFilter === "fresher" &&
+        (expYears === null || expYears > 0)
+      ) {
         return false;
       }
-      if (experienceFilter === "experienced" && (expYears === null || expYears <= 0)) {
+      if (
+        experienceFilter === "experienced" &&
+        (expYears === null || expYears <= 0)
+      ) {
         return false;
       }
 
-      if (eligibilityFilter === "eligible" && !row.studentIsEligible) return false;
-      if (eligibilityFilter === "not-eligible" && row.studentIsEligible) return false;
+      if (eligibilityFilter === "eligible" && !row.studentIsEligible)
+        return false;
+      if (eligibilityFilter === "not-eligible" && row.studentIsEligible)
+        return false;
 
       const cloudStatus = String(row.studentCloudDriveStatus || "").trim();
       if (cloudDriveFilter === "cleared") {
-        if (!["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(cloudStatus)) {
+        if (
+          !["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(
+            cloudStatus,
+          )
+        ) {
           return false;
         }
       }
       if (cloudDriveFilter === "not-cleared") {
-        if (["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(cloudStatus)) {
+        if (
+          ["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(
+            cloudStatus,
+          )
+        ) {
           return false;
         }
       }
@@ -1831,12 +1870,17 @@ export default function ManageApplicationsByJobView({
       setFavoriteStudentIds(Array.isArray(next) ? next : []);
       setSelectedStudentIds([]);
     } catch (error) {
-      await showError(error?.message || "Failed to add selected students to favorites");
+      await showError(
+        error?.message || "Failed to add selected students to favorites",
+      );
     }
   };
 
-  const monthOptions = [...new Set(filteredRows.map((row) => monthKey(row.appliedAt)).filter(Boolean))]
-    .sort((a, b) => (a > b ? -1 : 1));
+  const monthOptions = [
+    ...new Set(
+      filteredRows.map((row) => monthKey(row.appliedAt)).filter(Boolean),
+    ),
+  ].sort((a, b) => (a > b ? -1 : 1));
 
   return (
     <div className="space-y-4 min-w-0">
@@ -1864,9 +1908,21 @@ export default function ManageApplicationsByJobView({
         </Link>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-base font-semibold text-slate-900">
-          Applied Candidates: {selectedJobTitle}
-          {selectedJobCompany ? ` @ ${selectedJobCompany}` : ""}
+        <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-slate-900">
+          <span>
+            Applied Candidates: {selectedJobTitle}
+            {selectedJobCompany ? ` @ ${selectedJobCompany}` : ""}
+          </span>
+          {selectedJobJdLink ? (
+            <a
+              href={selectedJobJdLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-primary transition hover:bg-primary/10"
+            >
+              JD
+            </a>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <button
