@@ -343,9 +343,11 @@ function StudentDashboardHome({ profile }) {
   const appliedJobIds = useMemo(
     () =>
       new Set(
-        (Array.isArray(apps) ? apps : []).map((a) =>
-          String(a?.job_id || a?.jobId || ""),
-        ),
+        (Array.isArray(apps) ? apps : [])
+          .map((a) =>
+            String(a?.job_id || a?.jobId || a?.jobs?.id || a?.job?.id || ""),
+          )
+          .filter(Boolean),
       ),
     [apps],
   );
@@ -353,7 +355,13 @@ function StudentDashboardHome({ profile }) {
   const appliedByJobId = useMemo(() => {
     const map = new Map();
     (Array.isArray(apps) ? apps : []).forEach((application) => {
-      const jobId = String(application?.job_id || application?.jobId || "");
+      const jobId = String(
+        application?.job_id ||
+          application?.jobId ||
+          application?.jobs?.id ||
+          application?.job?.id ||
+          "",
+      );
       if (jobId) map.set(jobId, application);
     });
     return map;

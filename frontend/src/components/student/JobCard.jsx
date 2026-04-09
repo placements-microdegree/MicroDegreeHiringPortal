@@ -136,7 +136,8 @@ export default function JobCard({
     workModeClass[workMode.toLowerCase()] || "bg-slate-100 text-slate-700";
   const skills = normalizeSkills(job?.skills);
   const validity = getValidityDisplay(validTill);
-  const disableApply = updateAllowed
+  const shouldShowUpdate = updateAllowed || applied;
+  const disableApply = shouldShowUpdate
     ? false
     : applied || validity.type === "expired" || isClosed;
 
@@ -231,13 +232,11 @@ export default function JobCard({
           disabled={disableApply}
           className="min-w-24"
         >
-          {updateAllowed
+          {shouldShowUpdate
             ? "Update"
-            : applied
-              ? "Applied"
-              : isClosed || validity.type === "expired"
-                ? "Closed"
-                : "Apply"}
+            : isClosed || validity.type === "expired"
+              ? "Closed"
+              : "Apply"}
         </Button>
       </div>
     </article>

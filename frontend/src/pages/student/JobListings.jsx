@@ -60,9 +60,17 @@ export default function JobListings() {
   const appliedJobIds = useMemo(
     () =>
       new Set(
-        (Array.isArray(apps) ? apps : []).map((application) =>
-          String(application?.job_id || application?.jobId || ""),
-        ),
+        (Array.isArray(apps) ? apps : [])
+          .map((application) =>
+            String(
+              application?.job_id ||
+                application?.jobId ||
+                application?.jobs?.id ||
+                application?.job?.id ||
+                "",
+            ),
+          )
+          .filter(Boolean),
       ),
     [apps],
   );
@@ -70,7 +78,13 @@ export default function JobListings() {
   const appliedByJobId = useMemo(() => {
     const map = new Map();
     (Array.isArray(apps) ? apps : []).forEach((application) => {
-      const jobId = String(application?.job_id || application?.jobId || "");
+      const jobId = String(
+        application?.job_id ||
+          application?.jobId ||
+          application?.jobs?.id ||
+          application?.job?.id ||
+          "",
+      );
       if (jobId) map.set(jobId, application);
     });
     return map;

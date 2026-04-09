@@ -175,10 +175,17 @@ export default function StudentDashboard() {
   const appliedJobIds = useMemo(
     () =>
       new Set(
-        (Array.isArray(allApplications) ? allApplications : []).map(
-          (application) =>
-            String(application?.job_id || application?.jobId || ""),
-        ),
+        (Array.isArray(allApplications) ? allApplications : [])
+          .map((application) =>
+            String(
+              application?.job_id ||
+                application?.jobId ||
+                application?.jobs?.id ||
+                application?.job?.id ||
+                "",
+            ),
+          )
+          .filter(Boolean),
       ),
     [allApplications],
   );
