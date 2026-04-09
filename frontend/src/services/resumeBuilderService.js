@@ -1,4 +1,5 @@
 import { resolveApiBaseUrl } from "../utils/apiBaseUrl";
+import { supabase } from "./supabaseClient";
 
 const API_BASE_URL = resolveApiBaseUrl();
 const RESUME_BUILDER_BASE_URL = "https://resumes.microdegree.work";
@@ -43,13 +44,36 @@ export async function getCurrentSupabaseSession() {
 }
 
 export async function redirectToResumeBuilderWithSession() {
-  const data = await getCurrentSupabaseSession();
+  try {
+    let token = "";
 
-  if (data?.session?.access_token) {
-    const token = data.session.access_token;
-    globalThis.location.href = `${RESUME_BUILDER_BASE_URL}?token=${encodeURIComponent(token)}`;
-    return;
+    if (supabase) {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error("Session error:", error);
+      }
+
+      token = data?.session?.access_token || "";
+    }
+
+    // Fallback to backend session endpoint for cookie-based auth flows.
+    if (!token) {
+      const backendData = await getCurrentSupabaseSession().catch((err) => {
+        console.error("Backend session error:", err);
+        return null;
+      });
+      token = backendData?.session?.access_token || "";
+    }
+
+    if (token) {
+      globalThis.location.href = `${RESUME_BUILDER_BASE_URL}/#access_token=${encodeURIComponent(token)}`;
+      return;
+    }
+
+    globalThis.location.href = "/login";
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    globalThis.location.href = "/login";
   }
-
-  globalThis.location.href = "/login";
 }

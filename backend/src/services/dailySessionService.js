@@ -12,7 +12,8 @@ const DEFAULT_SESSIONS = [
     topic: "Daily Tech Quiz Series",
     meetingId: "836 5924 5933",
     passcode: "249030",
-    registrationLink: "https://us06web.zoom.us/meeting/register/qDJHRDtjROeU-GwBcWCHKA",
+    registrationLink:
+      "https://us06web.zoom.us/meeting/register/qDJHRDtjROeU-GwBcWCHKA",
     time: "7:00 PM to 8:00 PM",
     days: "Daily",
     afterButtonNote: "",
@@ -20,7 +21,7 @@ const DEFAULT_SESSIONS = [
   },
   {
     id: "debugging-session",
-    topic: "Interview Preparation",
+    topic: "Debugging Session",
     meetingId: "825 9316 3998",
     passcode: "",
     registrationLink:
