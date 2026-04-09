@@ -6,6 +6,7 @@ import Modal from "../common/Modal";
 import {
   createApplication,
   listApplicationsByStudent,
+  updateMyApplication,
 } from "../../services/applicationService";
 import {
   deleteResume,
@@ -224,6 +225,8 @@ export default function ApplyJobModal({
   open,
   onClose,
   job,
+  mode = "apply",
+  existingApplication = null,
   profile,
   onApplied,
 }) {
@@ -364,11 +367,15 @@ export default function ApplyJobModal({
       const safeResumes = Array.isArray(resumeRows) ? resumeRows : [];
       const previousApplication = getMostRecentApplication(
         applicationRows,
-        job?.id,
+        mode === "update" ? null : job?.id,
       );
+      const sourceApplication = existingApplication || previousApplication;
       setResumes(safeResumes);
       setForm(
-        buildFormFromSources({ previousApplication, resumeRows: safeResumes }),
+        buildFormFromSources({
+          previousApplication: sourceApplication,
+          resumeRows: safeResumes,
+        }),
       );
     };
 
@@ -378,7 +385,7 @@ export default function ApplyJobModal({
         buildFormFromSources({ previousApplication: null, resumeRows: [] }),
       );
     });
-  }, [open, job?.id, buildFormFromSources]);
+  }, [open, job?.id, mode, existingApplication, buildFormFromSources]);
 
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
   const updateAnswer = (qId, val) =>
@@ -509,7 +516,7 @@ export default function ApplyJobModal({
         answer: answers[q.id] ?? null,
       }));
 
-      await createApplication({
+      const payload = {
         jobId: job.id,
         isCurrentlyWorking: form.isCurrentlyWorking,
         noticePeriod: form.noticePeriod,
@@ -524,14 +531,27 @@ export default function ApplyJobModal({
         selectedResumeUrl: form.selectedResumeUrl,
         jdConfirmed: form.jdConfirmed,
         saveForFuture,
-        answers: answersPayload, // ← new
-      });
+        answers: answersPayload,
+      };
 
-      await showSuccess("Application submitted successfully.", "Applied");
+      if (mode === "update" && existingApplication?.id) {
+        await updateMyApplication(existingApplication.id, payload);
+        await showSuccess("Application updated successfully.", "Updated");
+      } else {
+        await createApplication(payload);
+        await showSuccess("Application submitted successfully.", "Applied");
+      }
+
       await onApplied?.();
       onClose?.();
     } catch (err) {
-      await showError(err?.message || "Failed to apply", "Apply Failed");
+      await showError(
+        err?.message ||
+          (mode === "update"
+            ? "Failed to update application"
+            : "Failed to apply"),
+        mode === "update" ? "Update Failed" : "Apply Failed",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -570,7 +590,13 @@ export default function ApplyJobModal({
               disabled={submitting || uploading}
               className="w-full sm:min-w-40 sm:w-auto"
             >
-              {submitting ? "Submitting..." : "Submit Application"}
+              {submitting
+                ? mode === "update"
+                  ? "Updating..."
+                  : "Submitting..."
+                : mode === "update"
+                  ? "Update Application"
+                  : "Submit Application"}
             </Button>
           </div>
         }

@@ -464,6 +464,133 @@ async function createApplication({ payload, jwt }) {
   return data;
 }
 
+async function updateStudentApplication({
+  applicationId,
+  studentId,
+  payload,
+  jwt,
+}) {
+  const supabase = getClient(jwt);
+  const selectedResumeUrl = toOptionalText(payload.selectedResumeUrl);
+  const jdConfirmed = payload.jdConfirmed === true;
+  const saveForFuture = payload.saveForFuture === true;
+  const customAnswers = Array.isArray(payload.answers) ? payload.answers : [];
+
+  if (!selectedResumeUrl) {
+    const err = new Error("Resume selection is required");
+    err.status = 400;
+    throw err;
+  }
+  if (!jdConfirmed) {
+    const err = new Error("JD confirmation is required");
+    err.status = 400;
+    throw err;
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("applications")
+    .select("id, job_id")
+    .eq("id", applicationId)
+    .eq("student_id", studentId)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (!existing) {
+    const err = new Error("Application not found");
+    err.status = 404;
+    throw err;
+  }
+
+  const { data: jobRow, error: jobError } = await supabase
+    .from("jobs")
+    .select("status")
+    .eq("id", existing.job_id)
+    .maybeSingle();
+  if (jobError) throw jobError;
+
+  const jobStatus = String(jobRow?.status || "")
+    .trim()
+    .toLowerCase();
+  if (jobStatus && !["active", "closed"].includes(jobStatus)) {
+    const err = new Error(
+      "You can update this application only while the job is active or closed",
+    );
+    err.status = 403;
+    throw err;
+  }
+
+  const { data: resumeRows, error: resumeError } = await supabase
+    .from("resumes")
+    .select("id, file_url")
+    .eq("user_id", studentId);
+  if (resumeError) throw resumeError;
+  const selectedResume = (resumeRows || []).find(
+    (r) => r.file_url === selectedResumeUrl,
+  );
+  if (!selectedResume) {
+    const err = new Error("Selected resume is invalid");
+    err.status = 400;
+    throw err;
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("applications")
+    .update({
+      notice_period: toOptionalText(payload.noticePeriod),
+      relevant_experience: toOptionalText(payload.relevantExperience),
+      hands_on_primary_skills: toOptionalBoolean(
+        payload.handsOnPrimarySkills,
+        "handsOnPrimarySkills",
+      ),
+      work_mode_match: toOptionalBoolean(
+        payload.workModeMatch,
+        "workModeMatch",
+      ),
+      interview_mode_available: toOptionalBoolean(
+        payload.interviewModeAvailable,
+        "interviewModeAvailable",
+      ),
+      jd_confirmed: jdConfirmed,
+      selected_resume_url: selectedResumeUrl,
+      save_for_future: saveForFuture,
+      student_concern: toOptionalText(payload.studentConcern),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", applicationId)
+    .eq("student_id", studentId)
+    .select("*")
+    .single();
+  if (updateError) throw updateError;
+
+  const { error: deleteAnswersError } = await supabase
+    .from("application_answers")
+    .delete()
+    .eq("application_id", applicationId);
+  if (deleteAnswersError) throw deleteAnswersError;
+
+  if (customAnswers.length > 0) {
+    await saveApplicationAnswers(supabase, applicationId, customAnswers);
+  }
+
+  if (saveForFuture) {
+    const { error: profileUpdateError } = await supabase
+      .from("profiles")
+      .update({
+        is_currently_working:
+          typeof payload.isCurrentlyWorking === "boolean"
+            ? payload.isCurrentlyWorking
+            : null,
+        total_experience: toOptionalText(payload.totalExperience),
+        current_ctc: toOptionalText(payload.currentCTC),
+        expected_ctc: toOptionalText(payload.expectedCTC),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", studentId);
+    if (profileUpdateError) throw profileUpdateError;
+  }
+
+  return updated;
+}
+
 // ── NEW: HR applies on behalf of a student ────────────────────────────────────
 // Bypasses eligibility/quota checks entirely — HR is trusted actor
 async function applyOnBehalf({ payload, jwt }) {
@@ -856,6 +983,7 @@ async function listCareerProgressBoard({ studentId, jwt }) {
 
 module.exports = {
   createApplication,
+  updateStudentApplication,
   applyOnBehalf,
   listApplicationsByStudent,
   listAllApplications,

@@ -7,8 +7,7 @@ import ApplyJobModal from "../../components/student/ApplyJobModal";
 import Loader from "../../components/common/Loader";
 import { listApplicationsByStudent } from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
-import { showError, showInfo } from "../../utils/alerts";
-import { confirmDanger } from "../../utils/alerts";
+import { confirmDanger, showError, showInfo } from "../../utils/alerts";
 import { FiRefreshCw } from "react-icons/fi";
 
 export default function JobListings() {
@@ -16,6 +15,8 @@ export default function JobListings() {
   const [jobs, setJobs] = useState([]);
   const [apps, setApps] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
+  const [applyMode, setApplyMode] = useState("apply");
   const [applyOpen, setApplyOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [emailSubscribe, setEmailSubscribe] = useState(false);
@@ -66,7 +67,27 @@ export default function JobListings() {
     [apps],
   );
 
+  const appliedByJobId = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(apps) ? apps : []).forEach((application) => {
+      const jobId = String(application?.job_id || application?.jobId || "");
+      if (jobId) map.set(jobId, application);
+    });
+    return map;
+  }, [apps]);
+
   const apply = async (job) => {
+    const jobId = String(job?.id || "");
+    const existingApplication = appliedByJobId.get(jobId) || null;
+
+    if (existingApplication) {
+      setSelectedJob(job);
+      setSelectedApplication(existingApplication);
+      setApplyMode("update");
+      setApplyOpen(true);
+      return;
+    }
+
     const hasEligibilityWindow = profile?.isEligible === true;
     const remainingQuota = Number(profile?.applicationQuota ?? 0);
     const hasQuotaAccess = !hasEligibilityWindow && remainingQuota > 0;
@@ -79,12 +100,9 @@ export default function JobListings() {
       return;
     }
 
-    if (appliedJobIds.has(String(job?.id))) {
-      await showInfo("You already applied for this job.", "Already Applied");
-      return;
-    }
-
     setSelectedJob(job);
+    setSelectedApplication(null);
+    setApplyMode("apply");
     setApplyOpen(true);
   };
 
@@ -176,6 +194,7 @@ export default function JobListings() {
             job={job}
             onApply={apply}
             applied={appliedJobIds.has(String(job?.id))}
+            updateAllowed={appliedJobIds.has(String(job?.id))}
           />
         ))}
       </section>
@@ -208,7 +227,9 @@ export default function JobListings() {
               <input
                 type="checkbox"
                 checked={emailSubscribe}
-                disabled={profile?.isEligible !== true || isUpdatingSubscription}
+                disabled={
+                  profile?.isEligible !== true || isUpdatingSubscription
+                }
                 onChange={onToggleEmailSubscription}
                 className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0"
               />
@@ -219,7 +240,8 @@ export default function JobListings() {
 
             {profile?.isEligible !== true ? (
               <p className="mt-2 text-xs text-slate-500">
-                To use this feature, become a MicroDegree eligible student and contact support.
+                To use this feature, become a MicroDegree eligible student and
+                contact support.
               </p>
             ) : null}
           </div>
@@ -246,6 +268,8 @@ export default function JobListings() {
         open={applyOpen}
         onClose={() => setApplyOpen(false)}
         job={selectedJob}
+        mode={applyMode}
+        existingApplication={selectedApplication}
         profile={profile}
         onApplied={refresh}
       />

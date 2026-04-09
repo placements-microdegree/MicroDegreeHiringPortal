@@ -46,6 +46,17 @@ router.get(
   cacheResponse({ ttlSeconds: 30 }),
   applicationController.myCareerProgressBoard,
 );
+router.patch(
+  "/my/:id",
+  verifyToken,
+  authorizeRole([ROLES.STUDENT]),
+  invalidateApiCache([
+    "/api/applications/me",
+    "/api/applications/analytics/me",
+    "/api/applications/career-progress/me",
+  ]),
+  applicationController.updateMyApplication,
+);
 
 // ── Admin routes — ALL static paths BEFORE /:id ───────────────────────────────
 router.get(

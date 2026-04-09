@@ -28,6 +28,14 @@ export async function listApplicationsByStudent() {
   return data.applications || [];
 }
 
+export async function updateMyApplication(applicationId, payload) {
+  const data = await request(`/api/applications/my/${applicationId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+  return data.application;
+}
+
 export async function listAllApplications() {
   const data = await request("/api/applications");
   return data.applications || [];

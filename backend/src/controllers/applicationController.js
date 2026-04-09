@@ -58,6 +58,20 @@ async function myCareerProgressBoard(req, res, next) {
   }
 }
 
+async function updateMyApplication(req, res, next) {
+  try {
+    const application = await applicationService.updateStudentApplication({
+      applicationId: req.params.id,
+      studentId: req.user.id,
+      jwt: req.user.jwt,
+      payload: req.body,
+    });
+    res.json({ success: true, application });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function allApplications(req, res, next) {
   try {
     const applications = await applicationService.listAllApplications({
@@ -282,6 +296,7 @@ module.exports = {
   myApplications,
   myAnalytics,
   myCareerProgressBoard,
+  updateMyApplication,
   allApplications,
   updateStatus,
   updateComment,

@@ -122,7 +122,12 @@ function normalizeSkills(skills) {
 
 // ── JobCard ───────────────────────────────────────────────────────────────────
 
-export default function JobCard({ job, onApply, applied }) {
+export default function JobCard({
+  job,
+  onApply,
+  applied,
+  updateAllowed = false,
+}) {
   const validTill = job?.valid_till || job?.validTill;
   const status = String(job?.status || "active").toLowerCase();
   const isClosed = status === "closed";
@@ -131,7 +136,9 @@ export default function JobCard({ job, onApply, applied }) {
     workModeClass[workMode.toLowerCase()] || "bg-slate-100 text-slate-700";
   const skills = normalizeSkills(job?.skills);
   const validity = getValidityDisplay(validTill);
-  const disableApply = applied || validity.type === "expired" || isClosed;
+  const disableApply = updateAllowed
+    ? false
+    : applied || validity.type === "expired" || isClosed;
 
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
@@ -224,11 +231,13 @@ export default function JobCard({ job, onApply, applied }) {
           disabled={disableApply}
           className="min-w-24"
         >
-          {applied
-            ? "Applied"
-            : isClosed || validity.type === "expired"
-              ? "Closed"
-              : "Apply"}
+          {updateAllowed
+            ? "Update"
+            : applied
+              ? "Applied"
+              : isClosed || validity.type === "expired"
+                ? "Closed"
+                : "Apply"}
         </Button>
       </div>
     </article>
