@@ -9,7 +9,7 @@
       "time": "7:00 PM to 8:00 PM",
       "days": "Daily",
       "afterButtonNote": "",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "debugging-session",
@@ -20,7 +20,7 @@
       "time": "8:00 PM to 9:00 PM",
       "days": "Wednesday, Thursday",
       "afterButtonNote": "Wednesday: Practical Test  • Thursday: Mock Interviews",
-      "enabled": false
+      "enabled": true
     },
     {
       "id": "weekend-webinar-sessions",
@@ -31,7 +31,7 @@
       "time": "10:00 AM to 12:00 PM",
       "days": "Sunday",
       "afterButtonNote": "Sunday Mornings (2-hour Technical or HR Interview Prep)",
-      "enabled": false
+      "enabled": true
     }
   ]
 }

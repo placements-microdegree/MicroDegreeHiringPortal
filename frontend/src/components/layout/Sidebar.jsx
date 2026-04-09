@@ -187,7 +187,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       { to: "/student/jobs", label: "Premium Jobs", icon: FiBookOpen },
       {
         to: "/student/daily-sessions",
-        label: "Daily Sessions",
+        label: "Interview Prep Session",
         icon: FiCalendar,
       },
       {
