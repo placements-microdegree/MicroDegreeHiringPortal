@@ -189,14 +189,17 @@ async function notifyEligibleStudentsByEmail(job) {
 
     const subject = `🚀 New Job Alert: ${job.title} at ${job.company}`;
     const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-    const frontendOrigin =
-      (process.env.FRONTEND_ORIGIN || "http://localhost:5173").replace(/\/$/, "");
+    const frontendOrigin = (
+      process.env.FRONTEND_ORIGIN || "http://localhost:5173"
+    ).replace(/\/$/, "");
 
     for (let i = 0; i < emails.length; i += 1) {
       const email = emails[i];
-      const token = emailSubscriptionService.createEmailSubscriptionToken(email);
+      const token =
+        emailSubscriptionService.createEmailSubscriptionToken(email);
       const unsubscribeUrl =
-        `${frontendOrigin}/email-subscription?token=` + encodeURIComponent(token);
+        `${frontendOrigin}/email-subscription?token=` +
+        encodeURIComponent(token);
       const html = buildJobEmailHtml(job, { unsubscribeUrl });
 
       // eslint-disable-next-line no-await-in-loop
@@ -225,4 +228,67 @@ async function notifyEligibleStudentsByEmail(job) {
   }
 }
 
-module.exports = { notifyEligibleStudentsByEmail };
+function buildPasswordOtpEmailHtml({ otp, expiresInMinutes }) {
+  return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body style="margin:0;padding:0;background-color:#f4f4f7;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:28px 0;">
+      <tr>
+        <td align="center">
+          <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+            <tr>
+              <td style="padding:26px 30px;background:linear-gradient(135deg,#2563eb,#1d4ed8);text-align:center;">
+                <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Password Reset OTP</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px 30px;">
+                <p style="margin:0 0 14px;font-size:15px;color:#111827;line-height:1.7;">
+                  We received a request to reset your MicroDegree account password.
+                </p>
+                <p style="margin:0 0 18px;font-size:15px;color:#111827;line-height:1.7;">
+                  Use the following OTP to continue:
+                </p>
+                <p style="margin:0 0 20px;text-align:center;">
+                  <span style="display:inline-block;padding:10px 20px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;font-size:30px;letter-spacing:10px;font-weight:700;color:#1e3a8a;">${otp}</span>
+                </p>
+                <p style="margin:0 0 10px;font-size:14px;color:#334155;line-height:1.6;">
+                  This OTP will expire in <strong>${expiresInMinutes} minutes</strong>.
+                </p>
+                <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
+                  If you did not request a password reset, you can safely ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>`;
+}
+
+async function sendPasswordOtpEmail({ to, otp, expiresInMinutes = 5 }) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    throw new Error("SMTP transporter is not configured");
+  }
+
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const subject = "Your MicroDegree password reset OTP";
+  const html = buildPasswordOtpEmailHtml({ otp, expiresInMinutes });
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    html,
+  });
+}
+
+module.exports = { notifyEligibleStudentsByEmail, sendPasswordOtpEmail };

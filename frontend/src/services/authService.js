@@ -8,7 +8,7 @@ async function request(path, { method = "GET", body, headers } = {}) {
 
   let requestHeaders = headers ? { ...headers } : undefined;
   if (body && !isForm) {
-    requestHeaders = requestHeaders ? requestHeaders : {};
+    requestHeaders = requestHeaders || {};
     requestHeaders["Content-Type"] = "application/json";
   }
 
@@ -71,6 +71,30 @@ export async function loginWithGoogle() {
   globalThis.location.href = `${API_BASE_URL}/api/auth/google/start`;
 }
 
+export async function sendPasswordOtp(email) {
+  const data = await request("/api/auth/send-otp", {
+    method: "POST",
+    body: { email },
+  });
+  return data;
+}
+
+export async function verifyPasswordOtp({ email, otp }) {
+  const data = await request("/api/auth/verify-otp", {
+    method: "POST",
+    body: { email, otp },
+  });
+  return data;
+}
+
+export async function resetPasswordWithOtp({ email, otp, newPassword }) {
+  const data = await request("/api/auth/reset-password", {
+    method: "POST",
+    body: { email, otp, newPassword },
+  });
+  return data;
+}
+
 export async function logout() {
   await request("/api/auth/logout", { method: "POST" });
 }
@@ -104,7 +128,10 @@ export async function getEmailSubscriptionByToken(token) {
   return data.subscription;
 }
 
-export async function updateEmailSubscriptionByToken({ token, emailSubscribe }) {
+export async function updateEmailSubscriptionByToken({
+  token,
+  emailSubscribe,
+}) {
   const data = await request("/api/profile/email-subscription/by-token", {
     method: "POST",
     body: {
@@ -114,12 +141,3 @@ export async function updateEmailSubscriptionByToken({ token, emailSubscribe }) 
   });
   return data.subscription;
 }
-
-// export async function updateProfile(nextProfile) {
-//   console.log("skills being sent:", nextProfile?.skills);
-//   const data = await request("/api/profile/me", {
-//     method: "PUT",
-//     body: nextProfile,
-//   });
-//   return data.profile;
-// }

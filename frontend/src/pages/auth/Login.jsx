@@ -127,7 +127,8 @@ export default function Login() {
             </span>
 
             <h1 className="mt-6 max-w-xl text-2xl font-extrabold leading-snug sm:text-3xl lg:text-4xl auth-fade-up">
-              Empowering students with real-world skills and career opportunities.
+              Empowering students with real-world skills and career
+              opportunities.
             </h1>
 
             <p className="mt-5 max-w-xl text-sm text-blue-100 sm:text-base auth-fade-up-delayed">
@@ -135,9 +136,14 @@ export default function Login() {
             </p>
 
             <div className="mt-8 rounded-2xl border border-white/35 bg-white/15 p-5 shadow-lg backdrop-blur-md sm:p-6">
-              <h2 className="text-lg font-semibold text-white">About MicroDegree</h2>
+              <h2 className="text-lg font-semibold text-white">
+                About MicroDegree
+              </h2>
               <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-blue-50 marker:text-blue-200 sm:text-base">
-                <li>Kannadiga first approach - Making Kannadigas global tech talent</li>
+                <li>
+                  Kannadiga first approach - Making Kannadigas global tech
+                  talent
+                </li>
                 <li>Build 20+ real world capstone projects</li>
                 <li>Showcase 5+ year work Experience in Cloud &amp; DevOps</li>
                 <li>Learn 10x Faster in Kannada</li>
@@ -163,7 +169,9 @@ export default function Login() {
                 />
               </div>
 
-              <h2 className="mt-6 text-3xl font-bold text-slate-900">Welcome Back</h2>
+              <h2 className="mt-6 text-3xl font-bold text-slate-900">
+                Welcome Back
+              </h2>
               <p className="mt-2 text-sm text-slate-600">
                 Please enter your credentials to continue your journey.
               </p>
@@ -204,22 +212,28 @@ export default function Login() {
                     type="button"
                     className="rounded-md p-1 text-slate-500 transition hover:text-slate-700"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                    {showPassword ? (
+                      <FiEyeOff size={18} />
+                    ) : (
+                      <FiEye size={18} />
+                    )}
                   </button>
                 }
                 required
               />
 
-              {/* <div className="-mt-2 flex justify-end">
-                <a
-                  href="mailto:support@microdegree.work"
+              <div className="-mt-2 flex justify-end">
+                <Link
+                  to="/forgot-password"
                   className="text-sm font-medium text-blue-700 transition hover:text-blue-800"
                 >
                   Forgot password?
-                </a>
-              </div> */}
+                </Link>
+              </div>
 
               <Button
                 type="submit"

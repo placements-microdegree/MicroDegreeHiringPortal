@@ -7,6 +7,7 @@ import DashboardLayout from "../components/layout/DashboardLayout";
 import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
 import CompleteProfile from "../pages/auth/CompleteProfile";
+import ForgotPasswordOtp from "../pages/auth/ForgotPasswordOtp";
 
 import StudentDashboard from "../pages/student/StudentDashboard";
 import JobListings from "../pages/student/JobListings";
@@ -97,6 +98,7 @@ export default function AppRoutes() {
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/login" element={<AuthRedirect />} />
       <Route path="/signup" element={<SignupRedirect />} />
+      <Route path="/forgot-password" element={<ForgotPasswordOtp />} />
       <Route path="/external-jobs" element={<ExternalJobsShareEntry />} />
       <Route path="/email-subscription" element={<EmailSubscription />} />
       <Route

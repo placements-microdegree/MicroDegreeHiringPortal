@@ -7,6 +7,15 @@ const { getSupabaseAdmin } = require("../config/db");
 const { setAuthCookies, clearAuthCookies } = require("../utils/cookies");
 const { ROLES } = require("../utils/constants");
 const { normalizePhone } = require("../utils/phone");
+const { sendPasswordOtpEmail } = require("../services/emailService");
+
+const OTP_LENGTH = 6;
+const OTP_EXPIRY_MINUTES = 5;
+const OTP_RESEND_WINDOW_MS = 60 * 1000;
+const OTP_MAX_VERIFY_ATTEMPTS = 5;
+const OTP_VERIFY_BLOCK_MS = 10 * 60 * 1000;
+
+const otpVerifyAttempts = new Map();
 
 function base64Url(buffer) {
   return buffer
@@ -46,6 +55,105 @@ function normalizeEmail(email) {
   return String(email || "")
     .trim()
     .toLowerCase();
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function createNumericOtp(length = OTP_LENGTH) {
+  const max = 10 ** length;
+  const random = crypto.randomInt(0, max);
+  return String(random).padStart(length, "0");
+}
+
+function getOtpHashSalt() {
+  return (
+    process.env.OTP_HASH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || ""
+  );
+}
+
+function hashOtp(email, otp) {
+  const normalizedEmail = normalizeEmail(email);
+  const salt = getOtpHashSalt();
+  return crypto
+    .createHash("sha256")
+    .update(`${normalizedEmail}:${otp}:${salt}`)
+    .digest("hex");
+}
+
+function readOtpAttemptState(key) {
+  const now = Date.now();
+  const existing = otpVerifyAttempts.get(key);
+  if (!existing) return { count: 0, blockedUntil: 0 };
+  if (existing.blockedUntil && existing.blockedUntil <= now) {
+    otpVerifyAttempts.delete(key);
+    return { count: 0, blockedUntil: 0 };
+  }
+  return existing;
+}
+
+function registerFailedOtpAttempt(key) {
+  const now = Date.now();
+  const current = readOtpAttemptState(key);
+  const nextCount = (current.count || 0) + 1;
+  const shouldBlock = nextCount >= OTP_MAX_VERIFY_ATTEMPTS;
+  const nextState = {
+    count: shouldBlock ? 0 : nextCount,
+    blockedUntil: shouldBlock ? now + OTP_VERIFY_BLOCK_MS : 0,
+  };
+  otpVerifyAttempts.set(key, nextState);
+  return nextState;
+}
+
+function clearOtpAttemptState(key) {
+  otpVerifyAttempts.delete(key);
+}
+
+async function getOtpRow(supabase, email) {
+  const { data, error } = await supabase
+    .from("otp_codes")
+    .select("email, otp, expires_at, created_at")
+    .eq("email", normalizeEmail(email))
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteOtpRow(supabase, email) {
+  const { error } = await supabase
+    .from("otp_codes")
+    .delete()
+    .eq("email", normalizeEmail(email));
+  if (error) throw error;
+}
+
+async function verifyOtpForEmail({ supabase, email, otp }) {
+  const row = await getOtpRow(supabase, email);
+  if (!row) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const now = Date.now();
+  const expiresAtMs = new Date(row.expires_at).getTime();
+  if (!Number.isFinite(expiresAtMs) || now > expiresAtMs) {
+    await deleteOtpRow(supabase, email);
+    return { ok: false, reason: "expired" };
+  }
+
+  const incomingHash = hashOtp(email, otp);
+  const isMatch =
+    String(incomingHash).length === String(row.otp || "").length &&
+    crypto.timingSafeEqual(
+      Buffer.from(incomingHash),
+      Buffer.from(row.otp || ""),
+    );
+
+  if (!isMatch) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  return { ok: true, row };
 }
 
 function getAdminClient() {
@@ -673,6 +781,199 @@ async function googleCallback(req, res, next) {
   }
 }
 
+async function sendOtp(req, res, next) {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    if (!email || !isValidEmail(email)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "A valid email is required" });
+    }
+
+    const adminClient = getAdminClient();
+    const existingUser = await findUserByEmail(adminClient, email);
+    if (!existingUser?.id) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No account found for this email" });
+    }
+
+    const existingOtpRow = await getOtpRow(adminClient, email);
+    if (existingOtpRow?.created_at) {
+      const createdAtMs = new Date(existingOtpRow.created_at).getTime();
+      if (Number.isFinite(createdAtMs)) {
+        const elapsed = Date.now() - createdAtMs;
+        if (elapsed < OTP_RESEND_WINDOW_MS) {
+          const waitForSeconds = Math.ceil(
+            (OTP_RESEND_WINDOW_MS - elapsed) / 1000,
+          );
+          return res.status(429).json({
+            success: false,
+            message: `Please wait ${waitForSeconds}s before requesting another OTP`,
+          });
+        }
+      }
+    }
+
+    const otp = createNumericOtp();
+    const otpHash = hashOtp(email, otp);
+    const nowIso = new Date().toISOString();
+    const expiresAtIso = new Date(
+      Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000,
+    ).toISOString();
+
+    const { error: upsertError } = await adminClient.from("otp_codes").upsert(
+      {
+        email,
+        otp: otpHash,
+        expires_at: expiresAtIso,
+        created_at: nowIso,
+      },
+      { onConflict: "email" },
+    );
+    if (upsertError) throw upsertError;
+
+    await sendPasswordOtpEmail({
+      to: email,
+      otp,
+      expiresInMinutes: OTP_EXPIRY_MINUTES,
+    });
+
+    return res.json({
+      success: true,
+      message: "OTP sent successfully",
+      expiresInMinutes: OTP_EXPIRY_MINUTES,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function verifyOtp(req, res, next) {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const otp = String(req.body?.otp || "").trim();
+    if (!email || !isValidEmail(email)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "A valid email is required" });
+    }
+    if (!/^\d{6}$/.test(otp)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP must be a 6-digit code" });
+    }
+
+    const clientIp = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const attemptKey = `${email}:${clientIp}`;
+    const attemptState = readOtpAttemptState(attemptKey);
+    if (attemptState.blockedUntil && attemptState.blockedUntil > Date.now()) {
+      const retryAfter = Math.ceil(
+        (attemptState.blockedUntil - Date.now()) / 1000,
+      );
+      return res.status(429).json({
+        success: false,
+        message: `Too many invalid attempts. Try again in ${retryAfter}s`,
+      });
+    }
+
+    const adminClient = getAdminClient();
+    const verification = await verifyOtpForEmail({
+      supabase: adminClient,
+      email,
+      otp,
+    });
+    if (!verification.ok) {
+      const state = registerFailedOtpAttempt(attemptKey);
+      if (verification.reason === "expired") {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "OTP has expired. Please request a new code",
+          });
+      }
+
+      if (state.blockedUntil) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many invalid attempts. Please request a new OTP later",
+        });
+      }
+
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    clearOtpAttemptState(attemptKey);
+    return res.json({ success: true, message: "OTP verified successfully" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function resetPassword(req, res, next) {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const otp = String(req.body?.otp || "").trim();
+    const newPassword = String(req.body?.newPassword || "");
+
+    if (!email || !isValidEmail(email)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "A valid email is required" });
+    }
+    if (!/^\d{6}$/.test(otp)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP must be a 6-digit code" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    const adminClient = getAdminClient();
+    const user = await findUserByEmail(adminClient, email);
+    if (!user?.id) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No account found for this email" });
+    }
+
+    const verification = await verifyOtpForEmail({
+      supabase: adminClient,
+      email,
+      otp,
+    });
+    if (!verification.ok) {
+      const message =
+        verification.reason === "expired"
+          ? "OTP has expired. Please request a new code"
+          : "Invalid OTP";
+      return res.status(400).json({ success: false, message });
+    }
+
+    const { error: resetError } = await adminClient.auth.admin.updateUserById(
+      user.id,
+      {
+        password: newPassword,
+      },
+    );
+    if (resetError) throw resetError;
+
+    await deleteOtpRow(adminClient, email);
+
+    return res.json({
+      success: true,
+      message: "Password reset successful. Please login with your new password",
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   me,
   session,
@@ -681,4 +982,7 @@ module.exports = {
   logout,
   googleStart,
   googleCallback,
+  sendOtp,
+  verifyOtp,
+  resetPassword,
 };
