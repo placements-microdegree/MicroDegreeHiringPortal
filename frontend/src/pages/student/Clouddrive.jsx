@@ -37,6 +37,7 @@ const currentStatusOptions = [
 
 const totalExperienceOptions = [
   "Fresher (0 years)",
+  "6 months - 1 year",
   "1-2 years",
   "3-4 years",
   "5-6 years",
@@ -46,6 +47,7 @@ const totalExperienceOptions = [
 
 const relevantExperienceOptions = [
   "No experience (learning stage)",
+  "6 months - 1 year",
   "< 1 year",
   "1-2 years",
   "3-4 years",
@@ -203,6 +205,45 @@ function formatDate(value) {
   return date.toDateString();
 }
 
+function resolveDriveStartDate(value) {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    const [year, month, day] = String(value)
+      .split("-")
+      .map((item) => Number(item));
+    if (!year || !month || !day) return null;
+    return new Date(year, month - 1, day, 9, 30, 0, 0);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+}
+
+function getCountdownParts(targetDate, nowMs) {
+  if (!(targetDate instanceof Date) || Number.isNaN(targetDate.getTime())) return null;
+  const diff = targetDate.getTime() - nowMs;
+  if (diff <= 0) {
+    return {
+      started: true,
+      days: 0,
+      hours: 0,
+      minutes: 0,
+    };
+  }
+
+  const totalMinutes = Math.floor(diff / (1000 * 60));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  return {
+    started: false,
+    days,
+    hours,
+    minutes,
+  };
+}
+
 function renderRadioGroup({
   name,
   label,
@@ -279,6 +320,7 @@ function mapTagValue(value, mapping) {
 export default function CloudDrive() {
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
+  const [knowAboutOpen, setKnowAboutOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -288,6 +330,7 @@ export default function CloudDrive() {
   const [pastLoading, setPastLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
+  const [countdownNow, setCountdownNow] = useState(Date.now());
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -352,6 +395,16 @@ export default function CloudDrive() {
     void loadDrive();
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCountdownNow(Date.now());
+    }, 60 * 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const tentativeNextDate = useMemo(() => getTentativeNextDriveDate(), []);
   const closeAt = nextDriveInfo?.registration_close_at
     ? new Date(nextDriveInfo.registration_close_at)
@@ -362,6 +415,14 @@ export default function CloudDrive() {
   const displayNextDriveDate = isCloseWindowPassed
     ? tentativeNextDate
     : nextDriveInfo?.drive_date || tentativeNextDate;
+  const driveStartDate = useMemo(
+    () => resolveDriveStartDate(nextDriveInfo?.drive_date),
+    [nextDriveInfo?.drive_date],
+  );
+  const driveCountdown = useMemo(
+    () => getCountdownParts(driveStartDate, countdownNow),
+    [driveStartDate, countdownNow],
+  );
 
   const progressPercentage = Math.round((step / STEP_COUNT) * 100);
 
@@ -590,6 +651,7 @@ export default function CloudDrive() {
     });
     const relevantExperienceTag = mapTagValue(form.relevant_experience, {
       "No experience (learning stage)": "none",
+      "6 months - 1 year": "0.5-1",
       "< 1 year": "<1",
       "1-2 years": "1-2",
       "3-4 years": "3-4",
@@ -597,6 +659,7 @@ export default function CloudDrive() {
     });
     const totalExperienceTag = mapTagValue(form.total_experience, {
       "Fresher (0 years)": "0",
+      "6 months - 1 year": "0.5-1",
       "1-2 years": "1-2",
       "3-4 years": "3-4",
       "5-6 years": "5-6",
@@ -723,8 +786,40 @@ export default function CloudDrive() {
                       <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <span>Come on time, be professional.</span>
                     </li>
+                    <li className="flex items-start gap-2">
+                      <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>Be on time.</span>
+                    </li>
                   </ul>
                 </div>
+
+                {driveCountdown ? (
+                  <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-sky-50 to-cyan-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                      Drive start countdown
+                    </p>
+                    {driveCountdown.started ? (
+                      <p className="mt-1 text-sm font-semibold text-emerald-700">
+                        Drive day has started. Join on time for the rounds.
+                      </p>
+                    ) : (
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded-lg border border-indigo-200 bg-white px-2 py-2">
+                          <p className="text-lg font-bold leading-none text-indigo-800">{driveCountdown.days}</p>
+                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Days</p>
+                        </div>
+                        <div className="rounded-lg border border-indigo-200 bg-white px-2 py-2">
+                          <p className="text-lg font-bold leading-none text-indigo-800">{driveCountdown.hours}</p>
+                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Hours</p>
+                        </div>
+                        <div className="rounded-lg border border-indigo-200 bg-white px-2 py-2">
+                          <p className="text-lg font-bold leading-none text-indigo-800">{driveCountdown.minutes}</p>
+                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Minutes</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               {nextDriveInfo.zoom_link ? (
@@ -768,13 +863,68 @@ export default function CloudDrive() {
               Oops, you missed registration for this drive. Next drive is expected on <strong>{formatDate(tentativeNextDate)}</strong>.
             </div>
           ) : (
-            <Button onClick={openRegistrationModal}>
-              <FiExternalLink className="mr-2 h-4 w-4" />
-              Register for Cloud Drive
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <Button onClick={openRegistrationModal} className="w-full sm:w-auto">
+                <FiExternalLink className="mr-2 h-4 w-4" />
+                Register for Cloud Drive
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setKnowAboutOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                Know About Drive
+              </Button>
+            </div>
           )}
         </div>
       </section>
+
+      <Modal
+        title="Know About Cloud Drive Tracks"
+        open={knowAboutOpen}
+        onClose={() => setKnowAboutOpen(false)}
+        scrollable
+        maxWidthClass="max-w-[920px]"
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-cyan-50 to-indigo-50 p-4">
+            <h3 className="text-base font-semibold text-slate-900">Track-wise interview readiness roadmap</h3>
+            <p className="mt-1 text-sm leading-6 text-slate-700">
+              We run a structured hiring simulation with MCQ screening, practical task execution, and live interview rounds.
+              This helps you become job-ready with real interview discipline and role-based evaluation.
+            </p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <h4 className="text-sm font-semibold text-amber-900">AWS Track</h4>
+              <ul className="mt-2 space-y-2 text-sm text-amber-900">
+                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />MCQ round focused on AWS fundamentals, networking, IAM, and architecture basics.</li>
+                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Practical tasks around EC2, S3, IAM, VPC, Route 53, and monitoring scenarios.</li>
+                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Face-to-face interview to validate troubleshooting, deployment approach, and communication clarity.</li>
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+              <h4 className="text-sm font-semibold text-emerald-900">DevOps Track</h4>
+              <ul className="mt-2 space-y-2 text-sm text-emerald-900">
+                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />MCQ round on Linux, CI/CD, container basics, pipelines, and release workflows.</li>
+                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Practical tasks on Docker, Jenkins, Terraform, Kubernetes, and automation thinking.</li>
+                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Live interview to assess hands-on confidence, debugging method, and production readiness.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+            <p className="font-semibold">How to prepare better</p>
+            <p className="mt-1 leading-6">
+              Attend regular interview preparation sessions, complete practice tasks weekly, and participate in mock interviews.
+              Consistent preparation is the fastest way to clear all rounds and get mapped to opportunities.
+            </p>
+          </div>
+        </div>
+      </Modal>
 
       <section className="rounded-xl border border-slate-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-slate-900">Your Past Cloud Drive Records</h2>
