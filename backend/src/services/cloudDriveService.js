@@ -6,6 +6,9 @@ function getReadClient() {
 
 const PROFILE_CLEARED_STATUSES = new Set([
   "Cleared",
+  "Practical Online Task Round Cleared",
+  "Face-to-Face Round (Live Interview) Cleared",
+  "Managerial Round Cleared",
   "Cleared AWS Drive",
   "Cleared DevOps Drive",
 ]);

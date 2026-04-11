@@ -73,7 +73,14 @@ function toggleSelection(prev, id) {
 }
 
 function isClearedStatus(value) {
-  return ["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(
+  return [
+    "Cleared",
+    "Practical Online Task Round Cleared",
+    "Face-to-Face Round (Live Interview) Cleared",
+    "Managerial Round Cleared",
+    "Cleared AWS Drive",
+    "Cleared DevOps Drive",
+  ].includes(
     String(value || "").trim(),
   );
 }

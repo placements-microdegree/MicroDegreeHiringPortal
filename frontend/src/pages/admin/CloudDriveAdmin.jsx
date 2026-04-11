@@ -13,13 +13,18 @@ import {
 const HR_STATUS_OPTIONS = [
   "Registered",
   "MCQ Screening Test cleared",
-  "Practical Online Task Round",
-  "Face-to-Face Round (Live Interview)",
-  "Managerial Round",
-  "Cleared",
+  // "Practical Online Task Round",
+  "Practical Online Task Round Cleared",
+  "Practical Online Task Round Rejected",
+  // "Face-to-Face Round (Live Interview)",
+  "Face-to-Face Round (Live Interview) Cleared",
+  "Face-to-Face Round (Live Interview) Rejected",
+  // "Managerial Round",
+  "Managerial Round Cleared",
+  "Managerial Round Rejected",
   "Cleared AWS Drive",
   "Cleared DevOps Drive",
-  "Rejected",
+  "Not Attended drive",
 ];
 
 function toDateInputValue(value) {

@@ -11,6 +11,9 @@ function isCloudDriveClearedStatus(value) {
   const normalized = String(value || "").trim();
   return (
     normalized === "Cleared" ||
+    normalized === "Practical Online Task Round Cleared" ||
+    normalized === "Face-to-Face Round (Live Interview) Cleared" ||
+    normalized === "Managerial Round Cleared" ||
     normalized === "Cleared AWS Drive" ||
     normalized === "Cleared DevOps Drive"
   );

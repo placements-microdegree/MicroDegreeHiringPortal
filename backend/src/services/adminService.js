@@ -360,12 +360,22 @@ const ALLOWED_CLOUD_DRIVE_PROFILE_STATUS = new Set([
   "Registered",
   "Not Cleared",
   "Cleared",
+  "Practical Online Task Round Cleared",
+  "Face-to-Face Round (Live Interview) Cleared",
+  "Managerial Round Cleared",
   "Cleared AWS Drive",
   "Cleared DevOps Drive",
+  "Practical Online Task Round Rejected",
+  "Face-to-Face Round (Live Interview) Rejected",
+  "Managerial Round Rejected",
+  "Not Attended drive",
 ]);
 
 const CLEARED_STATUSES = new Set([
   "Cleared",
+  "Practical Online Task Round Cleared",
+  "Face-to-Face Round (Live Interview) Cleared",
+  "Managerial Round Cleared",
   "Cleared AWS Drive",
   "Cleared DevOps Drive",
 ]);

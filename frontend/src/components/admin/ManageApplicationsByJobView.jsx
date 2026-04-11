@@ -1792,21 +1792,21 @@ export default function ManageApplicationsByJobView({
         return false;
 
       const cloudStatus = String(row.studentCloudDriveStatus || "").trim();
+      const clearedCloudStatuses = [
+        "Cleared",
+        "Practical Online Task Round Cleared",
+        "Face-to-Face Round (Live Interview) Cleared",
+        "Managerial Round Cleared",
+        "Cleared AWS Drive",
+        "Cleared DevOps Drive",
+      ];
       if (cloudDriveFilter === "cleared") {
-        if (
-          !["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(
-            cloudStatus,
-          )
-        ) {
+        if (!clearedCloudStatuses.includes(cloudStatus)) {
           return false;
         }
       }
       if (cloudDriveFilter === "not-cleared") {
-        if (
-          ["Cleared", "Cleared AWS Drive", "Cleared DevOps Drive"].includes(
-            cloudStatus,
-          )
-        ) {
+        if (clearedCloudStatuses.includes(cloudStatus)) {
           return false;
         }
       }

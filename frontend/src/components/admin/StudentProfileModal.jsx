@@ -10,8 +10,15 @@ const CLOUD_DRIVE_STATUS_OPTIONS = [
   "Registered",
   "Not Cleared",
   "Cleared",
+  "Practical Online Task Round Cleared",
+  "Practical Online Task Round Rejected",
+  "Face-to-Face Round (Live Interview) Cleared",
+  "Face-to-Face Round (Live Interview) Rejected",
+  "Managerial Round Cleared",
+  "Managerial Round Rejected",
   "Cleared AWS Drive",
   "Cleared DevOps Drive",
+  "Not Attended drive",
 ];
 
 function formatDate(value) {
