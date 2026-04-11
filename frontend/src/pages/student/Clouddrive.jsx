@@ -352,6 +352,9 @@ export default function CloudDrive() {
   const isCloseWindowPassed = Boolean(
     closeAt && closeAt.getTime() < Date.now() && !registered,
   );
+  const displayNextDriveDate = isCloseWindowPassed
+    ? tentativeNextDate
+    : nextDriveInfo?.drive_date || tentativeNextDate;
 
   const progressPercentage = Math.round((step / STEP_COUNT) * 100);
 
@@ -654,7 +657,7 @@ export default function CloudDrive() {
           </div>
 
           <div className="rounded-lg bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
-            Next Drive: <strong>{formatDate(nextDriveInfo?.drive_date || tentativeNextDate)}</strong>
+            Next Drive: <strong>{formatDate(displayNextDriveDate)}</strong>
           </div>
         </div>
 
@@ -700,6 +703,18 @@ export default function CloudDrive() {
                     <li className="flex items-start gap-2">
                       <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <span>The same details will also be available on your dashboard</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>Login through laptop is mandatory.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>Treat this as a real interview.</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <FiCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span>Come on time, be professional.</span>
                     </li>
                   </ul>
                 </div>
