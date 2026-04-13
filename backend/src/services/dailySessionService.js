@@ -1,5 +1,5 @@
-const fs = require("fs/promises");
-const path = require("path");
+const fs = require("node:fs/promises");
+const path = require("node:path");
 
 const SETTINGS_FILE_PATH = path.join(
   __dirname,
@@ -10,14 +10,15 @@ const DEFAULT_SESSIONS = [
   {
     id: "daily-tech-session",
     topic: "Daily Tech Quiz Series",
-    meetingId: "836 5924 5933",
+    meetingId: "83659245933",
     passcode: "249030",
-    registrationLink:
-      "https://us06web.zoom.us/meeting/register/qDJHRDtjROeU-GwBcWCHKA",
+    registrationLink: "",
     time: "7:00 PM to 8:00 PM",
     days: "Daily",
-    afterButtonNote: "",
+    afterButtonNote:
+      "Daily registration link is generated securely when you click Join.",
     enabled: true,
+    joinMode: "api",
   },
   {
     id: "debugging-session",
@@ -54,6 +55,9 @@ function normalizeSessions(inputSessions) {
 
     return {
       ...defaultSession,
+      joinMode:
+        String(matching?.joinMode || defaultSession.joinMode || "").trim() ||
+        undefined,
       enabled:
         typeof matching?.enabled === "boolean"
           ? matching.enabled

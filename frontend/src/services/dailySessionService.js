@@ -26,3 +26,13 @@ export async function updateDailySessionsSettings(sessions) {
   });
   return data.sessions || [];
 }
+
+export async function joinTestingSession() {
+  const data = await request("/api/join-session", {
+    method: "POST",
+  });
+  if (!data?.join_url) {
+    throw new Error("Join URL was not received from server");
+  }
+  return data.join_url;
+}

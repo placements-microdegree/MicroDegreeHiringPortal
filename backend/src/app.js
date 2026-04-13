@@ -19,6 +19,7 @@ const cloudDriveRoutes = require("./routes/cloudDriveRoutes");
 const referralRoutes = require("./routes/referralRoutes");
 const resumeBuilderRoutes = require("./routes/resumeBuilderRoutes");
 const dailySessionRoutes = require("./routes/dailySessionRoutes");
+const joinSessionRoutes = require("./routes/joinSessionRoutes");
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use("/api/cloud-drive", cloudDriveRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/resume-builder", resumeBuilderRoutes);
 app.use("/api/daily-sessions", dailySessionRoutes);
+app.use("/api/join-session", joinSessionRoutes);
 
 app.use(errorHandler);
 

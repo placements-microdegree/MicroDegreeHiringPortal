@@ -803,11 +803,9 @@ export default function DashboardLayout({ role }) {
   const shouldShowEligibilityOverlay =
     isStudent &&
     isNonEligible &&
-    [
-      "/student/career-guide",
-      "/student/cloud-drive",
-      "/student/daily-sessions",
-    ].includes(location.pathname);
+    ["/student/career-guide", "/student/cloud-drive"].includes(
+      location.pathname,
+    );
 
   useEffect(() => {
     if (!shouldShowEligibilityOverlay) return undefined;

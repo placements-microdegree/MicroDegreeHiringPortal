@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { FiClock, FiVideo, FiCalendar, FiLock } from "react-icons/fi";
-import { listDailySessions } from "../../services/dailySessionService";
+import {
+  joinTestingSession,
+  listDailySessions,
+} from "../../services/dailySessionService";
 
 const DAY_INDEX = {
   sunday: 0,
@@ -60,33 +63,42 @@ function parseClockTime(referenceDate, value) {
   return date;
 }
 
-function getSessionState(session, now) {
-  const isEnabled = session?.enabled === true;
+function getDisabledSessionState() {
+  return {
+    cardClass: "border-slate-200 bg-slate-50 opacity-90",
+    badgeClass: "bg-slate-200 text-slate-700",
+    badgeText: "Not Live Yet",
+    buttonLabel: "Will Be Live Soon",
+    buttonDisabled: true,
+    buttonHref: "",
+    buttonAction: "link",
+  };
+}
+
+function getUpcomingSessionState(activeDays, now) {
+  const nextDay = getNextSessionDayLabel(activeDays, now.getDay());
+  return {
+    cardClass: "border-slate-200 bg-white",
+    badgeClass: "bg-blue-100 text-blue-700",
+    badgeText: nextDay ? `Next: ${nextDay}` : "Upcoming",
+    buttonLabel: nextDay ? `Join On ${nextDay}` : "Upcoming Session",
+    buttonDisabled: true,
+    buttonHref: "",
+    buttonAction: "link",
+  };
+}
+
+function getTodaySessionState({
+  now,
+  startAt,
+  endAt,
+  hasJoinLink,
+  registrationLink,
+  isApiJoin,
+}) {
   const joinEarlyWindowMs = 30 * 60 * 1000;
-  const activeDays = parseActiveDays(session?.days);
-  const isScheduledToday = activeDays.has(now.getDay());
 
-  const [startText = "", endText = ""] = String(session?.time || "").split(
-    "to",
-  );
-  const startAt = parseClockTime(now, startText.trim());
-  const endAt = parseClockTime(now, endText.trim());
-
-  const registrationLink = String(session?.registrationLink || "").trim();
-  const hasJoinLink = Boolean(registrationLink);
-
-  if (!isEnabled) {
-    return {
-      cardClass: "border-slate-200 bg-slate-50 opacity-90",
-      badgeClass: "bg-slate-200 text-slate-700",
-      badgeText: "Not Live Yet",
-      buttonLabel: "Will Be Live Soon",
-      buttonDisabled: true,
-      buttonHref: "",
-    };
-  }
-
-  if (isScheduledToday && startAt && now < startAt) {
+  if (startAt && now < startAt) {
     const countdownMs = startAt.getTime() - now.getTime();
     const canJoinEarly = countdownMs <= joinEarlyWindowMs;
     return {
@@ -98,10 +110,11 @@ function getSessionState(session, now) {
         : `Join Opens In ${formatCountdown(countdownMs)}`,
       buttonDisabled: !canJoinEarly || !hasJoinLink,
       buttonHref: canJoinEarly ? registrationLink : "",
+      buttonAction: canJoinEarly && isApiJoin ? "api" : "link",
     };
   }
 
-  if (isScheduledToday && startAt && (!endAt || now <= endAt)) {
+  if (!endAt || now <= endAt) {
     return {
       cardClass: "border-emerald-200 bg-emerald-50/40",
       badgeClass: "bg-emerald-100 text-emerald-700",
@@ -109,29 +122,52 @@ function getSessionState(session, now) {
       buttonLabel: "Join Live Session",
       buttonDisabled: !hasJoinLink,
       buttonHref: registrationLink,
+      buttonAction: isApiJoin ? "api" : "link",
     };
   }
 
-  if (isScheduledToday && endAt && now > endAt) {
-    return {
-      cardClass: "border-slate-200 bg-slate-50",
-      badgeClass: "bg-slate-200 text-slate-700",
-      badgeText: "Session Ended Today",
-      buttonLabel: "Session Ended For Today",
-      buttonDisabled: true,
-      buttonHref: "",
-    };
-  }
-
-  const nextDay = getNextSessionDayLabel(activeDays, now.getDay());
   return {
-    cardClass: "border-slate-200 bg-white",
-    badgeClass: "bg-blue-100 text-blue-700",
-    badgeText: nextDay ? `Next: ${nextDay}` : "Upcoming",
-    buttonLabel: nextDay ? `Join On ${nextDay}` : "Upcoming Session",
+    cardClass: "border-slate-200 bg-slate-50",
+    badgeClass: "bg-slate-200 text-slate-700",
+    badgeText: "Session Ended Today",
+    buttonLabel: "Session Ended For Today",
     buttonDisabled: true,
     buttonHref: "",
+    buttonAction: "link",
   };
+}
+
+function getSessionState(session, now) {
+  const isEnabled = session?.enabled === true;
+  const activeDays = parseActiveDays(session?.days);
+  const isScheduledToday = activeDays.has(now.getDay());
+
+  const [startText = "", endText = ""] = String(session?.time || "").split(
+    "to",
+  );
+  const startAt = parseClockTime(now, startText.trim());
+  const endAt = parseClockTime(now, endText.trim());
+
+  const registrationLink = String(session?.registrationLink || "").trim();
+  const isApiJoin = String(session?.joinMode || "").trim() === "api";
+  const hasJoinLink = Boolean(registrationLink) || isApiJoin;
+
+  if (!isEnabled) {
+    return getDisabledSessionState();
+  }
+
+  if (isScheduledToday) {
+    return getTodaySessionState({
+      now,
+      startAt,
+      endAt,
+      hasJoinLink,
+      registrationLink,
+      isApiJoin,
+    });
+  }
+
+  return getUpcomingSessionState(activeDays, now);
 }
 
 function getNextSessionDayLabel(activeDays, currentDay) {
@@ -153,9 +189,33 @@ function formatCountdown(ms) {
 
 function SessionCard({ session, now }) {
   const state = getSessionState(session, now);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
   const hasAfterButtonNote = Boolean(
     String(session?.afterButtonNote || "").trim(),
   );
+
+  const onJoinNow = async () => {
+    if (state.buttonDisabled || joining) return;
+
+    if (state.buttonAction === "api") {
+      setJoining(true);
+      setJoinError("");
+      try {
+        const joinUrl = await joinTestingSession();
+        globalThis.location.href = joinUrl;
+      } catch (err) {
+        setJoinError(err?.message || "Failed to join live class");
+      } finally {
+        setJoining(false);
+      }
+      return;
+    }
+
+    if (state.buttonHref) {
+      globalThis.open(state.buttonHref, "_blank", "noopener,noreferrer");
+    }
+  };
 
   return (
     <article
@@ -201,20 +261,26 @@ function SessionCard({ session, now }) {
             {state.buttonLabel}
           </button>
         ) : (
-          <a
-            href={state.buttonHref}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90"
+          <button
+            type="button"
+            onClick={onJoinNow}
+            disabled={joining}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-primary/90 disabled:cursor-wait disabled:opacity-80"
           >
             <FiVideo className="h-4 w-4" />
-            {state.buttonLabel}
-          </a>
+            {joining ? "Joining..." : state.buttonLabel}
+          </button>
         )}
 
         {hasAfterButtonNote ? (
           <p className="mt-2 rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-800">
             {session.afterButtonNote}
+          </p>
+        ) : null}
+
+        {joinError ? (
+          <p className="mt-2 rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-700">
+            {joinError}
           </p>
         ) : null}
       </div>
@@ -232,6 +298,7 @@ SessionCard.propTypes = {
     meetingId: PropTypes.string,
     passcode: PropTypes.string,
     registrationLink: PropTypes.string,
+    joinMode: PropTypes.string,
     afterButtonNote: PropTypes.string,
     enabled: PropTypes.bool,
   }).isRequired,

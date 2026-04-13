@@ -3,13 +3,14 @@
     {
       "id": "daily-tech-session",
       "topic": "Daily Tech Quiz Series",
-      "meetingId": "836 5924 5933",
+      "meetingId": "83659245933",
       "passcode": "249030",
-      "registrationLink": "https://us06web.zoom.us/meeting/register/qDJHRDtjROeU-GwBcWCHKA",
+      "registrationLink": "",
       "time": "7:00 PM to 8:00 PM",
       "days": "Daily",
-      "afterButtonNote": "",
-      "enabled": false
+      "afterButtonNote": "Daily registration link is generated securely when you click Join.",
+      "enabled": true,
+      "joinMode": "api"
     },
     {
       "id": "debugging-session",
@@ -20,7 +21,7 @@
       "time": "8:00 PM to 9:00 PM",
       "days": "Wednesday, Thursday",
       "afterButtonNote": "Wednesday: Practical Test  • Thursday: Mock Interviews",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "weekend-webinar-sessions",
@@ -31,7 +32,7 @@
       "time": "10:00 AM to 12:00 PM",
       "days": "Sunday",
       "afterButtonNote": "Sunday Mornings (2-hour Technical or HR Interview Prep)",
-      "enabled": true
+      "enabled": false
     }
   ]
 }
