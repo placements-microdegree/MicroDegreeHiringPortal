@@ -317,6 +317,52 @@ function mapTagValue(value, mapping) {
   return mapping[value] || value || null;
 }
 
+function renderTrackReadinessContent({ showPrepareSection = true } = {}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-cyan-50 to-indigo-50 p-4">
+        <h3 className="text-base font-semibold text-slate-900">Track-wise interview readiness roadmap</h3>
+        <p className="mt-1 text-sm leading-6 text-slate-700">
+          We run a structured hiring simulation with MCQ screening, practical task execution, and live interview rounds.
+          This helps you become job-ready with real interview discipline and role-based evaluation.
+        </p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h4 className="text-sm font-semibold text-amber-900">AWS Track</h4>
+          <ul className="mt-2 space-y-2 text-sm text-amber-900">
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />MCQ round focused on AWS fundamentals, networking, IAM, and architecture basics.</li>
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Practical tasks around EC2, S3, IAM, VPC, Route 53, and monitoring scenarios.</li>
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Face-to-face interview to validate troubleshooting, deployment approach, and communication clarity.</li>
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Example roles: AWS Cloud Engineer, Cloud Support Engineer, Cloud Operations Associate.</li>
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <h4 className="text-sm font-semibold text-emerald-900">DevOps Track</h4>
+          <ul className="mt-2 space-y-2 text-sm text-emerald-900">
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />MCQ round on Linux, CI/CD, container basics, pipelines, and release workflows.</li>
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Practical tasks on Docker, Jenkins, Terraform, Kubernetes, and automation thinking.</li>
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Live interview to assess hands-on confidence, debugging method, and production readiness.</li>
+            <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Example roles: DevOps Engineer, Platform Support Engineer, Site Reliability Associate.</li>
+          </ul>
+        </div>
+      </div>
+
+      {showPrepareSection ? (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+          <p className="font-semibold">How to prepare better</p>
+          <p className="mt-1 leading-6">
+            Attend regular interview preparation sessions, complete practice tasks weekly, and participate in mock interviews.
+            Consistent preparation is the fastest way to clear all rounds and get mapped to opportunities.
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function CloudDrive() {
   const { profile } = useAuth();
   const [open, setOpen] = useState(false);
@@ -484,6 +530,12 @@ export default function CloudDrive() {
     const nextErrors = {};
 
     if (stepNumber === 1) {
+      if (!form.track) {
+        nextErrors.track = "Please choose your target track.";
+      }
+    }
+
+    if (stepNumber === 2) {
       if (!form.full_name.trim()) nextErrors.full_name = "Full Name is required.";
       if (!form.email.trim()) nextErrors.email = "Email ID is required.";
       if (!form.phone.trim()) nextErrors.phone = "Phone Number is required.";
@@ -498,7 +550,7 @@ export default function CloudDrive() {
       }
     }
 
-    if (stepNumber === 2) {
+    if (stepNumber === 3) {
       if (!form.current_status) nextErrors.current_status = "Current Status is required.";
       if (!form.total_experience) {
         nextErrors.total_experience = "Total Experience is required.";
@@ -526,10 +578,6 @@ export default function CloudDrive() {
       if (form.current_status === "Fresher" && !form.graduation_year.trim()) {
         nextErrors.graduation_year = "Year of Graduation is required.";
       }
-    }
-
-    if (stepNumber === 3 && !form.track) {
-      nextErrors.track = "Please choose your target track.";
     }
 
     if (stepNumber === 4) {
@@ -888,41 +936,7 @@ export default function CloudDrive() {
         maxWidthClass="max-w-[920px]"
       >
         <div className="space-y-4">
-          <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-cyan-50 to-indigo-50 p-4">
-            <h3 className="text-base font-semibold text-slate-900">Track-wise interview readiness roadmap</h3>
-            <p className="mt-1 text-sm leading-6 text-slate-700">
-              We run a structured hiring simulation with MCQ screening, practical task execution, and live interview rounds.
-              This helps you become job-ready with real interview discipline and role-based evaluation.
-            </p>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <h4 className="text-sm font-semibold text-amber-900">AWS Track</h4>
-              <ul className="mt-2 space-y-2 text-sm text-amber-900">
-                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />MCQ round focused on AWS fundamentals, networking, IAM, and architecture basics.</li>
-                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Practical tasks around EC2, S3, IAM, VPC, Route 53, and monitoring scenarios.</li>
-                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Face-to-face interview to validate troubleshooting, deployment approach, and communication clarity.</li>
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-              <h4 className="text-sm font-semibold text-emerald-900">DevOps Track</h4>
-              <ul className="mt-2 space-y-2 text-sm text-emerald-900">
-                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />MCQ round on Linux, CI/CD, container basics, pipelines, and release workflows.</li>
-                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Practical tasks on Docker, Jenkins, Terraform, Kubernetes, and automation thinking.</li>
-                <li className="flex items-start gap-2"><FiArrowRight className="mt-0.5 h-4 w-4 shrink-0" />Live interview to assess hands-on confidence, debugging method, and production readiness.</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
-            <p className="font-semibold">How to prepare better</p>
-            <p className="mt-1 leading-6">
-              Attend regular interview preparation sessions, complete practice tasks weekly, and participate in mock interviews.
-              Consistent preparation is the fastest way to clear all rounds and get mapped to opportunities.
-            </p>
-          </div>
+          {renderTrackReadinessContent()}
         </div>
       </Modal>
 
@@ -1196,6 +1210,35 @@ export default function CloudDrive() {
 
               {step === 1 ? (
                 <section className="space-y-4">
+                  <h4 className="text-sm font-semibold text-slate-900">Choose the role you want to target</h4>
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                    <ul className="list-disc space-y-1 pl-5">
+                      <li>
+                        Based on the track you select, your Cloud Drive questions will be tailored accordingly.
+                      </li>
+                      <li>
+                        If you clear your selected track, you will be mapped to relevant job opportunities.
+                      </li>
+                      <li>
+                        Can you do both tracks? Yes, you can do both (you can choose the other track in the next drive).
+                      </li>
+                    </ul>
+                  </div>
+                  {renderRadioGroup({
+                    name: "track",
+                    label: "Track",
+                    options: trackOptions,
+                    value: form.track,
+                    onChange,
+                    required: true,
+                    error: errors.track,
+                  })}
+                  {renderTrackReadinessContent({ showPrepareSection: false })}
+                </section>
+              ) : null}
+
+              {step === 2 ? (
+                <section className="space-y-4">
                   <h4 className="text-sm font-semibold text-slate-900">Lets start with your basic details</h4>
                   <Input label="Full Name *" name="full_name" value={form.full_name} onChange={onChange} error={errors.full_name} required />
                   <Input label="Email ID *" name="email" type="email" value={form.email} onChange={onChange} error={errors.email} required />
@@ -1246,7 +1289,7 @@ export default function CloudDrive() {
                 </section>
               ) : null}
 
-              {step === 2 ? (
+              {step === 3 ? (
                 <section className="space-y-4">
                   <h4 className="text-sm font-semibold text-slate-900">Tell us about your professional background</h4>
                   {renderRadioGroup({
@@ -1351,34 +1394,6 @@ export default function CloudDrive() {
                       required
                     />
                   ) : null}
-                </section>
-              ) : null}
-
-              {step === 3 ? (
-                <section className="space-y-4">
-                  <h4 className="text-sm font-semibold text-slate-900">Choose the role you want to target</h4>
-                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-                    <ul className="list-disc space-y-1 pl-5">
-                      <li>
-                        Based on the track you select, your Cloud Drive questions will be tailored accordingly.
-                      </li>
-                      <li>
-                        If you clear your selected track, you will be mapped to relevant job opportunities.
-                      </li>
-                      <li>
-                        Can you do both tracks? Yes, you can do both (you can choose the other track in the next drive).
-                      </li>
-                    </ul>
-                  </div>
-                  {renderRadioGroup({
-                    name: "track",
-                    label: "Track",
-                    options: trackOptions,
-                    value: form.track,
-                    onChange,
-                    required: true,
-                    error: errors.track,
-                  })}
                 </section>
               ) : null}
 
