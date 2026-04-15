@@ -45,7 +45,8 @@ export async function getCurrentSupabaseSession() {
 
 export async function redirectToResumeBuilderWithSession() {
   try {
-    let token = "";
+    let accessToken = "";
+    let refreshToken = "";
 
     if (supabase) {
       const { data, error } = await supabase.auth.getSession();
@@ -54,20 +55,22 @@ export async function redirectToResumeBuilderWithSession() {
         console.error("Session error:", error);
       }
 
-      token = data?.session?.access_token || "";
+      accessToken = data?.session?.access_token || "";
+      refreshToken = data?.session?.refresh_token || "";
     }
 
     // Fallback to backend session endpoint for cookie-based auth flows.
-    if (!token) {
+    if (!accessToken || !refreshToken) {
       const backendData = await getCurrentSupabaseSession().catch((err) => {
         console.error("Backend session error:", err);
         return null;
       });
-      token = backendData?.session?.access_token || "";
+      accessToken = backendData?.session?.access_token || accessToken;
+      refreshToken = backendData?.session?.refresh_token || refreshToken;
     }
 
-    if (token) {
-      globalThis.location.href = `${RESUME_BUILDER_BASE_URL}/#access_token=${encodeURIComponent(token)}`;
+    if (accessToken && refreshToken) {
+      globalThis.location.href = `${RESUME_BUILDER_BASE_URL}/#access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}`;
       return;
     }
 

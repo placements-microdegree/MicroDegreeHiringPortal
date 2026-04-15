@@ -4,7 +4,11 @@ const {
   getSupabaseAdminClient,
 } = require("../config/supabaseClient");
 const { getSupabaseAdmin } = require("../config/db");
-const { setAuthCookies, clearAuthCookies } = require("../utils/cookies");
+const {
+  setAuthCookies,
+  clearAuthCookies,
+  REFRESH_COOKIE,
+} = require("../utils/cookies");
 const { ROLES } = require("../utils/constants");
 const { normalizePhone } = require("../utils/phone");
 const { sendPasswordOtpEmail } = require("../services/emailService");
@@ -408,6 +412,7 @@ async function session(req, res) {
     success: true,
     session: {
       access_token: req.user.jwt,
+      refresh_token: req.cookies?.[REFRESH_COOKIE] || null,
       user: {
         id: req.user.id,
         email: req.user.email,
@@ -886,12 +891,10 @@ async function verifyOtp(req, res, next) {
     if (!verification.ok) {
       const state = registerFailedOtpAttempt(attemptKey);
       if (verification.reason === "expired") {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "OTP has expired. Please request a new code",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "OTP has expired. Please request a new code",
+        });
       }
 
       if (state.blockedUntil) {
