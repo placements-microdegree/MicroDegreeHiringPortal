@@ -43,6 +43,7 @@ import SuperAdminResumeBuilderAnalytics from "../pages/superadmin/SuperAdminResu
 import SuperAdminExternalJobsVisitStudents from "../pages/superadmin/SuperAdminExternalJobsVisitStudents";
 import PageOpeningShimmer from "../components/common/PageOpeningShimmer";
 import EmailSubscription from "../pages/common/EmailSubscription";
+import Footer from "../components/common/Footer";
 
 function HomeRedirect() {
   const { user, loading } = useAuth();
@@ -104,8 +105,11 @@ export default function AppRoutes() {
       <Route
         path="/jobs"
         element={
-          <div className="min-h-screen bg-slate-50 p-6 lg:p-7">
-            <ExternalJobs publicView />
+          <div className="min-h-screen bg-slate-50">
+            <div className="p-6 lg:p-7">
+              <ExternalJobs publicView />
+            </div>
+            <Footer />
           </div>
         }
       />
