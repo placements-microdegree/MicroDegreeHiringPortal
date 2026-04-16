@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { FiArrowRight } from "react-icons/fi";
-import Loader from "../../components/common/Loader";
+import JobCardShimmer from "../../components/student/JobCardShimmer";
 import {
   getStudentAnalytics,
   listCareerProgressBoard,
@@ -16,6 +16,9 @@ const analyticsMeta = [
   { key: "interviewScheduled", label: "Interview scheduled" },
   { key: "placed", label: "Placed" },
 ];
+
+const RECENT_JOBS_SUBTITLE =
+  "Latest opportunities for you (closed jobs cannot be applied)";
 
 const statusClass = {
   Applied: "bg-slate-100 text-slate-700",
@@ -192,8 +195,65 @@ export default function StudentDashboard() {
 
   if (isLoading) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <Loader label="Loading dashboard..." />
+      <div className="space-y-6">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {analyticsMeta.map((card) => (
+            <article
+              key={`${card.key}-skeleton`}
+              className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm"
+            >
+              <div className="shimmer h-3 w-28 rounded-md" />
+              <div className="mt-3 shimmer h-8 w-16 rounded-md" />
+            </article>
+          ))}
+        </section>
+
+        <section className="rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 shadow-sm">
+          <div className="shimmer h-3 w-24 rounded-md" />
+          <div className="mt-2 shimmer h-6 w-60 rounded-md" />
+        </section>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  Recent Jobs
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  {RECENT_JOBS_SUBTITLE}
+                </p>
+              </div>
+              <div className="shimmer h-4 w-16 rounded-md" />
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <JobCardShimmer
+                  key={`dashboard-job-shimmer-${index + 1}`}
+                  compact
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="shimmer h-5 w-40 rounded-md" />
+              <div className="shimmer h-4 w-16 rounded-md" />
+            </div>
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div
+                  key={`dashboard-application-shimmer-${index + 1}`}
+                  className="rounded-xl border border-slate-200 px-4 py-3"
+                >
+                  <div className="shimmer h-4 w-36 rounded-md" />
+                  <div className="mt-2 shimmer h-3 w-24 rounded-md" />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
     );
   }
@@ -227,10 +287,15 @@ export default function StudentDashboard() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900">
-              Recent Jobs
-            </h2>
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">
+                Recent Jobs
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                {RECENT_JOBS_SUBTITLE}
+              </p>
+            </div>
             <Link
               to="/student/jobs"
               className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primaryDark"

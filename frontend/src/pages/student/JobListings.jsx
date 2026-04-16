@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/authStore";
 import JobCard from "../../components/student/JobCard";
+import JobCardShimmer from "../../components/student/JobCardShimmer";
 import ApplyJobModal from "../../components/student/ApplyJobModal";
-import Loader from "../../components/common/Loader";
 import { listApplicationsByStudent } from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
 import { confirmDanger, showError, showInfo } from "../../utils/alerts";
@@ -181,9 +181,11 @@ export default function JobListings() {
   let jobsContent;
   if (isLoading) {
     jobsContent = (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <Loader label="Loading jobs..." />
-      </div>
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <JobCardShimmer key={`job-shimmer-${index + 1}`} />
+        ))}
+      </section>
     );
   } else if (sortedJobs.length === 0) {
     jobsContent = (
