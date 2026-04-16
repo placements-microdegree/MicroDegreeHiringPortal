@@ -205,7 +205,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         label: "Mock Test",
         icon: FiFileText,
         external: true,
-        target: "_self",
+        target: "_blank",
       },
       {
         href: "https://resumes.microdegree.work/",
@@ -213,7 +213,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
         icon: FiFileText,
         betaBadge: true,
         external: true,
-        target: "_self",
+        target: "_blank",
         onClick: handleResumeBuilderClick,
       },
       {
@@ -253,7 +253,13 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50 px-3 py-4">
-          <div className="flex items-center gap-3">
+          <a
+            href="https://www.microdegree.work/"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+            className="flex items-center gap-3 rounded-lg outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
             <img src="/Logo.png" alt="MicroDegree" className="h-11 w-11" />
             <div>
               <div className="text-sm font-semibold text-slate-900">
@@ -263,7 +269,7 @@ export default function Sidebar({ role, isOpen = false, onClose }) {
                 {isStudent ? "Student Portal" : "Placement Portal"}
               </div>
             </div>
-          </div>
+          </a>
           <button
             type="button"
             aria-label="Close menu"
