@@ -1962,7 +1962,7 @@ export default function ManageApplicationsByJobView({
               rel="noopener noreferrer"
               className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-primary transition hover:bg-primary/10"
             >
-              JD
+              View Job Description
             </a>
           ) : null}
         </div>
