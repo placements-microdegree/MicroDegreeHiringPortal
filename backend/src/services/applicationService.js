@@ -673,11 +673,41 @@ async function listApplicationsByStudent({ studentId, jwt }) {
   const supabase = getClient(jwt);
   const { data, error } = await supabase
     .from("applications")
-    .select("*, jobs(*)")
+    .select(
+      `
+        *,
+        jobs(*),
+        application_answers(
+          id,
+          question_id,
+          answer_text,
+          answer_bool,
+          job_questions(id, question, answer_type, order_index)
+        )
+      `,
+    )
     .eq("student_id", studentId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return data;
+  return (data || []).map((row) => {
+    const answers = Array.isArray(row.application_answers)
+      ? row.application_answers
+          .map((a) => ({
+            question_id: a.question_id,
+            question: a.job_questions?.question || "",
+            answer_type: a.job_questions?.answer_type || "text",
+            order_index: a.job_questions?.order_index ?? 0,
+            answer_text: a.answer_text,
+            answer_bool: a.answer_bool,
+          }))
+          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+      : [];
+
+    return {
+      ...row,
+      answers,
+    };
+  });
 }
 
 async function listAllApplications({ actor, jwt }) {

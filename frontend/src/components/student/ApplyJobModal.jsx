@@ -352,6 +352,27 @@ export default function ApplyJobModal({
     [profile],
   );
 
+  const buildAnswersFromApplication = useCallback((application) => {
+    const sourceAnswers = Array.isArray(application?.answers)
+      ? application.answers
+      : Array.isArray(application?.application_answers)
+        ? application.application_answers
+        : [];
+
+    if (sourceAnswers.length === 0) return {};
+
+    return sourceAnswers.reduce((acc, item) => {
+      const questionId = item?.question_id || item?.questionId;
+      if (!questionId) return acc;
+
+      const answerType =
+        item?.answer_type || item?.job_questions?.answer_type || "text";
+      acc[questionId] =
+        answerType === "yesno" ? item?.answer_bool : (item?.answer_text ?? "");
+      return acc;
+    }, {});
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     setTouched({});
@@ -377,6 +398,7 @@ export default function ApplyJobModal({
           resumeRows: safeResumes,
         }),
       );
+      setAnswers(buildAnswersFromApplication(sourceApplication));
     };
 
     init().catch(() => {
@@ -384,8 +406,16 @@ export default function ApplyJobModal({
       setForm(
         buildFormFromSources({ previousApplication: null, resumeRows: [] }),
       );
+      setAnswers({});
     });
-  }, [open, job?.id, mode, existingApplication, buildFormFromSources]);
+  }, [
+    open,
+    job?.id,
+    mode,
+    existingApplication,
+    buildFormFromSources,
+    buildAnswersFromApplication,
+  ]);
 
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
   const updateAnswer = (qId, val) =>
