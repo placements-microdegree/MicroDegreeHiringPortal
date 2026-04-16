@@ -8,6 +8,7 @@ import {
   FiUpload,
   FiUserPlus,
   FiX,
+  FiChevronDown,
   FiAlertCircle,
   FiAlertTriangle,
 } from "react-icons/fi";
@@ -34,6 +35,7 @@ import {
 } from "../../services/applicationService";
 import { listJobs } from "../../services/jobService";
 import { updateStudentCloudDriveProfile } from "../../services/adminService";
+import { APPLICATION_STATUSES } from "../../utils/constants";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -1218,6 +1220,8 @@ export default function ManageApplicationsByJobView({
   const [searchApplicant, setSearchApplicant] = useState("");
   const [experienceFilter, setExperienceFilter] = useState("all");
   const [eligibilityFilter, setEligibilityFilter] = useState("all");
+  const [statusFilters, setStatusFilters] = useState([]);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
   const [cloudDriveFilter, setCloudDriveFilter] = useState("all");
   const [applicationMonthFilter, setApplicationMonthFilter] = useState("all");
   const [applicationDateSort, setApplicationDateSort] = useState("latest");
@@ -1229,6 +1233,7 @@ export default function ManageApplicationsByJobView({
   const [profileSaving, setProfileSaving] = useState(false);
   const [favoriteStudentIds, setFavoriteStudentIds] = useState([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const statusDropdownRef = useRef(null);
 
   // ── Search + Sort (jobs grid only) ────────────────────────────────────────
   const [search, setSearch] = useState("");
@@ -1261,6 +1266,33 @@ export default function ManageApplicationsByJobView({
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        statusDropdownRef.current &&
+        !statusDropdownRef.current.contains(event.target)
+      ) {
+        setStatusDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const statusFilterLabel =
+    statusFilters.length === 0
+      ? "All Statuses"
+      : statusFilters.length === 1
+        ? statusFilters[0]
+        : `${statusFilters.length} statuses selected`;
+
+  const toggleStatusFilter = (status) => {
+    setStatusFilters((prev) => toggleMultiValue(prev, status));
+  };
 
   const onStatusChange = async (id, status) => {
     const prevRow = rows.find((r) => r.id === id) || null;
@@ -1791,6 +1823,16 @@ export default function ManageApplicationsByJobView({
       if (eligibilityFilter === "not-eligible" && row.studentIsEligible)
         return false;
 
+      const applicationStatus = String(
+        row.sub_stage || row.status || "",
+      ).trim();
+      if (
+        statusFilters.length > 0 &&
+        !statusFilters.includes(applicationStatus)
+      ) {
+        return false;
+      }
+
       const cloudStatus = String(row.studentCloudDriveStatus || "").trim();
       const clearedCloudStatuses = [
         "Cleared",
@@ -1953,7 +1995,7 @@ export default function ManageApplicationsByJobView({
           </button>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-7">
         <label className="block md:col-span-2">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
             Search Candidate
@@ -2008,6 +2050,50 @@ export default function ManageApplicationsByJobView({
             <option value="not-cleared">Not Cleared</option>
           </select>
         </label>
+        <div className="relative block" ref={statusDropdownRef}>
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            Status (Multi-select)
+          </span>
+          <button
+            type="button"
+            onClick={() => setStatusDropdownOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 outline-none transition hover:border-primary focus:border-primary"
+          >
+            <span className="truncate">{statusFilterLabel}</span>
+            <FiChevronDown
+              className={`h-4 w-4 text-slate-500 transition ${statusDropdownOpen ? "rotate-180" : ""}`}
+            />
+          </button>
+          {statusDropdownOpen ? (
+            <div className="absolute z-20 mt-1 max-h-56 w-[220px] overflow-auto rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+              {APPLICATION_STATUSES.map((status) => {
+                const checked = statusFilters.includes(status);
+                return (
+                  <label
+                    key={status}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleStatusFilter(status)}
+                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    />
+                    <span>{status}</span>
+                  </label>
+                );
+              })}
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setStatusFilters([])}
+            disabled={statusFilters.length === 0}
+            className="mt-1 text-xs font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-slate-400"
+          >
+            Clear status filter
+          </button>
+        </div>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-600">
             Application Month

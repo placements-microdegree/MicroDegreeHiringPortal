@@ -459,14 +459,19 @@ export default function ApplicationsTable({
       row?.selected_resume_url ||
       row?.selectedResumeUrl ||
       "";
-    if (link) return link;
+    const studentLabel = String(row?.studentName || "").trim();
     const byName = cleanResumeName(row?.resumeName);
-    if (byName) return byName;
-    return cleanResumeName(
-      String(row?.selected_resume_url || "")
+    const byUrlName = cleanResumeName(
+      String(row?.selected_resume_url || row?.resumeUrl || "")
         .split("/")
         .pop(),
     );
+    const label = studentLabel || byName || byUrlName || "View Resume";
+
+    if (!link) return label === "View Resume" ? "" : label;
+
+    // Excel-compatible clickable text in CSV export.
+    return `=HYPERLINK("${link}","${label}")`;
   };
 
   const boolLabel = (value) => {
@@ -483,23 +488,44 @@ export default function ApplicationsTable({
     const company = firstRow.jobs?.company || firstRow.company || "company";
     const fileName = `${slugify(jobName)}-${slugify(company)}.csv`;
 
+    const resolveCustomQuestionMeta = (answer) => {
+      const questionId =
+        answer?.question_id || answer?.questionId || answer?.id || "";
+      const questionText = String(answer?.question || "").trim();
+      if (!questionId && !questionText) return null;
+
+      const label = questionText || `Question ${questionId}`;
+      const key = questionId
+        ? `qid:${questionId}`
+        : `qtxt:${questionText.toLowerCase()}`;
+
+      return { key, label, questionText };
+    };
+
     // Collect all unique custom questions ordered by order_index.
-    // Use question id when available to avoid collisions with repeated text.
+    // Use question id when available so rows still export if question text is missing.
     const questionMap = new Map();
     (rows || []).forEach((r) => {
       (r.answers || []).forEach((a) => {
-        const questionId = a.question_id || a.questionId || a.id || "";
-        const questionText = String(a.question || "").trim();
-        if (!questionText) return;
-        const key = questionId
-          ? `${questionId}::${questionText}`
-          : questionText;
-        if (questionMap.has(key)) return;
-        questionMap.set(key, {
-          label: questionText,
-          answerType: a.answer_type,
-          orderIndex: a.order_index ?? 0,
-        });
+        const meta = resolveCustomQuestionMeta(a);
+        if (!meta) return;
+
+        const existing = questionMap.get(meta.key);
+        if (!existing) {
+          questionMap.set(meta.key, {
+            label: meta.label,
+            answerType: a.answer_type,
+            orderIndex: a.order_index ?? Number.MAX_SAFE_INTEGER,
+          });
+          return;
+        }
+
+        if (existing.label.startsWith("Question ") && meta.questionText) {
+          existing.label = meta.questionText;
+        }
+        if ((a.order_index ?? Number.MAX_SAFE_INTEGER) < existing.orderIndex) {
+          existing.orderIndex = a.order_index ?? Number.MAX_SAFE_INTEGER;
+        }
       });
     });
     const customQuestions = [...questionMap.entries()]
@@ -531,16 +557,14 @@ export default function ApplicationsTable({
     const csvRows = rows.map((r) => {
       const answerByQuestion = {};
       (r.answers || []).forEach((a) => {
-        const questionText = String(a.question || "").trim();
-        if (!questionText) return;
-        const questionId = a.question_id || a.questionId || a.id || "";
-        const key = questionId
-          ? `${questionId}::${questionText}`
-          : questionText;
-        answerByQuestion[key] =
-          a.answer_type === "yesno"
-            ? boolLabel(a.answer_bool)
-            : (a.answer_text ?? "");
+        const meta = resolveCustomQuestionMeta(a);
+        if (!meta) return;
+
+        const isYesNoAnswer =
+          a.answer_type === "yesno" || typeof a.answer_bool === "boolean";
+        answerByQuestion[meta.key] = isYesNoAnswer
+          ? boolLabel(a.answer_bool)
+          : (a.answer_text ?? "");
       });
 
       const staticValues = [
@@ -584,15 +608,18 @@ export default function ApplicationsTable({
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  const selectedSet = new Set(Array.isArray(selectedRowIds) ? selectedRowIds : []);
-  const favoriteSet = new Set(Array.isArray(favoriteRowIds) ? favoriteRowIds : []);
+  const selectedSet = new Set(
+    Array.isArray(selectedRowIds) ? selectedRowIds : [],
+  );
+  const favoriteSet = new Set(
+    Array.isArray(favoriteRowIds) ? favoriteRowIds : [],
+  );
   const allSelected =
     rows.length > 0 &&
     rows
       .filter((row) => Boolean(row?.studentId))
       .every((row) => selectedSet.has(row.studentId));
-  const columnCount =
-    12 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
+  const columnCount = 12 + (selectable ? 1 : 0) + (onToggleFavorite ? 1 : 0);
 
   return (
     <div className="rounded-xl bg-white p-5">
@@ -677,7 +704,9 @@ export default function ApplicationsTable({
                     <td className="px-4 py-3 whitespace-nowrap">
                       <button
                         type="button"
-                        onClick={() => r.studentId && onToggleFavorite?.(r.studentId)}
+                        onClick={() =>
+                          r.studentId && onToggleFavorite?.(r.studentId)
+                        }
                         disabled={!r.studentId}
                         className="inline-flex items-center justify-center rounded-full p-1 text-slate-400 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
                         aria-label={
