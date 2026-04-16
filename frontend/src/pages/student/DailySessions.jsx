@@ -202,7 +202,7 @@ function SessionCard({ session, now }) {
       setJoining(true);
       setJoinError("");
       try {
-        const joinUrl = await joinTestingSession();
+        const joinUrl = await joinTestingSession(session?.id);
         globalThis.location.href = joinUrl;
       } catch (err) {
         setJoinError(err?.message || "Failed to join live class");

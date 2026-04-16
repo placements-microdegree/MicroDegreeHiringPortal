@@ -27,9 +27,10 @@ export async function updateDailySessionsSettings(sessions) {
   return data.sessions || [];
 }
 
-export async function joinTestingSession() {
+export async function joinTestingSession(sessionId) {
   const data = await request("/api/join-session", {
     method: "POST",
+    body: sessionId ? { sessionId } : undefined,
   });
   if (!data?.join_url) {
     throw new Error("Join URL was not received from server");

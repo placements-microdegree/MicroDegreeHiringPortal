@@ -22,7 +22,6 @@ function getRequiredEnv(name) {
 }
 
 function getZoomConfig() {
-  const rawMeetingId = getRequiredEnv("ZOOM_MEETING_ID");
   return {
     accountId: getRequiredEnv("ZOOM_ACCOUNT_ID"),
     clientId: getRequiredEnv("ZOOM_CLIENT_ID"),
@@ -33,10 +32,28 @@ function getZoomConfig() {
     baseUrl: String(
       process.env.ZOOM_BASE_URL || "https://api.zoom.us/v2",
     ).trim(),
-    meetingId: rawMeetingId.replaceAll(/\D/g, ""),
+    defaultMeetingId: String(process.env.ZOOM_MEETING_ID || "")
+      .trim()
+      .replaceAll(/\D/g, ""),
     tokenCacheTtl: Number(process.env.ZOOM_TOKEN_CACHE_TTL || 3500),
     disableZoomEmail: toBoolean(process.env.DISABLE_ZOOM_EMAIL, true),
   };
+}
+
+function resolveMeetingId(rawMeetingId, fallbackMeetingId) {
+  const normalized = String(rawMeetingId || "")
+    .trim()
+    .replaceAll(/\D/g, "");
+  if (normalized) return normalized;
+
+  const fallback = String(fallbackMeetingId || "")
+    .trim()
+    .replaceAll(/\D/g, "");
+  if (fallback) return fallback;
+
+  const err = new Error("Missing required meeting id for Zoom registration");
+  err.status = 500;
+  throw err;
 }
 
 function buildDisplayName({ isEligible, fullName, email }) {
@@ -284,8 +301,18 @@ async function registerUserForMeeting({
   throw err;
 }
 
-async function createJoinSessionLink({ userId, jwt, email, fallbackName }) {
+async function createJoinSessionLink({
+  userId,
+  jwt,
+  email,
+  fallbackName,
+  meetingId,
+}) {
   const config = getZoomConfig();
+  const resolvedMeetingId = resolveMeetingId(
+    meetingId,
+    config.defaultMeetingId,
+  );
 
   const profile = await profileService.getProfileByUserId({ userId, jwt });
   const isEligible = profile?.is_eligible === true;
@@ -299,7 +326,7 @@ async function createJoinSessionLink({ userId, jwt, email, fallbackName }) {
 
   let result = await registerUserForMeeting({
     accessToken,
-    meetingId: config.meetingId,
+    meetingId: resolvedMeetingId,
     email,
     displayName,
     disableZoomEmail: config.disableZoomEmail,
@@ -309,7 +336,7 @@ async function createJoinSessionLink({ userId, jwt, email, fallbackName }) {
     accessToken = await fetchZoomAccessToken({ forceRefresh: true });
     result = await registerUserForMeeting({
       accessToken,
-      meetingId: config.meetingId,
+      meetingId: resolvedMeetingId,
       email,
       displayName,
       disableZoomEmail: config.disableZoomEmail,
