@@ -41,14 +41,14 @@ function YesNoToggle({ value, onChange, error }) {
       <button
         type="button"
         onClick={() => onChange(true)}
-        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === true ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
+        className={`cursor-pointer rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === true ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
       >
         Yes
       </button>
       <button
         type="button"
         onClick={() => onChange(false)}
-        className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === false ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
+        className={`cursor-pointer rounded-lg px-4 py-1.5 text-sm font-semibold transition ${value === false ? "bg-primary text-white shadow-sm" : "text-slate-700 hover:bg-white"}`}
       >
         No
       </button>
@@ -650,7 +650,7 @@ export default function ApplyJobModal({
               type="button"
               variant="outline"
               onClick={onClose}
-              className="w-full sm:w-auto"
+              className="w-full cursor-pointer sm:w-auto"
             >
               Cancel
             </Button>
@@ -658,7 +658,7 @@ export default function ApplyJobModal({
               type="submit"
               form="apply-job-form"
               disabled={submitting || uploading}
-              className="w-full sm:min-w-40 sm:w-auto"
+              className="w-full cursor-pointer sm:min-w-40 sm:w-auto"
             >
               {submitting
                 ? mode === "update"
@@ -969,12 +969,13 @@ export default function ApplyJobModal({
                 resumes.map((resume) => (
                   <label
                     key={resume.id || resume.file_url}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    className="flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <input
                         type="radio"
                         name="selectedResume"
+                        className="cursor-pointer"
                         checked={form.selectedResumeUrl === resume.file_url}
                         onChange={() => {
                           setTouched((p) => ({
@@ -1023,7 +1024,7 @@ export default function ApplyJobModal({
                   setTouched((p) => ({ ...p, jdConfirmed: true }));
                   update({ jdConfirmed: e.target.checked });
                 }}
-                className="mt-1"
+                className="mt-1 cursor-pointer"
               />
               <span>
                 I have read the Job Description fully.

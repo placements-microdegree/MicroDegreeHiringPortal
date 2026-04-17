@@ -230,7 +230,7 @@ export default function JobCard({
         <Button
           onClick={() => onApply?.(job)}
           disabled={disableApply}
-          className="min-w-24"
+          className="min-w-24 cursor-pointer"
         >
           {shouldShowUpdate
             ? "Update"
