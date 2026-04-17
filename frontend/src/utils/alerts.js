@@ -15,6 +15,16 @@ export async function showSuccess(message, title = "Success") {
   });
 }
 
+export async function showSuccessHtml(html, title = "Success", options = {}) {
+  await Swal.fire({
+    ...baseOptions,
+    icon: "success",
+    title,
+    html,
+    ...options,
+  });
+}
+
 export async function showError(message, title = "Error") {
   await Swal.fire({
     ...baseOptions,

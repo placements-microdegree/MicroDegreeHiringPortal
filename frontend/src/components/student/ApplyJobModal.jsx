@@ -13,7 +13,7 @@ import {
   listMyResumes,
   uploadResumes,
 } from "../../services/resumeService";
-import { showError, showInfo, showSuccess } from "../../utils/alerts";
+import { showError, showInfo, showSuccessHtml } from "../../utils/alerts";
 
 const MAX_RESUMES = 3;
 
@@ -536,6 +536,40 @@ export default function ApplyJobModal({
     await submitApplication(false);
   };
 
+  const getApplyUpdateSuccessHtml = useCallback(
+    (isUpdate) => `
+      <div style="text-align:left; line-height:1.55; font-size:13px;">
+        <p style="margin:0 0 10px 0; font-size:14px; font-weight:700; color:#0f172a;">
+          ${isUpdate ? "Thanks for updating your application!" : "Thanks for applying!"}
+        </p>
+        <p style="margin:0 0 10px 0; color:#334155;">
+          Once you receive any update from the company (screening call,
+          assessment link, or interview), please inform our Career Assistance
+          team on WhatsApp: <strong>6366983877</strong> (select Career
+          Assistance).
+        </p>
+        <p style="margin:0 0 10px 0; color:#0f172a; font-weight:600;">
+          &#128204; Students who keep us updated receive faster support and
+          better interview guidance.
+        </p>
+        <p style="margin:0 0 8px 0; color:#334155;">
+          Please send your update in this format:
+        </p>
+        <div style="margin:0; padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#f8fafc; color:#0f172a;">
+          <div><strong>Name:</strong></div>
+          <div><strong>Company:</strong></div>
+          <div><strong>Update:</strong> (Screening / Assessment / Interview Round)</div>
+          <div><strong>Date:</strong></div>
+        </div>
+        <p style="margin:10px 0 0 0; color:#334155;">
+          We will help with interview tips, insights, and coordinating next
+          steps.
+        </p>
+      </div>
+    `,
+    [],
+  );
+
   const submitApplication = async (saveForFuture) => {
     setSubmitting(true);
     try {
@@ -566,10 +600,16 @@ export default function ApplyJobModal({
 
       if (mode === "update" && existingApplication?.id) {
         await updateMyApplication(existingApplication.id, payload);
-        await showSuccess("Application updated successfully.", "Updated");
+        await showSuccessHtml(getApplyUpdateSuccessHtml(true), "Updated", {
+          confirmButtonText: "OK",
+          width: 620,
+        });
       } else {
         await createApplication(payload);
-        await showSuccess("Application submitted successfully.", "Applied");
+        await showSuccessHtml(getApplyUpdateSuccessHtml(false), "Applied", {
+          confirmButtonText: "OK",
+          width: 620,
+        });
       }
 
       await onApplied?.();
