@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { FiEdit2, FiCheck, FiTrash2, FiX } from "react-icons/fi";
 import { AiFillHeart, AiOutlineHeart } from "react-icons/ai";
+import * as XLSX from "xlsx";
 import { APPLICATION_STATUSES } from "../../utils/constants";
 import { listApplicationCommentHistory } from "../../services/applicationService";
 
@@ -427,12 +428,7 @@ export default function ApplicationsTable({
   favoriteRowIds = [],
   onToggleFavorite,
 }) {
-  // ── CSV export ─────────────────────────────────────────────────────────────
-
-  const escapeCsv = (value) => {
-    const text = value == null ? "" : String(value);
-    return `"${text.replace(/"/g, '""')}"`;
-  };
+  // ── Excel export ───────────────────────────────────────────────────────────
 
   const slugify = (value) =>
     String(value || "")
@@ -453,25 +449,33 @@ export default function ApplicationsTable({
       .trim()
       .replace(/\.[^/.]+$/, "");
 
-  const getResumeExportValue = (row) => {
+  const getResumeExportMeta = (row) => {
     const link =
-      row?.resumeUrl ||
-      row?.selected_resume_url ||
-      row?.selectedResumeUrl ||
-      "";
-    const studentLabel = String(row?.studentName || "").trim();
-    const byName = cleanResumeName(row?.resumeName);
+      [
+        row?.resumeUrl,
+        row?.resume_url,
+        row?.selected_resume_url,
+        row?.selectedResumeUrl,
+        row?.resume?.signed_url,
+        row?.resume?.file_url,
+        row?.resume?.url,
+        row?.resume?.public_url,
+      ].find((value) => String(value || "").trim()) || "";
+    const fullName = String(row?.studentName || "").trim();
+    const byName = cleanResumeName(row?.resumeName || row?.resume_name);
     const byUrlName = cleanResumeName(
-      String(row?.selected_resume_url || row?.resumeUrl || "")
+      String(link || "")
         .split("/")
         .pop(),
     );
-    const label = studentLabel || byName || byUrlName || "View Resume";
+    const label = fullName || byName || byUrlName || "View Resume";
+    const fallbackLabel = byName || byUrlName || "";
 
-    if (!link) return label === "View Resume" ? "" : label;
-
-    // Excel-compatible clickable text in CSV export.
-    return `=HYPERLINK("${link}","${label}")`;
+    return {
+      link,
+      label,
+      fallbackLabel,
+    };
   };
 
   const boolLabel = (value) => {
@@ -480,13 +484,24 @@ export default function ApplicationsTable({
     return "";
   };
 
+  const normalizeExportStatus = (value) => {
+    const normalized = String(value || "")
+      .trim()
+      .toLowerCase();
+    if (normalized === "profile mapped for client") return "mapped to client";
+    return normalized;
+  };
+
+  const isMappedToClient = (value) =>
+    normalizeExportStatus(value) === "mapped to client";
+
   const handleExport = () => {
     if (!rows?.length) return;
 
     const firstRow = rows[0] || {};
     const jobName = firstRow.jobTitle || firstRow.jobs?.title || "job";
     const company = firstRow.jobs?.company || firstRow.company || "company";
-    const fileName = `${slugify(jobName)}-${slugify(company)}.csv`;
+    const fileName = `${slugify(jobName)}-${slugify(company)}.xlsx`;
 
     const resolveCustomQuestionMeta = (answer) => {
       const questionId =
@@ -532,29 +547,37 @@ export default function ApplicationsTable({
       .sort((a, b) => (a[1].orderIndex ?? 0) - (b[1].orderIndex ?? 0))
       .map(([key, meta]) => ({ key, label: meta.label }));
 
-    const staticHeaders = [
-      "Date",
+    const topHeaders = [
+      "DATE",
       "Email ID",
       "Full Name",
       "Contact Number",
       "Current Location",
-      "Total Experience",
+      "Total No. of experience",
+      "Current CTC",
+      "Expected CTC",
+      "Notice Period",
+      "Resume",
+    ];
+
+    const remainingStaticHeaders = [
+      "Status",
       "Relevant Experience",
       "Hands-on Primary Skills",
       "Work Mode Match",
       "Interview Mode Available",
-      "Current CTC (in LPA)",
-      "Expected CTC (in LPA)",
-      "Notice Period",
       "HR Comment",
       "Comment for student",
       "Student Concern",
-      "Resume",
     ];
 
-    const headers = [...staticHeaders, ...customQuestions.map((q) => q.label)];
+    const headers = [
+      ...topHeaders,
+      ...remainingStaticHeaders,
+      ...customQuestions.map((q) => q.label),
+    ];
 
-    const csvRows = rows.map((r) => {
+    const buildDataRow = (r) => {
       const answerByQuestion = {};
       (r.answers || []).forEach((a) => {
         const meta = resolveCustomQuestionMeta(a);
@@ -567,43 +590,98 @@ export default function ApplicationsTable({
           : (a.answer_text ?? "");
       });
 
-      const staticValues = [
+      const resumeMeta = getResumeExportMeta(r);
+
+      const topValues = [
         formatAppliedDate(r.appliedAt),
         r.studentEmail || "",
         r.studentName || "",
         r.studentPhone || "",
         r.studentLocation || "",
         r.totalExperience || r.total_experience || "",
+        r.currentCTC || "",
+        r.expectedCTC || "",
+        r.noticePeriod || "Not working / Immediately available",
+        resumeMeta.link ? resumeMeta.label : resumeMeta.fallbackLabel,
+      ];
+
+      const remainingValues = [
+        r.status || r.sub_stage || "",
         r.relevantExperience || r.relevant_experience || "",
         boolLabel(r.hands_on_primary_skills ?? r.handsOnPrimarySkills),
         boolLabel(r.work_mode_match ?? r.workModeMatch),
         boolLabel(r.interview_mode_available ?? r.interviewModeAvailable),
-        r.currentCTC || "",
-        r.expectedCTC || "",
-        r.noticePeriod || "Not working / Immediately available",
         r.hr_comment ?? "",
         r.hr_comment_2 ?? "",
         r.student_concern ?? "",
-        getResumeExportValue(r),
       ];
 
       const customValues = customQuestions.map(
         (q) => answerByQuestion[q.key] ?? "",
       );
 
-      return [...staticValues, ...customValues].map(escapeCsv).join(",");
-    });
+      return {
+        values: [...topValues, ...remainingValues, ...customValues],
+        resumeMeta,
+      };
+    };
 
-    const csvContent = [headers.join(","), ...csvRows].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const buildSheet = (sourceRows) => {
+      const builtRows = sourceRows.map(buildDataRow);
+      const worksheet = XLSX.utils.aoa_to_sheet([
+        headers,
+        ...builtRows.map((row) => row.values),
+      ]);
+
+      const resumeColumnIndex = headers.indexOf("Resume");
+      if (resumeColumnIndex >= 0) {
+        builtRows.forEach((row, index) => {
+          if (!row.resumeMeta?.link) return;
+
+          const cellRef = XLSX.utils.encode_cell({
+            r: index + 1,
+            c: resumeColumnIndex,
+          });
+          const existingCell = worksheet[cellRef] || {};
+
+          worksheet[cellRef] = {
+            ...existingCell,
+            t: "s",
+            v: row.resumeMeta.label,
+            l: {
+              Target: row.resumeMeta.link,
+              Tooltip: "Open Resume",
+            },
+            // Keep hyperlink styling explicit for spreadsheet tools that read cell styles.
+            s: {
+              font: {
+                color: { rgb: "0563C1" },
+                underline: true,
+              },
+            },
+          };
+        });
+      }
+
+      return worksheet;
+    };
+
+    const mappedToClientRows = (rows || []).filter((r) =>
+      isMappedToClient(r.status || r.sub_stage),
+    );
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      buildSheet(mappedToClientRows),
+      "Mapped to Client",
+    );
+    XLSX.utils.book_append_sheet(
+      workbook,
+      buildSheet(rows || []),
+      "All Fields",
+    );
+    XLSX.writeFile(workbook, fileName);
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────

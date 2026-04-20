@@ -270,7 +270,10 @@ function mapApplicationRow(row, jobsById) {
       resume?.file_url ||
       resume?.url ||
       resume?.public_url ||
-      row.resumeUrl,
+      row.resumeUrl ||
+      row.resume_url ||
+      row.selected_resume_url ||
+      row.selectedResumeUrl,
     jobTitle,
     hr_comment: row.hr_comment ?? null,
     hr_comment_2: row.hr_comment_2 ?? null,
