@@ -5,6 +5,7 @@ import {
   FiEdit2,
   FiCheck,
   FiX,
+  FiUpload,
   FiAlertTriangle,
   FiCheckCircle,
   FiAlertCircle,
@@ -13,6 +14,14 @@ import {
 import Button from "../common/Button";
 import Input from "../common/Input";
 import { uploadProfilePhoto } from "../../services/profileService";
+import {
+  deleteResume,
+  listMyResumes,
+  uploadResumes,
+} from "../../services/resumeService";
+import { showError, showInfo } from "../../utils/alerts";
+
+const MAX_RESUMES = 3;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -22,7 +31,10 @@ function parseSkills(value) {
   if (Array.isArray(value))
     return value.map((s) => String(s || "").trim()).filter(Boolean);
   if (typeof value === "string")
-    return value.split(",").map((s) => s.trim()).filter(Boolean);
+    return value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   return [];
 }
 
@@ -33,17 +45,43 @@ function skillsToString(skills) {
 function hasChanges(form, original) {
   if (!original) return false;
   const keys = [
-    "fullName", "phone", "location", "experienceLevel",
-    "preferredLocation", "experienceYears", "currentCTC", "expectedCTC", "profilePhotoUrl",
+    "fullName",
+    "phone",
+    "location",
+    "experienceLevel",
+    "preferredLocation",
+    "experienceYears",
+    "currentCTC",
+    "expectedCTC",
+    "profilePhotoUrl",
   ];
   for (const key of keys) {
     if ((form[key] || "") !== (original[key] || "")) return true;
   }
   // compare skills arrays
-  const formSkills     = parseSkills(form.skills).map(s => s.toLowerCase()).sort().join(",");
-  const originalSkills = parseSkills(original.skills).map(s => s.toLowerCase()).sort().join(",");
+  const formSkills = parseSkills(form.skills)
+    .map((s) => s.toLowerCase())
+    .sort()
+    .join(",");
+  const originalSkills = parseSkills(original.skills)
+    .map((s) => s.toLowerCase())
+    .sort()
+    .join(",");
   if (formSkills !== originalSkills) return true;
   return false;
+}
+
+function sortResumesByLatest(rows = []) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  return [...safeRows].sort((a, b) => {
+    const aTime = new Date(
+      a?.updated_at || a?.created_at || a?.uploaded_at || 0,
+    ).getTime();
+    const bTime = new Date(
+      b?.updated_at || b?.created_at || b?.uploaded_at || 0,
+    ).getTime();
+    return bTime - aTime;
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,7 +97,9 @@ function UnsavedWarning({ onSave, onDiscard, onCancel, saving }) {
             <FiAlertTriangle className="h-5 w-5 text-amber-600" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-slate-900">Unsaved Changes</div>
+            <div className="text-sm font-semibold text-slate-900">
+              Unsaved Changes
+            </div>
             <div className="mt-0.5 text-xs text-slate-500">
               Changes you made will not be saved if you close now.
             </div>
@@ -99,7 +139,7 @@ function UnsavedWarning({ onSave, onDiscard, onCancel, saving }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SkillsSection({ skills, onChange }) {
-  const [editing,    setEditing]    = useState(false);
+  const [editing, setEditing] = useState(false);
   const [draftValue, setDraftValue] = useState("");
   const textareaRef = useRef(null);
 
@@ -151,7 +191,8 @@ function SkillsSection({ skills, onChange }) {
         <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
           <p className="text-xs text-slate-500">
             Edit comma-separated skills. Add new ones or remove existing ones.
-            Click <strong>Save Skills</strong> then click the main <strong>Save</strong> button to persist.
+            Click <strong>Save Skills</strong> then click the main{" "}
+            <strong>Save</strong> button to persist.
           </p>
           <textarea
             ref={textareaRef}
@@ -214,26 +255,29 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
   const initial = useMemo(
     () =>
       profile || {
-        fullName:        "",
-        email:           "",
-        phone:           "",
-        role:            "",
-        location:        "",
+        fullName: "",
+        email: "",
+        phone: "",
+        role: "",
+        location: "",
         preferredLocation: "",
-        skills:          [],
+        skills: [],
         experienceLevel: "Fresher",
         experienceYears: "",
-        currentCTC:      "",
-        expectedCTC:     "",
+        currentCTC: "",
+        expectedCTC: "",
         profilePhotoUrl: "",
       },
     [profile],
   );
 
-  const [form,           setForm]           = useState(initial);
-  const [saving,         setSaving]         = useState(false);
+  const [form, setForm] = useState(initial);
+  const [saving, setSaving] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
-  const [showWarning,    setShowWarning]    = useState(false);
+  const [resumeBusy, setResumeBusy] = useState(false);
+  const [resumesLoading, setResumesLoading] = useState(false);
+  const [resumes, setResumes] = useState([]);
+  const [showWarning, setShowWarning] = useState(false);
 
   // Track the "saved" baseline separately so hasChanges compares against
   // what's actually in DB, not the live profile prop
@@ -242,11 +286,33 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
   const lastProfileRef = useRef(null);
   useEffect(() => {
     if (profile !== lastProfileRef.current) {
-      lastProfileRef.current  = profile;
+      lastProfileRef.current = profile;
       savedBaselineRef.current = initial;
       setForm(initial);
     }
   }, [profile, initial]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    let active = true;
+    const loadResumes = async () => {
+      setResumesLoading(true);
+      try {
+        const rows = await listMyResumes();
+        if (active) setResumes(sortResumesByLatest(rows || []));
+      } catch {
+        if (active) setResumes([]);
+      } finally {
+        if (active) setResumesLoading(false);
+      }
+    };
+
+    loadResumes();
+    return () => {
+      active = false;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -277,6 +343,59 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
     }
   };
 
+  const handleUploadResumes = async (files) => {
+    if (!files?.length) return;
+
+    if (resumes.length >= MAX_RESUMES) {
+      await showInfo(
+        "Maximum 3 resumes allowed. Please delete an existing resume before uploading a new one.",
+        "Resume Limit Reached",
+      );
+      return;
+    }
+
+    const remaining = MAX_RESUMES - resumes.length;
+    const accepted = files.slice(0, remaining);
+    if (files.length > accepted.length) {
+      await showInfo(
+        `Only ${remaining} more resume(s) can be uploaded. Extra files were ignored.`,
+        "Resume Limit",
+      );
+    }
+
+    setResumeBusy(true);
+    try {
+      await uploadResumes(accepted);
+      const rows = await listMyResumes();
+      setResumes(sortResumesByLatest(rows || []));
+    } catch (err) {
+      await showError(
+        err?.message || "Failed to upload resume",
+        "Upload Failed",
+      );
+    } finally {
+      setResumeBusy(false);
+    }
+  };
+
+  const handleDeleteResume = async (resume) => {
+    if (!resume?.id) return;
+
+    setResumeBusy(true);
+    try {
+      await deleteResume(resume.id);
+      const rows = await listMyResumes();
+      setResumes(sortResumesByLatest(rows || []));
+    } catch (err) {
+      await showError(
+        err?.message || "Failed to delete resume",
+        "Delete Failed",
+      );
+    } finally {
+      setResumeBusy(false);
+    }
+  };
+
   // ── Save ──────────────────────────────────────────────────────────────────
   const save = async () => {
     setSaving(true);
@@ -302,6 +421,75 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
   const notStudentHelpText =
     "Credits are used to apply for premium jobs. Each application costs one credit. To become an eligible student, please contact our support team with your student details for verification.";
 
+  let saveButtonLabel = "Save";
+  if (saving) saveButtonLabel = "Saving...";
+  else if (photoUploading) saveButtonLabel = "Uploading photo...";
+  else if (resumeBusy) saveButtonLabel = "Updating resume...";
+
+  let resumeListContent = null;
+  if (resumesLoading) {
+    resumeListContent = (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        Loading resumes...
+      </div>
+    );
+  } else if (resumes.length === 0) {
+    resumeListContent = (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        No resumes uploaded yet.
+      </div>
+    );
+  } else {
+    resumeListContent = resumes.map((resume, index) => {
+      const resumeKey =
+        resume.id ||
+        resume.file_url ||
+        resume.storage_path ||
+        `${resume.file_name || "resume"}-${index}`;
+      const isLatest = index === 0;
+      const viewUrl = resume.signed_url || resume.file_url || resume.url;
+
+      return (
+        <div
+          key={resumeKey}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2"
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-sm text-slate-800">
+              {resume.file_name || "Resume"}
+            </span>
+            {isLatest && (
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                Latest
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {viewUrl ? (
+              <a
+                href={viewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-semibold text-primary hover:text-primaryDark"
+              >
+                View
+              </a>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => handleDeleteResume(resume)}
+              disabled={resumeBusy}
+              className="text-xs font-semibold text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:text-red-300"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      );
+    });
+  }
+
   return (
     <>
       <div className="fixed inset-0 z-50">
@@ -310,30 +498,35 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
 
         {/* Drawer */}
         <div className="absolute right-0 top-0 flex h-full w-full flex-col bg-white shadow-sm sm:w-[420px]">
-
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
             <div className="flex items-center gap-2">
-              <div className="text-base font-semibold text-slate-900">Edit Profile</div>
+              <div className="text-base font-semibold text-slate-900">
+                Edit Profile
+              </div>
               {isDirty && (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                   Unsaved
                 </span>
               )}
             </div>
-            <Button variant="subtle" onClick={tryClose}>Close</Button>
+            <Button variant="subtle" onClick={tryClose}>
+              Close
+            </Button>
           </div>
 
           {/* Body */}
           <div className="flex-1 space-y-4 overflow-y-auto px-5 pb-6 pt-4">
-
             {/* Photo */}
             <div className="rounded-xl border border-slate-200 bg-bgLight p-4">
               <div className="flex items-center gap-4">
                 <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-slate-200">
                   {form.profilePhotoUrl ? (
-                    <img src={form.profilePhotoUrl} alt="Profile"
-                      className="h-full w-full object-cover" />
+                    <img
+                      src={form.profilePhotoUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-lg font-bold text-slate-400">
                       {(form.fullName || displayEmail || "?")[0]?.toUpperCase()}
@@ -342,13 +535,17 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
                 </div>
                 <label className="cursor-pointer text-sm font-medium text-slate-700">
                   Profile Photo
-                  <input type="file" accept="image/*"
+                  <input
+                    type="file"
+                    accept="image/*"
                     className="profile-photo-input mt-2 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 hover:file:bg-slate-50"
                     onChange={(e) => onPickPhoto(e.target.files?.[0] || null)}
                     disabled={photoUploading}
                   />
                   {photoUploading && (
-                    <span className="mt-1 block text-xs text-primary">Uploading...</span>
+                    <span className="mt-1 block text-xs text-primary">
+                      Uploading...
+                    </span>
                   )}
                 </label>
               </div>
@@ -356,7 +553,9 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
 
             {/* Email — read-only */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Email
+              </label>
               <input
                 type="email"
                 value={displayEmail}
@@ -367,6 +566,46 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
               <p className="mt-1 text-[11px] text-slate-400">
                 Email cannot be changed. Contact support if needed.
               </p>
+            </div>
+
+            {/* Resume */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    Resume
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Keep your latest resume updated for job applications (max{" "}
+                    {MAX_RESUMES}).{" "}
+                    {resumes.length >= MAX_RESUMES && (
+                      <span className="font-semibold text-amber-600">
+                        Limit reached - delete one to upload a new resume.
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <label
+                  className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition ${resumes.length >= MAX_RESUMES || resumeBusy ? "cursor-not-allowed border-slate-200 text-slate-400" : "border-slate-300 text-slate-700 hover:border-primary hover:text-primary"}`}
+                >
+                  <FiUpload className="h-4 w-4" />
+                  {resumeBusy ? "Updating..." : "Upload Resume"}
+                  <input
+                    type="file"
+                    className="hidden"
+                    multiple
+                    accept=".pdf"
+                    onChange={(e) => {
+                      handleUploadResumes(Array.from(e.target.files || []));
+                      e.target.value = "";
+                    }}
+                    disabled={resumeBusy || resumes.length >= MAX_RESUMES}
+                  />
+                </label>
+              </div>
+
+              <div className="mt-3 space-y-2">{resumeListContent}</div>
             </div>
 
             {/* Mobile-only eligibility and credits */}
@@ -393,19 +632,27 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
             </div>
 
             {/* Basic fields */}
-            <Input label="Full Name" value={form.fullName || ""}
+            <Input
+              label="Full Name"
+              value={form.fullName || ""}
               onChange={(e) => update({ fullName: e.target.value })}
               placeholder="Your full name"
             />
-            <Input label="Phone" value={form.phone || ""}
+            <Input
+              label="Phone"
+              value={form.phone || ""}
               onChange={(e) => update({ phone: e.target.value })}
               placeholder="+91 98765 43210"
             />
-            <Input label="Location" value={form.location || ""}
+            <Input
+              label="Location"
+              value={form.location || ""}
               onChange={(e) => update({ location: e.target.value })}
               placeholder="e.g. Bengaluru, Karnataka"
             />
-            <Input label="Preferred Job Location" value={form.preferredLocation || ""}
+            <Input
+              label="Preferred Job Location"
+              value={form.preferredLocation || ""}
               onChange={(e) => update({ preferredLocation: e.target.value })}
               placeholder="e.g. Bengaluru, Hyderabad"
             />
@@ -418,16 +665,24 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
 
             {/* Experience */}
             <div className="rounded-xl border border-slate-200 p-4">
-              <div className="text-sm font-semibold text-slate-900">Experience</div>
+              <div className="text-sm font-semibold text-slate-900">
+                Experience
+              </div>
               <div className="mt-3 flex gap-2">
                 <Button
-                  variant={form.experienceLevel === "Experienced" ? "primary" : "outline"}
+                  variant={
+                    form.experienceLevel === "Experienced"
+                      ? "primary"
+                      : "outline"
+                  }
                   onClick={() => update({ experienceLevel: "Experienced" })}
                 >
                   Experienced
                 </Button>
                 <Button
-                  variant={form.experienceLevel === "Fresher" ? "primary" : "outline"}
+                  variant={
+                    form.experienceLevel === "Fresher" ? "primary" : "outline"
+                  }
                   onClick={() => update({ experienceLevel: "Fresher" })}
                 >
                   Fresher
@@ -436,20 +691,30 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
 
               {form.experienceLevel === "Experienced" ? (
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                  <Input label="Experience Years" value={form.experienceYears || ""}
-                    onChange={(e) => update({ experienceYears: e.target.value })}
+                  <Input
+                    label="Experience Years"
+                    value={form.experienceYears || ""}
+                    onChange={(e) =>
+                      update({ experienceYears: e.target.value })
+                    }
                   />
-                  <Input label="Current CTC (in LPA)" value={form.currentCTC || ""}
+                  <Input
+                    label="Current CTC (in LPA)"
+                    value={form.currentCTC || ""}
                     onChange={(e) => update({ currentCTC: e.target.value })}
                   />
-                  <Input label="Expected CTC (LPA)" className="col-span-2"
+                  <Input
+                    label="Expected CTC (LPA)"
+                    className="col-span-2"
                     value={form.expectedCTC || ""}
                     onChange={(e) => update({ expectedCTC: e.target.value })}
                   />
                 </div>
               ) : (
                 <div className="mt-4">
-                  <Input label="Expected CTC (LPA)" value={form.expectedCTC || ""}
+                  <Input
+                    label="Expected CTC (LPA)"
+                    value={form.expectedCTC || ""}
                     onChange={(e) => update({ expectedCTC: e.target.value })}
                   />
                 </div>
@@ -459,9 +724,12 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
 
           {/* Footer */}
           <div className="border-t border-slate-200 px-5 py-4">
-            <Button className="w-full" onClick={save}
-              disabled={saving || photoUploading}>
-              {saving ? "Saving..." : photoUploading ? "Uploading photo..." : "Save"}
+            <Button
+              className="w-full"
+              onClick={save}
+              disabled={saving || photoUploading || resumeBusy}
+            >
+              {saveButtonLabel}
             </Button>
           </div>
         </div>
