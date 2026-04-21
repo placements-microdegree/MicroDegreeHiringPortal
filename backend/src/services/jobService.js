@@ -122,6 +122,31 @@ function normalizeInterviewModes(value) {
     return found;
   });
 }
+function normalizeWorkModes(value) {
+  let modes;
+  if (Array.isArray(value)) {
+    modes = value;
+  } else if (typeof value === "string" && value.trim()) {
+    modes = value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  } else {
+    throw createBadRequestError("Work mode is required");
+  }
+  if (modes.length === 0)
+    throw createBadRequestError("Select at least one work mode");
+  return modes.map((m) => {
+    const found = WORK_MODES.find(
+      (wm) => wm.toLowerCase() === String(m).trim().toLowerCase(),
+    );
+    if (!found)
+      throw createBadRequestError(
+        `Invalid work mode "${m}". Must be one of: ${WORK_MODES.join(", ")}`,
+      );
+    return found;
+  });
+}
 function normalizeQuestions(questions) {
   if (!questions) return [];
   if (!Array.isArray(questions))
@@ -172,11 +197,7 @@ function buildJobWritePayload(payload = {}, { isUpdate = false } = {}) {
   if (!isUpdate || hasOwn(payload, "experience"))
     record.experience = normalizeRequiredText(payload.experience, "Experience");
   if (!isUpdate || hasOwn(payload, "work_mode"))
-    record.work_mode = normalizeEnum(
-      payload.work_mode,
-      WORK_MODES,
-      "Work mode",
-    );
+    record.work_mode = normalizeWorkModes(payload.work_mode);
   if (!isUpdate || hasOwn(payload, "notice_period"))
     record.notice_period = normalizeRequiredText(
       payload.notice_period,

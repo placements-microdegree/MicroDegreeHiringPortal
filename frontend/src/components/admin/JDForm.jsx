@@ -20,7 +20,7 @@ const INITIAL_FORM = {
   jd_link: "",
   skills: "",
   experience: "",
-  work_mode: "",
+  work_mode: [],
   notice_period: "",
   interview_mode: [],
   valid_till: "", // stored as IST datetime-local string "YYYY-MM-DDTHH:mm"
@@ -91,6 +91,20 @@ function normalizeInterviewMode(value) {
   return [];
 }
 
+function normalizeWorkMode(value) {
+  if (Array.isArray(value))
+    return value.filter((v) => WORK_MODE_OPTIONS.includes(v));
+  if (typeof value === "string") {
+    const parts = value
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (!parts.length) return [];
+    return parts.filter((v) => WORK_MODE_OPTIONS.includes(v));
+  }
+  return [];
+}
+
 function normalizeFormValues(initialValues) {
   if (!initialValues) return { ...INITIAL_FORM };
   return {
@@ -101,9 +115,7 @@ function normalizeFormValues(initialValues) {
       ? initialValues.skills.join(", ")
       : String(initialValues.skills || "").trim(),
     experience: String(initialValues.experience || "").trim(),
-    work_mode: WORK_MODE_OPTIONS.includes(initialValues.work_mode)
-      ? initialValues.work_mode
-      : "",
+    work_mode: normalizeWorkMode(initialValues.work_mode),
     notice_period: String(
       initialValues.notice_period || initialValues.noticePeriod || "",
     ).trim(),
@@ -140,8 +152,8 @@ function validateForm(form) {
   if (!parseSkills(form.skills).length)
     errors.skills = "Enter at least one skill";
   if (!form.experience.trim()) errors.experience = "Experience is required";
-  if (!WORK_MODE_OPTIONS.includes(form.work_mode))
-    errors.work_mode = "Select a valid work mode";
+  if (!form.work_mode.length)
+    errors.work_mode = "Select at least one work mode";
   if (!form.notice_period.trim())
     errors.notice_period = "Notice period is required";
   if (!form.interview_mode.length)
@@ -179,6 +191,61 @@ function InterviewModeCheckboxes({ value, onChange, error }) {
       </div>
       <div className="flex flex-wrap gap-2">
         {INTERVIEW_MODE_OPTIONS.map((mode) => {
+          const checked = value.includes(mode);
+          return (
+            <label
+              key={mode}
+              className={`flex cursor-pointer select-none items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                checked
+                  ? "border-primary bg-primary/10 text-primary"
+                  : error
+                    ? "border-red-300 bg-red-50 text-slate-700 hover:border-red-400"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <input
+                type="checkbox"
+                className="hidden"
+                checked={checked}
+                onChange={() => toggle(mode)}
+              />
+              <span
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[11px] font-bold ${
+                  checked
+                    ? "border-primary bg-primary text-white"
+                    : "border-slate-300 bg-white"
+                }`}
+              >
+                {checked && "✓"}
+              </span>
+              {mode}
+            </label>
+          );
+        })}
+      </div>
+      {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
+    </div>
+  );
+}
+
+function WorkModeCheckboxes({ value, onChange, error }) {
+  const toggle = (mode) =>
+    onChange(
+      value.includes(mode) ? value.filter((m) => m !== mode) : [...value, mode],
+    );
+
+  return (
+    <div>
+      <div
+        className={`mb-1.5 text-sm font-medium ${error ? "text-red-600" : "text-slate-700"}`}
+      >
+        Work Mode <span className="text-red-500">*</span>
+        <span className="ml-1 text-xs font-normal text-slate-400">
+          (select all that apply)
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {WORK_MODE_OPTIONS.map((mode) => {
           const checked = value.includes(mode);
           return (
             <label
@@ -429,7 +496,7 @@ export default function JDForm({
       });
 
       if (resetOnSuccess)
-        setForm({ ...INITIAL_FORM, interview_mode: [], questions: [] });
+        setForm({ ...INITIAL_FORM, work_mode: [], interview_mode: [], questions: [] });
       setFieldErrors({});
     } finally {
       setSaving(false);
@@ -476,30 +543,14 @@ export default function JDForm({
           required
         />
 
-        {/* Work Mode */}
-        <label className="block">
-          <div className="mb-1 text-sm font-medium text-slate-700">
-            Work Mode
-          </div>
-          <select
-            className={`w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ${fieldErrors.work_mode ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-primary"}`}
+        {/* Work Mode checkboxes */}
+        <div className="col-span-2 md:col-span-1">
+          <WorkModeCheckboxes
             value={form.work_mode}
-            onChange={(e) => update({ work_mode: e.target.value })}
-            required
-          >
-            <option value="">Select Work Mode</option>
-            {WORK_MODE_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          {fieldErrors.work_mode && (
-            <div className="mt-1 text-xs text-red-600">
-              {fieldErrors.work_mode}
-            </div>
-          )}
-        </label>
+            onChange={(val) => update({ work_mode: val })}
+            error={fieldErrors.work_mode}
+          />
+        </div>
 
         <Input
           label="Notice Period"
