@@ -601,7 +601,7 @@ async function getApplicationForAi({ applicationId, jwt }) {
         total_experience,
         current_ctc,
         expected_ctc,
-        resumes(file_url, file_name)
+        resumes!resumes_user_id_fkey(file_url, file_name)
       )
     `,
     )

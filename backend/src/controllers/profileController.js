@@ -2,9 +2,16 @@ const profileService = require("../services/profileService");
 const resumeService = require("../services/resumeService");
 const { uploadProfilePhoto } = require("../services/profilePhotoService");
 const emailSubscriptionService = require("../services/emailSubscriptionService");
+const {
+  evaluateCareerReadinessFromData,
+  toStudentReadinessView,
+} = require("../services/careerReadinessService");
 
 function mapProfileRow(row, resumes = []) {
   if (!row) return null;
+  const readiness = toStudentReadinessView(
+    evaluateCareerReadinessFromData({ profile: row, resumes }),
+  );
   return {
     id: row.id,
     fullName: row.full_name,
@@ -28,6 +35,13 @@ function mapProfileRow(row, resumes = []) {
     applicationQuota: row.application_quota,
     courseFee: row.course_fee,
     emailSubscribe: row.email_subscribe,
+    cloudDriveStatus: row.cloud_drive_status || null,
+    driveClearedDate: row.drive_cleared_date || null,
+    driveClearedStatus: Array.isArray(row.drive_cleared_status)
+      ? row.drive_cleared_status
+      : [],
+    activeResumeId: row.active_resume_id || null,
+    readiness,
     resumes,
   };
 }

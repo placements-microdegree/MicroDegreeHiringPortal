@@ -21,9 +21,12 @@ export default function JobListings() {
   const [isLoading, setIsLoading] = useState(true);
   const [emailSubscribe, setEmailSubscribe] = useState(false);
   const [isUpdatingSubscription, setIsUpdatingSubscription] = useState(false);
+  const hasOpportunityAccess =
+    profile?.readiness?.canGetOpportunities === true ||
+    profile?.isEligible === true;
 
   useEffect(() => {
-    if (profile?.isEligible === true) {
+    if (hasOpportunityAccess) {
       setEmailSubscribe(
         typeof profile?.emailSubscribe === "boolean"
           ? profile.emailSubscribe
@@ -33,7 +36,10 @@ export default function JobListings() {
     }
 
     setEmailSubscribe(false);
-  }, [profile?.isEligible, profile?.emailSubscribe]);
+  }, [
+    hasOpportunityAccess,
+    profile?.emailSubscribe,
+  ]);
 
   const refresh = async () => {
     setIsLoading(true);
@@ -102,13 +108,30 @@ export default function JobListings() {
       return;
     }
 
-    const hasEligibilityWindow = profile?.isEligible === true;
+    const hasEligibilityWindow = hasOpportunityAccess;
+    const opportunityType = String(
+      job?.opportunity_type || "REAL_OPPORTUNITY",
+    ).toUpperCase();
     const remainingQuota = Number(profile?.applicationQuota ?? 0);
     const hasQuotaAccess = !hasEligibilityWindow && remainingQuota > 0;
 
-    if (!hasEligibilityWindow && !hasQuotaAccess) {
+    if (opportunityType === "REAL_OPPORTUNITY" && !hasEligibilityWindow) {
       await showInfo(
-        "You are not eligible to apply and your application quota is exhausted.",
+        `This is a real opportunity and requires Career Readiness. Pending: ${
+          profile?.readiness?.missingSteps?.join(" | ") || "Complete required steps"
+        }`,
+        "Not Eligible Yet",
+      );
+      return;
+    }
+
+    if (
+      opportunityType === "PRACTICE_OPPORTUNITY" &&
+      !hasEligibilityWindow &&
+      !hasQuotaAccess
+    ) {
+      await showInfo(
+        "Practice quota exhausted. Complete Career Readiness to unlock real opportunities.",
         "Not Eligible",
       );
       return;
@@ -123,7 +146,7 @@ export default function JobListings() {
   const onToggleEmailSubscription = async (event) => {
     const nextChecked = Boolean(event.target.checked);
 
-    if (profile?.isEligible !== true) {
+    if (!hasOpportunityAccess) {
       return;
     }
 
@@ -230,21 +253,23 @@ export default function JobListings() {
 
             <label
               className={`mt-3 flex w-full items-start gap-2 rounded-xl border px-3 py-2.5 text-sm leading-5 sm:inline-flex sm:w-auto sm:items-center ${
-                profile?.isEligible === true
+                profile?.readiness?.canGetOpportunities === true
+                  || hasOpportunityAccess
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                   : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500"
               }`}
               title={
-                profile?.isEligible === true
+                hasOpportunityAccess
                   ? "Receive premium job email alerts. Uncheck to stop receiving emails."
-                  : "To use this feature, become a MicroDegree eligible student and contact the support team."
+                  : "Complete Career Readiness to use premium alerts for real opportunities."
               }
             >
               <input
                 type="checkbox"
                 checked={emailSubscribe}
                 disabled={
-                  profile?.isEligible !== true || isUpdatingSubscription
+                  !hasOpportunityAccess ||
+                  isUpdatingSubscription
                 }
                 onChange={onToggleEmailSubscription}
                 className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0"
@@ -254,10 +279,11 @@ export default function JobListings() {
               </span>
             </label>
 
-            {profile?.isEligible !== true ? (
+            {!hasOpportunityAccess ? (
               <p className="mt-2 text-xs text-slate-500">
-                To use this feature, become a MicroDegree eligible student and
-                contact support.
+                Complete your Career Readiness checklist to unlock real
+                opportunities. Practice opportunities are still available based
+                on quota.
               </p>
             ) : null}
           </div>

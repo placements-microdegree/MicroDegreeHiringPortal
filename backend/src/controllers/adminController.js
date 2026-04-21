@@ -183,13 +183,33 @@ async function checker(req, res, next) {
 async function updateStudentCloudDriveProfile(req, res, next) {
   try {
     const { studentId } = req.params || {};
-    const { cloudDriveStatus, driveClearedDate, cloudDriveHistory } =
-      req.body || {};
+    const {
+      cloudDriveStatus,
+      driveClearedDate,
+      cloudDriveHistory,
+      jobSearchStatus,
+      internalFlags,
+      internalNote,
+      internalNoteId,
+      activeResumeId,
+      activeResumeApprovalStatus,
+      activeResumeRejectionReason,
+      resumeUpdates,
+    } = req.body || {};
     const student = await adminService.updateStudentCloudDriveProfileFields({
       studentId,
       cloudDriveStatus,
       driveClearedDate,
       cloudDriveHistory,
+      jobSearchStatus,
+      internalFlags,
+      internalNote,
+      internalNoteId,
+      activeResumeId,
+      activeResumeApprovalStatus,
+      activeResumeRejectionReason,
+      resumeUpdates,
+      actorId: req.user?.id || null,
     });
     res.json({ success: true, student });
   } catch (err) {

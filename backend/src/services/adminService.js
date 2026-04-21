@@ -77,6 +77,85 @@ async function fetchLatestActivityByStudentIds({ supabase, studentIds }) {
   return responses.flatMap((response) => response?.data || []);
 }
 
+async function fetchProfileInternalNotesByStudentIds({ supabase, studentIds }) {
+  const batches = chunkArray(studentIds, APPLICATION_FETCH_BATCH_SIZE);
+
+  const responses = await Promise.all(
+    batches.map((batch) =>
+      supabase
+        .from("profile_internal_notes")
+        .select("id, student_id, note, source, created_at, created_by")
+        .in("student_id", batch)
+        .order("created_at", { ascending: false }),
+    ),
+  );
+
+  const firstError = responses.find((response) => response?.error)?.error;
+  if (firstError) {
+    if (firstError.code === "42P01") return [];
+    throw firstError;
+  }
+
+  return responses.flatMap((response) => response?.data || []);
+}
+
+async function fetchResumeMetaByStudentIds({ supabase, studentIds }) {
+  if (!Array.isArray(studentIds) || studentIds.length === 0) return [];
+
+  const batches = chunkArray(studentIds, APPLICATION_FETCH_BATCH_SIZE);
+
+  let responses = await Promise.all(
+    batches.map((batch) =>
+      supabase
+        .from("resumes")
+        .select(
+          "id, user_id, file_name, approval_status, rejection_reason, approved_at, created_at",
+        )
+        .in("user_id", batch)
+        .order("created_at", { ascending: false }),
+    ),
+  );
+
+  let firstError = responses.find((response) => response?.error)?.error;
+  if (firstError) {
+    responses = await Promise.all(
+      batches.map((batch) =>
+        supabase
+          .from("resumes")
+          .select("id, user_id, file_name, created_at")
+          .in("user_id", batch)
+          .order("created_at", { ascending: false }),
+      ),
+    );
+    firstError = responses.find((response) => response?.error)?.error;
+  }
+
+  if (firstError) {
+    if (firstError.code === "42P01") return [];
+    throw firstError;
+  }
+
+  return responses
+    .flatMap((response) => response?.data || [])
+    .map((row) => ({
+      id: row.id,
+      user_id: row.user_id,
+      file_name: row.file_name,
+      approval_status: row.approval_status || "PENDING",
+      rejection_reason: row.rejection_reason || null,
+      approved_at: row.approved_at || null,
+      created_at: row.created_at,
+    }));
+}
+
+async function fetchResumeMetaByStudentId({ supabase, studentId }) {
+  const rows = await fetchResumeMetaByStudentIds({
+    supabase,
+    studentIds: [studentId],
+  });
+  return rows.filter((row) => row.user_id === studentId);
+}
+
 async function listUsersPage(adminApi, page, perPage) {
   // Support both old and new API shapes:
   // - listUsers({ page, perPage })
@@ -255,7 +334,7 @@ async function listStudentsWithLatestApplication() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, current_ctc, expected_ctc, total_experience, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
+        "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, current_ctc, expected_ctc, total_experience, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history, job_search_status, internal_flags, active_resume_id, profile_completion_percentage",
       )
       .eq("role", ROLES.STUDENT)
       .order("updated_at", { ascending: false });
@@ -264,7 +343,7 @@ async function listStudentsWithLatestApplication() {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("profiles")
         .select(
-          "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
+          "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, profile_photo_url, is_eligible, eligible_until, updated_at, resume_url, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history, job_search_status, internal_flags, active_resume_id, profile_completion_percentage",
         )
         .eq("role", ROLES.STUDENT)
         .order("updated_at", { ascending: false });
@@ -293,6 +372,47 @@ async function listStudentsWithLatestApplication() {
   const studentIds = students.map((student) => student?.id).filter(Boolean);
 
   if (studentIds.length === 0) return students;
+
+  let internalNotesByStudentId = new Map();
+  let resumesByStudentId = new Map();
+
+  {
+    const [noteRows, resumeRows] = await Promise.all([
+      fetchProfileInternalNotesByStudentIds({ supabase, studentIds }),
+      fetchResumeMetaByStudentIds({ supabase, studentIds }),
+    ]);
+
+    if (Array.isArray(noteRows)) {
+      internalNotesByStudentId = noteRows.reduce((acc, row) => {
+        const list = acc.get(row.student_id) || [];
+        list.push({
+          id: row.id,
+          note: row.note,
+          source: row.source,
+          created_at: row.created_at,
+          created_by: row.created_by,
+        });
+        acc.set(row.student_id, list);
+        return acc;
+      }, new Map());
+    }
+
+    if (Array.isArray(resumeRows)) {
+      resumesByStudentId = resumeRows.reduce((acc, row) => {
+        const list = acc.get(row.user_id) || [];
+        list.push({
+          id: row.id,
+          file_name: row.file_name,
+          approval_status: row.approval_status || "PENDING",
+          rejection_reason: row.rejection_reason || null,
+          approved_at: row.approved_at || null,
+          created_at: row.created_at,
+        });
+        acc.set(row.user_id, list);
+        return acc;
+      }, new Map());
+    }
+  }
 
   let latestActivityByStudentId = new Map();
   {
@@ -351,6 +471,15 @@ async function listStudentsWithLatestApplication() {
         latest?.selected_resume_url ?? student?.resume_url ?? null,
       recent_application_created_at: latest?.created_at ?? null,
       last_active_at: latestActivityByStudentId.get(student.id) || null,
+      job_search_status: student?.job_search_status || "PASSIVE",
+      internal_flags: Array.isArray(student?.internal_flags)
+        ? student.internal_flags
+        : [],
+      active_resume_id: student?.active_resume_id || null,
+      profile_completion_percentage:
+        Number(student?.profile_completion_percentage || 0) || 0,
+      internal_notes: internalNotesByStudentId.get(student.id) || [],
+      resumes_meta: resumesByStudentId.get(student.id) || [],
     };
   });
 }
@@ -372,13 +501,82 @@ const ALLOWED_CLOUD_DRIVE_PROFILE_STATUS = new Set([
 ]);
 
 const CLEARED_STATUSES = new Set([
+  "PASSED",
   "Cleared",
+  "CLEARED",
+  "READY_FOR_INTERVIEWS",
   "Practical Online Task Round Cleared",
   "Face-to-Face Round (Live Interview) Cleared",
   "Managerial Round Cleared",
   "Cleared AWS Drive",
   "Cleared DevOps Drive",
 ]);
+
+const JOB_SEARCH_STATUS_VALUES = new Set([
+  "ACTIVE_NOW",
+  "PASSIVE",
+  "NOT_LOOKING",
+  "UNRESPONSIVE",
+]);
+
+const INTERNAL_FLAG_VALUES = new Set(["RED_FLAG", "ON_HOLD", "BLACKLISTED"]);
+
+const RESUME_APPROVAL_VALUES = new Set(["PENDING", "APPROVED", "REJECTED"]);
+
+function normalizeJobSearchStatus(value) {
+  const text = String(value || "").trim().toUpperCase();
+  if (!text) return "PASSIVE";
+  if (!JOB_SEARCH_STATUS_VALUES.has(text)) {
+    const err = new Error("Invalid job search status");
+    err.status = 400;
+    throw err;
+  }
+  return text;
+}
+
+function normalizeInternalFlags(values) {
+  if (!Array.isArray(values)) return [];
+  const normalized = values
+    .map((value) => String(value || "").trim().toUpperCase())
+    .filter(Boolean);
+
+  const unique = [...new Set(normalized)];
+  unique.forEach((value) => {
+    if (!INTERNAL_FLAG_VALUES.has(value)) {
+      const err = new Error(`Invalid internal flag: ${value}`);
+      err.status = 400;
+      throw err;
+    }
+  });
+
+  return unique;
+}
+
+function normalizeResumeApprovalStatus(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const text = String(value).trim().toUpperCase();
+  if (!RESUME_APPROVAL_VALUES.has(text)) {
+    const err = new Error("Invalid resume approval status");
+    err.status = 400;
+    throw err;
+  }
+  return text;
+}
+
+function normalizeResumeUpdatePayload(values) {
+  if (!Array.isArray(values)) return [];
+
+  return values
+    .map((value) => ({
+      id: String(value?.id || "").trim(),
+      approval_status: normalizeResumeApprovalStatus(value?.approval_status),
+      rejection_reason:
+        value?.rejection_reason === undefined
+          ? null
+          : String(value?.rejection_reason || "").trim() || null,
+    }))
+    .filter((value) => value.id && value.approval_status);
+}
 
 function normalizeDriveClearedStatusArray(values) {
   if (!Array.isArray(values)) return [];
@@ -431,6 +629,13 @@ function normalizeCloudDriveHistoryEntries(entries) {
   );
 }
 
+function buildLegacyCloudDriveHistory(profile) {
+  const status = String(profile?.cloud_drive_status || "").trim();
+  const date = String(profile?.drive_cleared_date || "").trim();
+  if (!status || !date) return [];
+  return normalizeCloudDriveHistoryEntries([{ status, date }]);
+}
+
 function deriveDriveClearedStatusesFromHistory(history) {
   return normalizeDriveClearedStatusArray(
     (history || [])
@@ -444,6 +649,15 @@ async function updateStudentCloudDriveProfileFields({
   cloudDriveStatus,
   driveClearedDate,
   cloudDriveHistory,
+  jobSearchStatus,
+  internalFlags,
+  internalNote,
+  internalNoteId,
+  activeResumeId,
+  activeResumeApprovalStatus,
+  activeResumeRejectionReason,
+  resumeUpdates,
+  actorId,
 }) {
   const normalizedStudentId = String(studentId || "").trim();
   if (!normalizedStudentId) {
@@ -457,7 +671,7 @@ async function updateStudentCloudDriveProfileFields({
   const { data: existing, error: existingError } = await supabase
     .from("profiles")
     .select(
-      "id, role, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
+      "id, role, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history, job_search_status, internal_flags, active_resume_id",
     )
     .eq("id", normalizedStudentId)
     .maybeSingle();
@@ -472,6 +686,9 @@ async function updateStudentCloudDriveProfileFields({
   let nextHistory = normalizeCloudDriveHistoryEntries(
     existing.cloud_drive_status_history,
   );
+  if (nextHistory.length === 0) {
+    nextHistory = buildLegacyCloudDriveHistory(existing);
+  }
 
   if (Array.isArray(cloudDriveHistory)) {
     nextHistory = normalizeCloudDriveHistoryEntries(cloudDriveHistory);
@@ -490,22 +707,265 @@ async function updateStudentCloudDriveProfileFields({
   const nextDriveClearedStatus =
     deriveDriveClearedStatusesFromHistory(nextHistory);
 
+  const nextJobSearchStatus = normalizeJobSearchStatus(
+    jobSearchStatus ?? existing.job_search_status,
+  );
+  const nextInternalFlags =
+    internalFlags === undefined
+      ? Array.isArray(existing.internal_flags)
+        ? existing.internal_flags
+        : []
+      : normalizeInternalFlags(internalFlags);
+
+  const normalizedActiveResumeId =
+    activeResumeId === undefined || activeResumeId === null || activeResumeId === ""
+      ? null
+      : String(activeResumeId).trim();
+  let effectiveActiveResumeId =
+    activeResumeId === undefined
+      ? String(existing.active_resume_id || "").trim() || null
+      : normalizedActiveResumeId;
+
+  const resumeApprovalStatus = normalizeResumeApprovalStatus(
+    activeResumeApprovalStatus,
+  );
+  const normalizedRejectionReason =
+    activeResumeRejectionReason === undefined
+      ? undefined
+      : String(activeResumeRejectionReason || "").trim() || null;
+  let normalizedResumeUpdates = normalizeResumeUpdatePayload(resumeUpdates);
+
+  if (!effectiveActiveResumeId && resumeApprovalStatus) {
+    const { data: latestResume, error: latestResumeError } = await supabase
+      .from("resumes")
+      .select("id")
+      .eq("user_id", normalizedStudentId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latestResumeError) throw latestResumeError;
+    effectiveActiveResumeId = latestResume?.id || null;
+  }
+
+  if (
+    normalizedResumeUpdates.length === 0 &&
+    effectiveActiveResumeId &&
+    resumeApprovalStatus
+  ) {
+    normalizedResumeUpdates = [
+      {
+        id: effectiveActiveResumeId,
+        approval_status: resumeApprovalStatus,
+        rejection_reason: normalizedRejectionReason,
+      },
+    ];
+  }
+
+  const { data: existingResumeRows, error: existingResumeRowsError } =
+    await supabase
+      .from("resumes")
+      .select(
+        "id, approval_status, rejection_reason, approved_at, approved_by",
+      )
+      .eq("user_id", normalizedStudentId);
+  if (existingResumeRowsError) throw existingResumeRowsError;
+
+  const existingResumeById = new Map(
+    (existingResumeRows || []).map((row) => [String(row.id), row]),
+  );
+
+  if (effectiveActiveResumeId && !existingResumeById.has(effectiveActiveResumeId)) {
+    const err = new Error("Active resume does not belong to this student");
+    err.status = 400;
+    throw err;
+  }
+
+  if (resumeApprovalStatus && !effectiveActiveResumeId) {
+    const err = new Error(
+      "Select an active resume before updating approval status",
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  const invalidResumeUpdate = normalizedResumeUpdates.find(
+    (resume) => !existingResumeById.has(String(resume.id)),
+  );
+  if (invalidResumeUpdate) {
+    const err = new Error("One or more resume updates do not belong to this student");
+    err.status = 400;
+    throw err;
+  }
+
+  const profilePatch = {
+    cloud_drive_status: latest?.status || null,
+    drive_cleared_date: latest?.date || null,
+    drive_cleared_status: nextDriveClearedStatus,
+    cloud_drive_status_history: nextHistory,
+    job_search_status: nextJobSearchStatus,
+    internal_flags: nextInternalFlags,
+    active_resume_id:
+      activeResumeId === undefined ? existing.active_resume_id : effectiveActiveResumeId,
+    updated_at: new Date().toISOString(),
+  };
+
   const { data: updated, error: updateError } = await supabase
     .from("profiles")
-    .update({
-      cloud_drive_status: latest?.status || null,
-      drive_cleared_date: latest?.date || null,
-      drive_cleared_status: nextDriveClearedStatus,
-      cloud_drive_status_history: nextHistory,
-      updated_at: new Date().toISOString(),
-    })
+    .update(profilePatch)
     .eq("id", normalizedStudentId)
     .select(
-      "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, is_eligible, eligible_until, updated_at, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history",
+      "id, full_name, email, phone, role, location, preferred_location, skills, experience_level, experience_years, is_eligible, eligible_until, updated_at, cloud_drive_status, drive_cleared_date, drive_cleared_status, cloud_drive_status_history, job_search_status, internal_flags, active_resume_id",
     )
     .single();
 
   if (updateError) throw updateError;
+
+  for (const resumeUpdate of normalizedResumeUpdates) {
+    const existingResume = existingResumeById.get(String(resumeUpdate.id));
+    const desiredApprovalStatus =
+      String(resumeUpdate.approval_status || "PENDING").trim().toUpperCase() ||
+      "PENDING";
+    const desiredRejectionReason =
+      resumeUpdate.rejection_reason !== undefined
+        ? resumeUpdate.rejection_reason
+        : existingResume.rejection_reason ?? null;
+    const currentApprovalStatus = String(
+      existingResume?.approval_status || "PENDING",
+    )
+      .trim()
+      .toUpperCase();
+    const currentRejectionReason =
+      String(existingResume?.rejection_reason || "").trim() || null;
+    const statusChanged = desiredApprovalStatus !== currentApprovalStatus;
+    const rejectionReasonChanged =
+      desiredRejectionReason !== currentRejectionReason;
+
+    if (!statusChanged && !rejectionReasonChanged) continue;
+
+    const resumePatch = {
+      approval_status: desiredApprovalStatus,
+      rejection_reason: desiredRejectionReason,
+    };
+
+    if (statusChanged) {
+      if (desiredApprovalStatus === "PENDING") {
+        resumePatch.approved_by = null;
+        resumePatch.approved_at = null;
+      } else {
+        resumePatch.approved_by = actorId || null;
+        resumePatch.approved_at = new Date().toISOString();
+      }
+    }
+
+    // eslint-disable-next-line no-await-in-loop
+    const { error: resumeUpdateError } = await supabase
+      .from("resumes")
+      .update(resumePatch)
+      .eq("id", resumeUpdate.id)
+      .eq("user_id", normalizedStudentId);
+    if (resumeUpdateError) throw resumeUpdateError;
+  }
+
+  const normalizedInternalNote = String(internalNote ?? "").trim();
+  const normalizedInternalNoteId = String(internalNoteId || "").trim();
+
+  if (normalizedInternalNoteId) {
+    const { error: noteError } = await supabase
+      .from("profile_internal_notes")
+      .update({
+        note: normalizedInternalNote,
+        source: "MANUAL",
+      })
+      .eq("id", normalizedInternalNoteId)
+      .eq("student_id", normalizedStudentId);
+    if (noteError) throw noteError;
+  } else if (normalizedInternalNote) {
+    const { error: noteError } = await supabase
+      .from("profile_internal_notes")
+      .insert({
+        student_id: normalizedStudentId,
+        note: normalizedInternalNote,
+        source: "MANUAL",
+        created_by: actorId || null,
+      });
+    if (noteError) throw noteError;
+  }
+
+  const historyRows = [];
+  if (
+    JSON.stringify(existing.cloud_drive_status_history || []) !==
+    JSON.stringify(nextHistory || [])
+  ) {
+    historyRows.push({
+      student_id: normalizedStudentId,
+      field_changed: "cloud_drive_status_history",
+      old_value: existing.cloud_drive_status_history || [],
+      new_value: nextHistory || [],
+      changed_by: actorId || null,
+      source: "ADMIN_UPDATE",
+    });
+  }
+
+  if ((existing.job_search_status || "PASSIVE") !== nextJobSearchStatus) {
+    historyRows.push({
+      student_id: normalizedStudentId,
+      field_changed: "job_search_status",
+      old_value: { value: existing.job_search_status || "PASSIVE" },
+      new_value: { value: nextJobSearchStatus },
+      changed_by: actorId || null,
+      source: "ADMIN_UPDATE",
+    });
+  }
+
+  if (
+    JSON.stringify(existing.internal_flags || []) !==
+    JSON.stringify(nextInternalFlags || [])
+  ) {
+    historyRows.push({
+      student_id: normalizedStudentId,
+      field_changed: "internal_flags",
+      old_value: existing.internal_flags || [],
+      new_value: nextInternalFlags || [],
+      changed_by: actorId || null,
+      source: "ADMIN_UPDATE",
+    });
+  }
+
+  if ((existing.active_resume_id || null) !== (updated.active_resume_id || null)) {
+    historyRows.push({
+      student_id: normalizedStudentId,
+      field_changed: "active_resume_id",
+      old_value: { value: existing.active_resume_id || null },
+      new_value: { value: updated.active_resume_id || null },
+      changed_by: actorId || null,
+      source: "ADMIN_UPDATE",
+    });
+  }
+
+  if (historyRows.length > 0) {
+    const { error: historyError } = await supabase
+      .from("profile_status_history")
+      .insert(historyRows);
+    if (historyError) throw historyError;
+  }
+
+  const [notesRes, resumeRows] = await Promise.all([
+    supabase
+      .from("profile_internal_notes")
+      .select("id, note, source, created_at, created_by")
+      .eq("student_id", normalizedStudentId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    fetchResumeMetaByStudentId({
+      supabase,
+      studentId: normalizedStudentId,
+    }),
+  ]);
+
+  if (notesRes.error) throw notesRes.error;
+
+  updated.internal_notes = notesRes.data || [];
+  updated.resumes_meta = resumeRows || [];
   return updated;
 }
 

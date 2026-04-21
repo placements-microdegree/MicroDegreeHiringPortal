@@ -12,6 +12,10 @@ const STATUS_OPTIONS = [
   { value: "closed", label: "Closed" },
   { value: "deleted", label: "Deleted" },
 ];
+const OPPORTUNITY_TYPE_OPTIONS = [
+  { value: "REAL_OPPORTUNITY", label: "Real Opportunity" },
+  { value: "PRACTICE_OPPORTUNITY", label: "Practice Opportunity" },
+];
 const MAX_QUESTIONS = 5;
 
 const INITIAL_FORM = {
@@ -23,6 +27,7 @@ const INITIAL_FORM = {
   work_mode: [],
   notice_period: "",
   interview_mode: [],
+  opportunity_type: "REAL_OPPORTUNITY",
   valid_till: "", // stored as IST datetime-local string "YYYY-MM-DDTHH:mm"
   status: "active",
   location: "",
@@ -120,6 +125,11 @@ function normalizeFormValues(initialValues) {
       initialValues.notice_period || initialValues.noticePeriod || "",
     ).trim(),
     interview_mode: normalizeInterviewMode(initialValues.interview_mode),
+    opportunity_type: OPPORTUNITY_TYPE_OPTIONS.some(
+      (item) => item.value === initialValues.opportunity_type,
+    )
+      ? initialValues.opportunity_type
+      : "REAL_OPPORTUNITY",
     valid_till: toISTDatetimeLocal(
       initialValues.valid_till || initialValues.validTill,
     ),
@@ -158,6 +168,9 @@ function validateForm(form) {
     errors.notice_period = "Notice period is required";
   if (!form.interview_mode.length)
     errors.interview_mode = "Select at least one interview mode";
+  if (!OPPORTUNITY_TYPE_OPTIONS.some((item) => item.value === form.opportunity_type)) {
+    errors.opportunity_type = "Select a valid opportunity type";
+  }
   if (!form.valid_till.trim())
     errors.valid_till = "Valid Till date & time is required";
   if (!STATUS_OPTIONS.some((o) => o.value === form.status))
@@ -481,6 +494,7 @@ export default function JDForm({
         work_mode: form.work_mode,
         notice_period: form.notice_period.trim(),
         interview_mode: form.interview_mode,
+        opportunity_type: form.opportunity_type,
         // Convert IST datetime-local → UTC ISO string for backend
         valid_till: istDatetimeLocalToISO(form.valid_till),
         status: form.status,
@@ -569,6 +583,29 @@ export default function JDForm({
             error={fieldErrors.interview_mode}
           />
         </div>
+
+        <label className="block">
+          <div className="mb-1 text-sm font-medium text-slate-700">
+            Opportunity Type <span className="text-red-500">*</span>
+          </div>
+          <select
+            className={`w-full rounded-xl border bg-white px-3 py-2 text-sm outline-none ${fieldErrors.opportunity_type ? "border-red-400 focus:border-red-500" : "border-slate-200 focus:border-primary"}`}
+            value={form.opportunity_type}
+            onChange={(e) => update({ opportunity_type: e.target.value })}
+            required
+          >
+            {OPPORTUNITY_TYPE_OPTIONS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+          {fieldErrors.opportunity_type && (
+            <div className="mt-1 text-xs text-red-600">
+              {fieldErrors.opportunity_type}
+            </div>
+          )}
+        </label>
 
         {/* Valid Till — datetime-local picker (IST) */}
         <label className="block">

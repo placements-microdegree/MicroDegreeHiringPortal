@@ -95,13 +95,37 @@ export async function deleteFavoritePlaylist(playlistId) {
 
 export async function updateStudentCloudDriveProfile(
   studentId,
-  { cloudDriveStatus, driveClearedDate, cloudDriveHistory },
+  {
+    cloudDriveStatus,
+    driveClearedDate,
+    cloudDriveHistory,
+    jobSearchStatus,
+    internalFlags,
+    internalNote,
+    internalNoteId,
+    activeResumeId,
+    activeResumeApprovalStatus,
+    activeResumeRejectionReason,
+    resumeUpdates,
+  },
 ) {
   const data = await request(
     `/api/admin/students/${studentId}/cloud-drive-profile`,
     {
       method: "PUT",
-      body: { cloudDriveStatus, driveClearedDate, cloudDriveHistory },
+      body: {
+        cloudDriveStatus,
+        driveClearedDate,
+        cloudDriveHistory,
+        jobSearchStatus,
+        internalFlags,
+        internalNote,
+        internalNoteId,
+        activeResumeId,
+        activeResumeApprovalStatus,
+        activeResumeRejectionReason,
+        resumeUpdates,
+      },
     },
   );
   return data.student;

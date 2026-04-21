@@ -8,10 +8,14 @@ const {
 const { ROLES } = require("../utils/constants");
 const notificationService = require("./notificationService");
 const emailService = require("./emailService");
+const {
+  evaluateCareerReadinessByStudentId,
+} = require("./careerReadinessService");
 
 const WORK_MODES = ["Remote", "Hybrid", "Onsite"];
 const INTERVIEW_MODES = ["Online", "Offline", "Hybrid"];
 const JOB_STATUSES = ["active", "closed", "deleted"];
+const OPPORTUNITY_TYPES = ["REAL_OPPORTUNITY", "PRACTICE_OPPORTUNITY"];
 const MAX_QUESTIONS = 5;
 const CLOSED_TO_DELETED_AFTER_DAYS = 30;
 
@@ -216,6 +220,13 @@ function buildJobWritePayload(payload = {}, { isUpdate = false } = {}) {
     if (normalizedStatus) record.status = normalizedStatus;
     if (!isUpdate && !normalizedStatus) record.status = "active";
   }
+  if (!isUpdate || hasOwn(payload, "opportunity_type")) {
+    record.opportunity_type = normalizeEnum(
+      payload.opportunity_type || "REAL_OPPORTUNITY",
+      OPPORTUNITY_TYPES,
+      "Opportunity type",
+    );
+  }
   return record;
 }
 
@@ -295,6 +306,23 @@ async function listJobs({ actor, includeClosed = false } = {}) {
   if (actor?.role !== ROLES.ADMIN && actor?.role !== ROLES.SUPER_ADMIN) {
     const now = new Date().toISOString();
     const canIncludeClosed = includeClosed && actor?.role === ROLES.STUDENT;
+
+    let canViewRealOpportunities = false;
+    if (actor?.role === ROLES.STUDENT && actor?.id) {
+      try {
+        const readiness = await evaluateCareerReadinessByStudentId({
+          studentId: actor.id,
+        });
+        canViewRealOpportunities = readiness.evaluation.canGetOpportunities;
+      } catch {
+        canViewRealOpportunities = false;
+      }
+    }
+
+    if (!canViewRealOpportunities) {
+      query = query.eq("opportunity_type", "PRACTICE_OPPORTUNITY");
+    }
+
     if (canIncludeClosed) {
       // Student Jobs page: show active + closed, but never deleted
       query = query.in("status", ["active", "closed"]);

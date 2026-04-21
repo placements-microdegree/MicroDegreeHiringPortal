@@ -84,6 +84,26 @@ function sortResumesByLatest(rows = []) {
   });
 }
 
+function getResumeApprovalBadge(status) {
+  const normalized = String(status || "PENDING").trim().toUpperCase();
+  if (normalized === "APPROVED") {
+    return {
+      label: "Approved",
+      className: "bg-emerald-100 text-emerald-700",
+    };
+  }
+  if (normalized === "REJECTED") {
+    return {
+      label: "Rejected",
+      className: "bg-rose-100 text-rose-700",
+    };
+  }
+  return {
+    label: "Pending review",
+    className: "bg-amber-100 text-amber-700",
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Unsaved Changes Warning Modal
 // ─────────────────────────────────────────────────────────────────────────────
@@ -447,6 +467,9 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
         resume.storage_path ||
         `${resume.file_name || "resume"}-${index}`;
       const isLatest = index === 0;
+      const isActiveResume =
+        String(profile?.activeResumeId || "").trim() === String(resume.id || "").trim();
+      const approvalBadge = getResumeApprovalBadge(resume?.approval_status);
       const viewUrl = resume.signed_url || resume.file_url || resume.url;
 
       return (
@@ -463,6 +486,16 @@ export default function ProfileDrawer({ open, onClose, profile, onSave }) {
                 Latest
               </span>
             )}
+            {isActiveResume && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
+                Active
+              </span>
+            )}
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${approvalBadge.className}`}
+            >
+              {approvalBadge.label}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">

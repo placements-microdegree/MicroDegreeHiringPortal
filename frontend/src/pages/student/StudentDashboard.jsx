@@ -60,13 +60,34 @@ function formatDate(dateInput) {
   return date.toLocaleDateString();
 }
 
-function getEligibilityText(eligibility) {
+function getEligibilityText(eligibility, readiness) {
+  if (readiness?.canGetOpportunities) {
+    return "Eligible for interview mapping and real opportunities";
+  }
+
+  if (Array.isArray(readiness?.missingSteps) && readiness.missingSteps.length) {
+    return `Not Eligible Yet - ${readiness.missingSteps.join(" | ")}`;
+  }
+
   if (eligibility?.type === "eligible_until") {
     return `Eligible until ${formatDate(eligibility?.eligibleUntil)}`;
   }
 
   const remaining = Number(eligibility?.remainingApplications ?? 0);
   return `Applications remaining: ${remaining}`;
+}
+
+function getResumeStatusLabel(readiness) {
+  const resumeApprovalStatus = String(
+    readiness?.resumeApproval?.activeResumeApprovalStatus || "",
+  )
+    .trim()
+    .toUpperCase();
+
+  if (!readiness?.resumeApproval?.hasActiveResume) return "No active resume";
+  if (resumeApprovalStatus === "APPROVED") return "Approved";
+  if (resumeApprovalStatus === "REJECTED") return "Rejected";
+  return "Pending review";
 }
 
 function sortJobsForStudent(a, b) {
@@ -92,6 +113,7 @@ export default function StudentDashboard() {
     totalApplications: 0,
     statusCounts: {},
     eligibility: null,
+    readiness: null,
   });
   const [recentJobs, setRecentJobs] = useState([]);
   const [allApplications, setAllApplications] = useState([]);
@@ -115,6 +137,7 @@ export default function StudentDashboard() {
         totalApplications: Number(analyticsData?.totalApplications || 0),
         statusCounts: analyticsData?.statusCounts || {},
         eligibility: analyticsData?.eligibility || null,
+        readiness: analyticsData?.readiness || null,
       });
 
       const safeJobs = Array.isArray(jobsData) ? jobsData : [];
@@ -140,6 +163,7 @@ export default function StudentDashboard() {
         totalApplications: 0,
         statusCounts: {},
         eligibility: null,
+        readiness: null,
       });
       setRecentJobs([]);
       setAllApplications([]);
@@ -281,8 +305,53 @@ export default function StudentDashboard() {
           Eligibility Status
         </div>
         <div className="mt-2 text-lg font-semibold text-blue-900">
-          {getEligibilityText(analytics.eligibility)}
+          {getEligibilityText(analytics.eligibility, analytics.readiness)}
         </div>
+        {analytics?.readiness ? (
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <span
+              className={`rounded-lg px-2 py-1 font-semibold ${
+                analytics.readiness.cloudDrive?.isCleared
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-rose-100 text-rose-700"
+              }`}
+            >
+              Cloud Drive: {analytics.readiness.cloudDrive?.isCleared ? "Cleared" : "Pending"}
+            </span>
+            <span
+              className={`rounded-lg px-2 py-1 font-semibold ${
+                analytics.readiness.profileCompletion?.isComplete
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-rose-100 text-rose-700"
+              }`}
+            >
+              Profile: {analytics.readiness.profileCompletion?.isComplete ? "Complete" : "Incomplete"}
+            </span>
+            <span
+              className={`rounded-lg px-2 py-1 font-semibold ${
+                analytics.readiness.resumeApproval?.isApproved
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-rose-100 text-rose-700"
+              }`}
+            >
+              Resume: {getResumeStatusLabel(analytics.readiness)}
+            </span>
+            <span
+              className={`rounded-lg px-2 py-1 font-semibold ${
+                analytics.readiness.canGetOpportunities
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-rose-100 text-rose-700"
+              }`}
+            >
+              Opportunity Access: {analytics.readiness.canGetOpportunities ? "Unlocked" : "Locked"}
+            </span>
+          </div>
+        ) : null}
+        {analytics?.readiness?.resumeApproval ? (
+          <div className="mt-3 text-xs text-blue-800">
+            Resume status is visible here in the dashboard and in your profile drawer under the resume list.
+          </div>
+        ) : null}
       </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_1fr]">

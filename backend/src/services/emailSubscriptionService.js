@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const { getSupabaseAdmin } = require("../config/db");
 const { ROLES } = require("../utils/constants");
+const {
+  evaluateCareerReadinessByStudentId,
+} = require("./careerReadinessService");
 
 function getSubscriptionSecret() {
   return (
@@ -104,7 +107,18 @@ async function setSubscriptionByUserId({ userId, subscribe }) {
   }
 
   const requested = Boolean(subscribe);
-  const allowedValue = existing.is_eligible ? requested : false;
+  let readinessAllowed = false;
+  try {
+    const readiness = await evaluateCareerReadinessByStudentId({
+      studentId: existing.id,
+      supabase,
+    });
+    readinessAllowed = readiness.evaluation.canGetOpportunities;
+  } catch {
+    readinessAllowed = false;
+  }
+
+  const allowedValue = readinessAllowed ? requested : false;
 
   const { data, error } = await supabase
     .from("profiles")
@@ -128,6 +142,7 @@ async function setSubscriptionByUserId({ userId, subscribe }) {
 async function setSubscriptionByToken({ token, subscribe }) {
   const email = verifyEmailSubscriptionToken(token);
   const row = await getStudentByEmail(email);
+  const supabase = getSupabaseAdmin();
 
   if (!row) {
     const err = new Error("Student profile not found for this subscription link");
@@ -136,9 +151,19 @@ async function setSubscriptionByToken({ token, subscribe }) {
   }
 
   const requested = Boolean(subscribe);
-  const allowedValue = row.is_eligible ? requested : false;
+  let readinessAllowed = false;
+  try {
+    const readiness = await evaluateCareerReadinessByStudentId({
+      studentId: row.id,
+      supabase,
+    });
+    readinessAllowed = readiness.evaluation.canGetOpportunities;
+  } catch {
+    readinessAllowed = false;
+  }
 
-  const supabase = getSupabaseAdmin();
+  const allowedValue = readinessAllowed ? requested : false;
+
   const { data, error } = await supabase
     .from("profiles")
     .update({
@@ -164,9 +189,8 @@ async function listSubscribedEligibleStudentEmails() {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("email")
+    .select("id, email")
     .eq("role", ROLES.STUDENT)
-    .eq("is_eligible", true)
     .eq("email_subscribe", true)
     .not("email", "is", null);
 
@@ -178,7 +202,23 @@ async function listSubscribedEligibleStudentEmails() {
     return [];
   }
 
-  return (data || []).map((row) => row.email).filter(Boolean);
+  const emails = [];
+  for (const row of data || []) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const readiness = await evaluateCareerReadinessByStudentId({
+        studentId: row.id,
+        supabase,
+      });
+      if (readiness.evaluation.canGetOpportunities && row.email) {
+        emails.push(row.email);
+      }
+    } catch {
+      // Skip rows with inconsistent data.
+    }
+  }
+
+  return emails;
 }
 
 module.exports = {

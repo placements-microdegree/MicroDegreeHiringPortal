@@ -4,6 +4,11 @@ const { getSupabaseUser, getSupabaseAdmin } = require("../config/db");
 const { ROLES, APPLICATION_STATUSES } = require("../utils/constants");
 const { MAX_RESUMES_PER_STUDENT } = require("./resumeService");
 const aiCommentService = require("./aiCommentService");
+const {
+  assertCareerReadinessForRealOpportunity,
+  evaluateCareerReadinessByStudentId,
+  toStudentReadinessView,
+} = require("./careerReadinessService");
 
 function getClient(jwt) {
   const admin = getSupabaseAdmin();
@@ -55,10 +60,13 @@ const APPLICATIONS_ADMIN_SELECT = `
     cloud_drive_status,
     drive_cleared_date,
     cloud_drive_status_history,
+    job_search_status,
+    internal_flags,
+    active_resume_id,
     total_experience,
     current_ctc,
     expected_ctc,
-    resumes(*)
+    resumes!resumes_user_id_fkey(*)
   ),
   application_answers(
     id,
@@ -243,6 +251,9 @@ function normalizeApplicationForAdminView(row) {
           cloud_drive_status: row.profiles.cloud_drive_status,
           drive_cleared_date: row.profiles.drive_cleared_date,
           cloud_drive_status_history: row.profiles.cloud_drive_status_history,
+          job_search_status: row.profiles.job_search_status,
+          internal_flags: row.profiles.internal_flags,
+          active_resume_id: row.profiles.active_resume_id,
           total_experience: row.profiles.total_experience,
           current_ctc: row.profiles.current_ctc,
           expected_ctc: row.profiles.expected_ctc,
@@ -307,6 +318,22 @@ async function createApplication({ payload, jwt }) {
     throw err;
   }
 
+  const { data: jobRow, error: jobError } = await supabase
+    .from("jobs")
+    .select("id, status, opportunity_type")
+    .eq("id", payload.jobId)
+    .maybeSingle();
+  if (jobError) throw jobError;
+  if (!jobRow?.id) {
+    const err = new Error("Job not found");
+    err.status = 404;
+    throw err;
+  }
+
+  const opportunityType =
+    String(jobRow.opportunity_type || "REAL_OPPORTUNITY").trim() ||
+    "REAL_OPPORTUNITY";
+
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("is_eligible, eligible_until, application_quota")
@@ -314,21 +341,11 @@ async function createApplication({ payload, jwt }) {
     .maybeSingle();
   if (profileError) throw profileError;
 
-  const isEligibleForWindow = profile?.is_eligible === true;
-  const eligibleUntil = profile?.eligible_until
-    ? new Date(profile.eligible_until)
-    : null;
-
-  if (isEligibleForWindow) {
-    if (
-      !eligibleUntil ||
-      Number.isNaN(eligibleUntil.getTime()) ||
-      new Date() > eligibleUntil
-    ) {
-      const err = new Error("Eligibility window has expired");
-      err.status = 403;
-      throw err;
-    }
+  if (opportunityType === "REAL_OPPORTUNITY") {
+    await assertCareerReadinessForRealOpportunity({
+      studentId: payload.studentId,
+      supabase,
+    });
   }
 
   const { data: alreadyApplied, error: alreadyAppliedError } = await supabase
@@ -345,7 +362,27 @@ async function createApplication({ payload, jwt }) {
   }
 
   let reservedQuota = null;
-  if (!isEligibleForWindow) {
+  if (opportunityType !== "REAL_OPPORTUNITY") {
+    const isEligibleForWindow = profile?.is_eligible === true;
+    const eligibleUntil = profile?.eligible_until
+      ? new Date(profile.eligible_until)
+      : null;
+
+    if (isEligibleForWindow) {
+      if (
+        !eligibleUntil ||
+        Number.isNaN(eligibleUntil.getTime()) ||
+        new Date() > eligibleUntil
+      ) {
+        const err = new Error("Eligibility window has expired");
+        err.status = 403;
+        throw err;
+      }
+    }
+
+    if (isEligibleForWindow) {
+      reservedQuota = null;
+    } else {
     const currentQuota = Number(profile?.application_quota ?? 0);
     if (!Number.isFinite(currentQuota) || currentQuota <= 0) {
       const err = new Error("Application quota exhausted");
@@ -371,6 +408,7 @@ async function createApplication({ payload, jwt }) {
       throw err;
     }
     reservedQuota = currentQuota;
+    }
   }
 
   const { data: resumeRows, error: resumeError } = await supabase
@@ -502,7 +540,7 @@ async function updateStudentApplication({
 
   const { data: jobRow, error: jobError } = await supabase
     .from("jobs")
-    .select("status")
+    .select("status, opportunity_type")
     .eq("id", existing.job_id)
     .maybeSingle();
   if (jobError) throw jobError;
@@ -516,6 +554,13 @@ async function updateStudentApplication({
     );
     err.status = 403;
     throw err;
+  }
+
+  const opportunityType =
+    String(jobRow?.opportunity_type || "REAL_OPPORTUNITY").trim() ||
+    "REAL_OPPORTUNITY";
+  if (opportunityType === "REAL_OPPORTUNITY") {
+    await assertCareerReadinessForRealOpportunity({ studentId, supabase });
   }
 
   const { data: resumeRows, error: resumeError } = await supabase
@@ -849,15 +894,9 @@ async function getStudentAnalytics({ studentId, jwt }) {
   const today = new Date().toISOString().slice(0, 10);
 
   const [
-    { count: totalJobs, error: jobsError },
     { data: apps, error: appsError },
     { data: profile, error: profileError },
   ] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active")
-      .gte("valid_till", today),
     supabase
       .from("applications")
       .select("status, sub_stage")
@@ -869,9 +908,29 @@ async function getStudentAnalytics({ studentId, jwt }) {
       .maybeSingle(),
   ]);
 
-  if (jobsError) throw jobsError;
   if (appsError) throw appsError;
   if (profileError) throw profileError;
+
+  const readinessResult = await evaluateCareerReadinessByStudentId({
+    studentId,
+    supabase,
+  });
+
+  let jobsCountQuery = supabase
+    .from("jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "active")
+    .gte("valid_till", today);
+
+  if (!readinessResult.evaluation.canGetOpportunities) {
+    jobsCountQuery = jobsCountQuery.eq(
+      "opportunity_type",
+      "PRACTICE_OPPORTUNITY",
+    );
+  }
+
+  const { count: totalJobs, error: jobsError } = await jobsCountQuery;
+  if (jobsError) throw jobsError;
 
   const statusCounts = APPLICATION_STATUSES.reduce((acc, s) => {
     acc[s] = 0;
@@ -896,6 +955,7 @@ async function getStudentAnalytics({ studentId, jwt }) {
     totalApplications: (apps || []).length,
     statusCounts,
     eligibility,
+    readiness: toStudentReadinessView(readinessResult.evaluation),
   };
 }
 

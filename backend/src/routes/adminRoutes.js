@@ -17,7 +17,7 @@ router.get(
 );
 router.put(
   "/students/:studentId/cloud-drive-profile",
-  authorizeRole([ROLES.ADMIN]),
+  authorizeRole([ROLES.ADMIN, ROLES.SUPER_ADMIN]),
   invalidateApiCache(["/api/admin/students"]),
   adminController.updateStudentCloudDriveProfile,
 );

@@ -263,6 +263,12 @@ export default function Students() {
           r.cloud_drive_status_history ??
           r.cloudDriveStatusHistory ??
           [],
+        jobSearchStatus:
+          r.job_search_status ?? r.jobSearchStatus ?? "PASSIVE",
+        internalFlags: r.internal_flags ?? r.internalFlags ?? [],
+        activeResumeId: r.active_resume_id ?? r.activeResumeId ?? "",
+        resumesMeta: r.resumes_meta ?? r.resumesMeta ?? [],
+        internalNotes: r.internal_notes ?? r.internalNotes ?? [],
         skills: r.skills ?? [],
         experienceLevel: r.experience_level || r.experienceLevel || null,
         updatedAt: r.updated_at || r.updatedAt || null,
@@ -586,13 +592,31 @@ export default function Students() {
     setSelectedExperienceBuckets([]);
   };
 
-  const saveStudentCloudDriveProfile = async ({ cloudDriveHistory }) => {
+  const saveStudentCloudDriveProfile = async ({
+    cloudDriveHistory,
+    jobSearchStatus,
+    internalFlags,
+    internalNote,
+    internalNoteId,
+    activeResumeId,
+    activeResumeApprovalStatus,
+    activeResumeRejectionReason,
+    resumeUpdates,
+  }) => {
     if (!selectedStudent?.id) return;
 
     try {
       setProfileSaving(true);
       const updated = await updateStudentCloudDriveProfile(selectedStudent.id, {
         cloudDriveHistory,
+        jobSearchStatus,
+        internalFlags,
+        internalNote,
+        internalNoteId,
+        activeResumeId,
+        activeResumeApprovalStatus,
+        activeResumeRejectionReason,
+        resumeUpdates,
       });
 
       setRows((prev) =>
@@ -605,6 +629,11 @@ export default function Students() {
                 drive_cleared_status: updated?.drive_cleared_status || [],
                 cloud_drive_status_history:
                   updated?.cloud_drive_status_history || [],
+                job_search_status: updated?.job_search_status || "PASSIVE",
+                internal_flags: updated?.internal_flags || [],
+                active_resume_id: updated?.active_resume_id || null,
+                internal_notes: updated?.internal_notes || [],
+                resumes_meta: updated?.resumes_meta || [],
               }
             : row,
         ),
@@ -618,6 +647,11 @@ export default function Students() {
               driveClearedDate: updated?.drive_cleared_date ?? null,
               driveClearedStatus: updated?.drive_cleared_status || [],
               cloudDriveHistory: updated?.cloud_drive_status_history || [],
+              jobSearchStatus: updated?.job_search_status || "PASSIVE",
+              internalFlags: updated?.internal_flags || [],
+              activeResumeId: updated?.active_resume_id || "",
+              internalNotes: updated?.internal_notes || [],
+              resumesMeta: updated?.resumes_meta || [],
             }
           : prev,
       );

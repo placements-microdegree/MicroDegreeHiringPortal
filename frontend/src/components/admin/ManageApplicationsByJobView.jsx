@@ -220,6 +220,16 @@ function mapApplicationRow(row, jobsById) {
   const student = row.student || row.profiles || null;
   const studentCloudDriveStatus =
     student?.cloud_drive_status || row.cloud_drive_status || null;
+  const resumesMeta = Array.isArray(resumes)
+    ? resumes.map((item) => ({
+        id: item?.id || null,
+        file_name: item?.file_name || null,
+        approval_status: item?.approval_status || "PENDING",
+        rejection_reason: item?.rejection_reason || "",
+        approved_at: item?.approved_at || null,
+        created_at: item?.created_at || null,
+      }))
+    : [];
   return {
     ...row,
     job_id: row.job_id || row.jobId || jobId,
@@ -250,6 +260,15 @@ function mapApplicationRow(row, jobsById) {
     studentLocation: student?.location || "",
     studentPreferredLocation:
       student?.preferred_location || row.preferred_location || "",
+    studentJobSearchStatus:
+      student?.job_search_status || row.job_search_status || "PASSIVE",
+    studentInternalFlags:
+      student?.internal_flags || row.internal_flags || [],
+    studentActiveResumeId:
+      student?.active_resume_id || row.active_resume_id || "",
+    studentResumesMeta: resumesMeta,
+    studentInternalNotes:
+      student?.internal_notes || row.internal_notes || row.studentInternalNotes || [],
     totalExperience:
       student?.total_experience ||
       row.total_experience ||
@@ -1396,6 +1415,11 @@ export default function ManageApplicationsByJobView({
       cloudDriveStatus: source.studentCloudDriveStatus || null,
       driveClearedDate: source.driveClearedDate || null,
       cloudDriveHistory: source.studentCloudDriveHistory || [],
+      jobSearchStatus: source.studentJobSearchStatus || "PASSIVE",
+      internalFlags: source.studentInternalFlags || [],
+      activeResumeId: source.studentActiveResumeId || "",
+      resumesMeta: source.studentResumesMeta || [],
+      internalNotes: source.studentInternalNotes || [],
     });
 
     const appliedJobs = matchingRows
@@ -1422,7 +1446,17 @@ export default function ManageApplicationsByJobView({
     setSelectedStudentAppliedJobs([]);
   };
 
-  const saveStudentCloudDriveProfile = async ({ cloudDriveHistory }) => {
+  const saveStudentCloudDriveProfile = async ({
+    cloudDriveHistory,
+    jobSearchStatus,
+    internalFlags,
+    internalNote,
+    internalNoteId,
+    activeResumeId,
+    activeResumeApprovalStatus,
+    activeResumeRejectionReason,
+    resumeUpdates,
+  }) => {
     if (!selectedStudentProfile?.id) return;
 
     try {
@@ -1431,6 +1465,14 @@ export default function ManageApplicationsByJobView({
         selectedStudentProfile.id,
         {
           cloudDriveHistory,
+          jobSearchStatus,
+          internalFlags,
+          internalNote,
+          internalNoteId,
+          activeResumeId,
+          activeResumeApprovalStatus,
+          activeResumeRejectionReason,
+          resumeUpdates,
         },
       );
 
@@ -1446,6 +1488,17 @@ export default function ManageApplicationsByJobView({
                   drive_cleared_date: updated?.drive_cleared_date ?? null,
                   cloud_drive_status_history:
                     updated?.cloud_drive_status_history || [],
+                  job_search_status: updated?.job_search_status || "PASSIVE",
+                  internal_flags: updated?.internal_flags || [],
+                  active_resume_id: updated?.active_resume_id || null,
+                  internal_notes: updated?.internal_notes || [],
+                  resumes: Array.isArray(updated?.resumes_meta)
+                    ? updated.resumes_meta.map((resume) => ({
+                        ...resume,
+                        file_url: null,
+                        signed_url: null,
+                      }))
+                    : row.student?.resumes || [],
                 },
                 profiles: {
                   ...(row.profiles || {}),
@@ -1453,7 +1506,19 @@ export default function ManageApplicationsByJobView({
                   drive_cleared_date: updated?.drive_cleared_date ?? null,
                   cloud_drive_status_history:
                     updated?.cloud_drive_status_history || [],
+                  job_search_status: updated?.job_search_status || "PASSIVE",
+                  internal_flags: updated?.internal_flags || [],
+                  active_resume_id: updated?.active_resume_id || null,
+                  internal_notes: updated?.internal_notes || [],
+                  resumes: Array.isArray(updated?.resumes_meta)
+                    ? updated.resumes_meta.map((resume) => ({
+                        ...resume,
+                        file_url: null,
+                        signed_url: null,
+                      }))
+                    : row.profiles?.resumes || [],
                 },
+                internal_notes: updated?.internal_notes || [],
               }
             : row,
         ),
@@ -1466,6 +1531,11 @@ export default function ManageApplicationsByJobView({
               cloudDriveStatus: updated?.cloud_drive_status ?? null,
               driveClearedDate: updated?.drive_cleared_date ?? null,
               cloudDriveHistory: updated?.cloud_drive_status_history || [],
+              jobSearchStatus: updated?.job_search_status || "PASSIVE",
+              internalFlags: updated?.internal_flags || [],
+              activeResumeId: updated?.active_resume_id || "",
+              resumesMeta: updated?.resumes_meta || prev.resumesMeta || [],
+              internalNotes: updated?.internal_notes || [],
             }
           : prev,
       );
