@@ -8,6 +8,9 @@ export function isStudentProfileComplete(profile, user) {
   const hasEmail = Boolean(profile.email && profile.email.trim());
   const hasPhone = Boolean(profile.phone && profile.phone.trim());
   const hasLocation = Boolean(profile.location && profile.location.trim());
+  const hasPreferredLocation = Boolean(
+    profile.preferredLocation && profile.preferredLocation.trim(),
+  );
   const hasSkills = Array.isArray(profile.skills)
     ? profile.skills.filter((item) => String(item || "").trim()).length > 0
     : Boolean(String(profile.skills || "").trim());
@@ -20,6 +23,7 @@ export function isStudentProfileComplete(profile, user) {
     hasEmail &&
     hasPhone &&
     hasLocation &&
+    hasPreferredLocation &&
     hasSkills &&
     hasExperienceLevel
   );

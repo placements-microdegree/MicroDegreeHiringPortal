@@ -9,6 +9,7 @@ export function calculateProfileCompletion(profile) {
     profile?.email,
     profile?.phone,
     profile?.location,
+    profile?.preferredLocation,
     profile?.skills,
     profile?.experienceLevel,
     profile?.expectedCTC,

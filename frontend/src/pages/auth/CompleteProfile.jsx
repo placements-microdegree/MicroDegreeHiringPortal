@@ -85,6 +85,10 @@ export default function CompleteProfile() {
     const nextErrors = {};
     if (!form.fullName?.trim()) nextErrors.fullName = "Full name is required";
     if (!form.phone?.trim()) nextErrors.phone = "Phone number is required";
+    if (!form.location?.trim()) nextErrors.location = "Location is required";
+    if (!form.preferredLocation?.trim()) {
+      nextErrors.preferredLocation = "Preferred job location is required";
+    }
     if (parsedSkills.length === 0) {
       nextErrors.skills = "At least one skill is required";
     }
@@ -172,11 +176,13 @@ export default function CompleteProfile() {
             <Input
               label="Location"
               value={form.location}
+              error={fieldErrors.location}
               onChange={(e) => update({ location: e.target.value })}
             />
             <Input
               label="Preferred Job Location"
               value={form.preferredLocation}
+              error={fieldErrors.preferredLocation}
               onChange={(e) => update({ preferredLocation: e.target.value })}
               placeholder="e.g. Bengaluru, Hyderabad"
             />

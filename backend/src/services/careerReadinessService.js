@@ -18,6 +18,7 @@ const PROFILE_COMPLETION_RULES = [
   { key: "email", label: "Add profile email" },
   { key: "phone", label: "Add profile phone" },
   { key: "location", label: "Add current location" },
+  { key: "preferred_location", label: "Add preferred job location" },
   { key: "skills", label: "Add skills" },
   { key: "experience_level", label: "Add experience level" },
 ];
@@ -225,7 +226,7 @@ async function evaluateCareerReadinessByStudentId({ studentId, supabase }) {
   const { data: profile, error: profileError } = await db
     .from("profiles")
     .select(
-      "id, role, full_name, email, phone, location, skills, experience_level, cloud_drive_status, drive_cleared_status, cloud_drive_status_history, internal_flags, active_resume_id, is_eligible, eligible_until, application_quota",
+      "id, role, full_name, email, phone, location, preferred_location, skills, experience_level, cloud_drive_status, drive_cleared_status, cloud_drive_status_history, internal_flags, active_resume_id, is_eligible, eligible_until, application_quota",
     )
     .eq("id", studentId)
     .maybeSingle();
