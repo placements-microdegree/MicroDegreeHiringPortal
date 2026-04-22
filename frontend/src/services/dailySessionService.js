@@ -19,6 +19,30 @@ export async function listDailySessions() {
   return data.sessions || [];
 }
 
+export async function createDailySession(session) {
+  const data = await request("/api/daily-sessions", {
+    method: "POST",
+    body: session,
+  });
+  return data.session || null;
+}
+
+export async function updateDailySession(sessionId, session) {
+  const data = await request(`/api/daily-sessions/${sessionId}`, {
+    method: "PUT",
+    body: session,
+  });
+  return data.session || null;
+}
+
+export async function updateDailySessionStatus(sessionId, enabled) {
+  const data = await request(`/api/daily-sessions/${sessionId}/status`, {
+    method: "PATCH",
+    body: { enabled: enabled === true },
+  });
+  return data.session || null;
+}
+
 export async function updateDailySessionsSettings(sessions) {
   const data = await request("/api/daily-sessions/settings", {
     method: "PUT",
@@ -32,8 +56,12 @@ export async function joinTestingSession(sessionId) {
     method: "POST",
     body: sessionId ? { sessionId } : undefined,
   });
-  if (!data?.join_url) {
-    throw new Error("Join URL was not received from server");
-  }
-  return data.join_url;
+
+  return {
+    joinUrl: data?.join_url || "",
+    canJoin: data?.can_join === true,
+    registered: data?.registered === true,
+    role: data?.role || "",
+    message: data?.message || "",
+  };
 }

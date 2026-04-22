@@ -15,6 +15,30 @@ router.get(
   dailySessionController.listDailySessions,
 );
 
+router.post(
+  "/",
+  verifyToken,
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache(["/api/daily-sessions"]),
+  dailySessionController.createDailySession,
+);
+
+router.put(
+  "/:id",
+  verifyToken,
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache(["/api/daily-sessions"]),
+  dailySessionController.updateDailySession,
+);
+
+router.patch(
+  "/:id/status",
+  verifyToken,
+  authorizeRole([ROLES.ADMIN]),
+  invalidateApiCache(["/api/daily-sessions"]),
+  dailySessionController.updateDailySessionStatus,
+);
+
 router.put(
   "/settings",
   verifyToken,
