@@ -204,7 +204,7 @@ function getMilestoneFlow({ profile, readiness }) {
 }
 
 // ─── Step icon ────────────────────────────────────────────────────────────────
-function StepIcon({ state, index }) {
+function StepIcon({ state, index, isSuccess }) {
   if (state === "completed") {
     return (
       <div
@@ -236,32 +236,47 @@ function StepIcon({ state, index }) {
   }
 
   if (state === "current") {
+    const bg = isSuccess ? "#d1fae5" : "#fffbeb";
+    const border = isSuccess ? "#10b981" : "#f59e0b";
+    const glow = isSuccess ? "#a7f3d0" : "#fef3c7";
     return (
       <div
         style={{
           width: 36,
           height: 36,
           borderRadius: "50%",
-          background: "#fffbeb",
-          border: "2px solid #f59e0b",
+          background: bg,
+          border: `2px solid ${border}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
           zIndex: 1,
-          boxShadow: "0 0 0 4px #fef3c7",
+          boxShadow: `0 0 0 4px ${glow}`,
         }}
       >
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 700,
-            color: "#d97706",
-            fontFamily: "Outfit, sans-serif",
-          }}
-        >
-          {index + 1}
-        </span>
+        {isSuccess ? (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M3 8.5l3.5 3.5 6-7"
+              stroke="#10b981"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : (
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#d97706",
+              fontFamily: "Outfit, sans-serif",
+            }}
+          >
+            {index + 1}
+          </span>
+        )}
       </div>
     );
   }
@@ -304,22 +319,27 @@ function MilestoneStep({ step, index, isLast, blockerReason }) {
   const isCurrent = step.state === "current";
   const isLocked = step.state === "locked";
 
+  // "success" = current step that is NOT a blocker (e.g. Premium Job Mapping reached)
+  const isSuccess = isCurrent && !step.isBlocker;
+
   // connector line colour
-  const connectorColor = isCompleted ? "#6ee7b7" : "#e2e8f0";
+  const connectorColor = isCompleted || isSuccess ? "#6ee7b7" : "#e2e8f0";
 
   // card accent
-  const cardStyle = isCompleted
-    ? { borderColor: "#a7f3d0", background: "#f0fdf9" }
-    : isCurrent
-      ? { borderColor: "#fcd34d", background: "#fffbeb" }
-      : { borderColor: "#e2e8f0", background: "#f8fafc" };
+  const cardStyle =
+    isCompleted || isSuccess
+      ? { borderColor: "#a7f3d0", background: "#f0fdf9" }
+      : isCurrent
+        ? { borderColor: "#fcd34d", background: "#fffbeb" }
+        : { borderColor: "#e2e8f0", background: "#f8fafc" };
 
   // status pill colours
-  const pillStyle = isCompleted
-    ? { background: "#d1fae5", color: "#065f46" }
-    : isCurrent
-      ? { background: "#fef3c7", color: "#92400e" }
-      : { background: "#f1f5f9", color: "#94a3b8" };
+  const pillStyle =
+    isCompleted || isSuccess
+      ? { background: "#d1fae5", color: "#065f46" }
+      : isCurrent
+        ? { background: "#fef3c7", color: "#92400e" }
+        : { background: "#f1f5f9", color: "#94a3b8" };
 
   return (
     <div style={{ display: "flex", gap: 0, position: "relative" }}>
@@ -333,7 +353,7 @@ function MilestoneStep({ step, index, isLast, blockerReason }) {
           flexShrink: 0,
         }}
       >
-        <StepIcon state={step.state} index={index} />
+        <StepIcon state={step.state} index={index} isSuccess={isSuccess} />
         {!isLast && (
           <div
             style={{
@@ -432,7 +452,7 @@ function MilestoneStep({ step, index, isLast, blockerReason }) {
               style={{
                 marginTop: 6,
                 fontSize: 13,
-                color: isCompleted ? "#047857" : "#78350f",
+                color: isCompleted || isSuccess ? "#047857" : "#78350f",
                 fontFamily: "Outfit, sans-serif",
                 lineHeight: 1.5,
               }}

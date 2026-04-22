@@ -85,6 +85,7 @@ function getResumeStatusLabel(readiness) {
     .toUpperCase();
 
   if (!readiness?.resumeApproval?.hasActiveResume) return "No active resume";
+  if (readiness?.resumeApproval?.isApproved) return "Approved";
   if (resumeApprovalStatus === "APPROVED") return "Approved";
   if (resumeApprovalStatus === "REJECTED") return "Rejected";
   return "Pending review";

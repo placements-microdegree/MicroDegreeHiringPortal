@@ -103,13 +103,23 @@ function findActiveResume(resumes, activeResumeId) {
   return resumes[0] || null;
 }
 
+function getResumeApprovalStatus(resume) {
+  return toText(resume?.approval_status || "PENDING").toUpperCase() || "PENDING";
+}
+
 function evaluateResumeApproval(profile, resumes) {
   const activeResume = findActiveResume(resumes, profile?.active_resume_id);
-  const approvalStatus = toText(activeResume?.approval_status || "PENDING").toUpperCase();
+  const activeApprovalStatus = getResumeApprovalStatus(activeResume);
+  const approvedResumes = Array.isArray(resumes)
+    ? resumes.filter((resume) => getResumeApprovalStatus(resume) === "APPROVED")
+    : [];
+
   return {
     activeResumeId: activeResume?.id || null,
-    activeResumeApprovalStatus: approvalStatus || "PENDING",
-    isApproved: approvalStatus === "APPROVED",
+    activeResumeApprovalStatus: activeApprovalStatus,
+    approvedResumeId: approvedResumes[0]?.id || null,
+    approvedResumeCount: approvedResumes.length,
+    isApproved: approvedResumes.length > 0,
     hasActiveResume: Boolean(activeResume?.id),
   };
 }
@@ -144,7 +154,7 @@ function buildMissingSteps({ cloudDrive, profileCompletion, resumeApproval, bloc
   if (!resumeApproval.hasActiveResume) {
     steps.push("Upload and select active resume");
   } else if (!resumeApproval.isApproved) {
-    steps.push("Get active resume approved by HR");
+    steps.push("Get at least one resume approved by HR");
   }
   if (blockingFlags.isBlocked) {
     steps.push("Resolve HR hold/restriction");
@@ -208,6 +218,8 @@ function toStudentReadinessView(evaluation) {
     resumeApproval: evaluation?.resumeApproval || {
       activeResumeId: null,
       activeResumeApprovalStatus: "PENDING",
+      approvedResumeId: null,
+      approvedResumeCount: 0,
       isApproved: false,
       hasActiveResume: false,
     },
