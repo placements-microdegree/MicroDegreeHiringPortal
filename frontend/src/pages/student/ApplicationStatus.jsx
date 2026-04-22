@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/authStore";
-import { FiArrowDown, FiRefreshCw } from "react-icons/fi";
-import { getStudentAnalytics, listApplicationsByStudent } from "../../services/applicationService";
+import { FiRefreshCw, FiChevronDown, FiInfo } from "react-icons/fi";
+import {
+  getStudentAnalytics,
+  listApplicationsByStudent,
+} from "../../services/applicationService";
 import { showError } from "../../utils/alerts";
+
+// ─── Google Font import (Outfit + DM Serif Display) ───────────────────────────
+// Add this once to your index.html or global CSS:
+// <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
 
 const statusClassMap = {
   Applied: "bg-slate-100 text-slate-700",
@@ -18,7 +25,6 @@ const statusClassMap = {
   Placed: "bg-emerald-100 text-emerald-700",
   "Job on hold": "bg-red-100 text-red-700",
   "Position closed": "bg-red-100 text-red-700",
-  // Legacy values rendered in their new equivalents.
   Shortlisted: "bg-amber-100 text-amber-700",
   Interview: "bg-blue-100 text-blue-700",
   "Interview Scheduled": "bg-blue-100 text-blue-700",
@@ -87,7 +93,8 @@ function getMilestoneFlow({ profile, readiness }) {
       currentStatus: "Registered",
       currentMessage:
         "You are not a MicroDegree student yet. Premium jobs are temporarily open with credit-based applications.",
-      nextStep: "Use available credits for applications or enroll to unlock full assistance workflow.",
+      nextStep:
+        "Use available credits for applications or enroll to unlock full assistance workflow.",
       blockerReason:
         "Enrollment is pending, so mapping assistance workflow remains on hold.",
       isProfileOnHold: true,
@@ -196,53 +203,334 @@ function getMilestoneFlow({ profile, readiness }) {
   };
 }
 
-function MilestoneStep({ step }) {
+// ─── Step icon ────────────────────────────────────────────────────────────────
+function StepIcon({ state, index }) {
+  if (state === "completed") {
+    return (
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          background: "#d1fae5",
+          border: "2px solid #10b981",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          zIndex: 1,
+        }}
+      >
+        {/* checkmark */}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M3 8.5l3.5 3.5 6-7"
+            stroke="#10b981"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  if (state === "current") {
+    return (
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          background: "#fffbeb",
+          border: "2px solid #f59e0b",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          zIndex: 1,
+          boxShadow: "0 0 0 4px #fef3c7",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#d97706",
+            fontFamily: "Outfit, sans-serif",
+          }}
+        >
+          {index + 1}
+        </span>
+      </div>
+    );
+  }
+
+  // locked
+  return (
+    <div
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        background: "#f8fafc",
+        border: "2px solid #e2e8f0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        zIndex: 1,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: "#cbd5e1",
+          fontFamily: "Outfit, sans-serif",
+        }}
+      >
+        {index + 1}
+      </span>
+    </div>
+  );
+}
+
+// ─── Individual milestone step ────────────────────────────────────────────────
+function MilestoneStep({ step, index, isLast, blockerReason }) {
+  const [detailOpen, setDetailOpen] = useState(false);
+
   const isCompleted = step.state === "completed";
   const isCurrent = step.state === "current";
   const isLocked = step.state === "locked";
 
-  const markerClass = isCompleted
-    ? "bg-emerald-500 text-white border-emerald-500"
+  // connector line colour
+  const connectorColor = isCompleted ? "#6ee7b7" : "#e2e8f0";
+
+  // card accent
+  const cardStyle = isCompleted
+    ? { borderColor: "#a7f3d0", background: "#f0fdf9" }
     : isCurrent
-      ? "bg-amber-100 text-amber-700 border-amber-300"
-      : "bg-slate-100 text-slate-400 border-slate-300";
+      ? { borderColor: "#fcd34d", background: "#fffbeb" }
+      : { borderColor: "#e2e8f0", background: "#f8fafc" };
+
+  // status pill colours
+  const pillStyle = isCompleted
+    ? { background: "#d1fae5", color: "#065f46" }
+    : isCurrent
+      ? { background: "#fef3c7", color: "#92400e" }
+      : { background: "#f1f5f9", color: "#94a3b8" };
 
   return (
-    <div className="relative pl-11">
+    <div style={{ display: "flex", gap: 0, position: "relative" }}>
+      {/* Left column: icon + connector */}
       <div
-        className={`absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full border text-sm font-bold ${markerClass}`}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: 36,
+          flexShrink: 0,
+        }}
       >
-        {isCompleted ? "OK" : isCurrent ? "NOW" : "L"}
+        <StepIcon state={step.state} index={index} />
+        {!isLast && (
+          <div
+            style={{
+              width: 2,
+              flex: 1,
+              minHeight: 24,
+              background: connectorColor,
+              borderRadius: 1,
+              margin: "4px 0",
+            }}
+          />
+        )}
       </div>
-      <div className={`rounded-xl border px-4 py-3 ${isCurrent ? "border-amber-300 bg-amber-50" : isCompleted ? "border-emerald-200 bg-emerald-50" : "border-slate-200 bg-slate-50"}`}>
-        <p className="text-sm font-semibold text-slate-900">{step.title}</p>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-600">
-          {step.status}
-        </p>
-        {step?.isBlocker ? (
-          <p className="mt-1 inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700">
-            Current Blocker
-          </p>
-        ) : null}
-        {!isCurrent && !isCompleted && isLocked ? (
-          <p className="mt-1 inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-            Locked
-          </p>
-        ) : null}
-        <p className="mt-1 text-sm text-slate-700">{step.message}</p>
-        {step?.cta ? (
-          <Link
-            to={step.cta.to}
-            className="mt-3 inline-flex rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-primary/90"
+
+      {/* Right column: card */}
+      <div
+        style={{
+          flex: 1,
+          marginLeft: 14,
+          paddingBottom: isLast ? 0 : 20,
+        }}
+      >
+        <div
+          style={{
+            border: "1.5px solid",
+            borderRadius: 12,
+            padding: "12px 16px",
+            ...cardStyle,
+            opacity: isLocked ? 0.6 : 1,
+            transition: "opacity 0.2s",
+          }}
+        >
+          {/* Header row */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
           >
-            {step.cta.label}
-          </Link>
-        ) : null}
+            <span
+              style={{
+                fontFamily: "Outfit, sans-serif",
+                fontWeight: 600,
+                fontSize: 14,
+                color: isLocked ? "#94a3b8" : "#0f172a",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {step.title}
+            </span>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {/* Status pill */}
+              <span
+                style={{
+                  ...pillStyle,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  fontFamily: "Outfit, sans-serif",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  padding: "2px 9px",
+                  borderRadius: 999,
+                }}
+              >
+                {step.status}
+              </span>
+
+              {/* Blocker badge */}
+              {step.isBlocker && (
+                <span
+                  style={{
+                    background: "#ffe4e6",
+                    color: "#be123c",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: "Outfit, sans-serif",
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                  }}
+                >
+                  Blocker
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Message */}
+          {(isCurrent || isCompleted) && (
+            <p
+              style={{
+                marginTop: 6,
+                fontSize: 13,
+                color: isCompleted ? "#047857" : "#78350f",
+                fontFamily: "Outfit, sans-serif",
+                lineHeight: 1.5,
+              }}
+            >
+              {step.message}
+            </p>
+          )}
+
+          {/* "Why blocked" expandable — only on blocker + has reason */}
+          {step.isBlocker && blockerReason && (
+            <div style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => setDetailOpen((v) => !v)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "Outfit, sans-serif",
+                  color: "#b45309",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                <FiInfo size={12} />
+                Why is this blocked?
+                <FiChevronDown
+                  size={12}
+                  style={{
+                    transform: detailOpen ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform 0.2s",
+                  }}
+                />
+              </button>
+
+              {detailOpen && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    background: "#fef9c3",
+                    border: "1px solid #fde68a",
+                    fontSize: 12,
+                    color: "#78350f",
+                    fontFamily: "Outfit, sans-serif",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {blockerReason}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CTA */}
+          {step.cta && (
+            <div style={{ marginTop: 10 }}>
+              <Link
+                to={step.cta.to}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "#f59e0b",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "Outfit, sans-serif",
+                  letterSpacing: "0.02em",
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#d97706")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "#f59e0b")
+                }
+              >
+                {step.cta.label} →
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+// ─── Main export ──────────────────────────────────────────────────────────────
 export default function ApplicationStatus() {
   const { profile } = useAuth();
   const [rows, setRows] = useState([]);
@@ -276,19 +564,37 @@ export default function ApplicationStatus() {
     readiness: analytics?.readiness,
   });
 
+  // ─── Table body ─────────────────────────────────────────────────────────────
   let tableBodyContent;
   if (isLoading) {
     tableBodyContent = (
       <tr>
-        <td className="px-4 py-4 text-slate-600" colSpan={5}>
-          Loading applications...
+        <td
+          style={{
+            padding: "16px",
+            color: "#64748b",
+            fontFamily: "Outfit, sans-serif",
+            fontSize: 14,
+          }}
+          colSpan={5}
+        >
+          Loading applications…
         </td>
       </tr>
     );
   } else if (rows.length === 0) {
     tableBodyContent = (
       <tr>
-        <td className="px-4 py-5 text-center text-slate-600" colSpan={5}>
+        <td
+          style={{
+            padding: "24px 16px",
+            textAlign: "center",
+            color: "#94a3b8",
+            fontFamily: "Outfit, sans-serif",
+            fontSize: 14,
+          }}
+          colSpan={5}
+        >
           No applications yet.
         </td>
       </tr>
@@ -304,26 +610,61 @@ export default function ApplicationStatus() {
         commentText.length > 140 || commentText.includes("\n");
 
       return (
-        <tr key={row.id} className="border-t border-slate-200">
-          <td className="px-4 py-3 font-medium text-slate-900">
+        <tr
+          key={row.id}
+          style={{
+            borderTop: "1px solid #f1f5f9",
+            transition: "background 0.1s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+        >
+          <td
+            style={{
+              padding: "12px 16px",
+              fontFamily: "Outfit, sans-serif",
+              fontWeight: 600,
+              fontSize: 13,
+              color: "#0f172a",
+            }}
+          >
             {row?.jobs?.title || row?.jobTitle || "Job"}
           </td>
-          <td className="px-4 py-3 text-slate-700">
+          <td
+            style={{
+              padding: "12px 16px",
+              fontFamily: "Outfit, sans-serif",
+              fontSize: 13,
+              color: "#475569",
+            }}
+          >
             {row?.jobs?.company || row?.company || "Company"}
           </td>
-          <td className="px-4 py-3 text-slate-700">
+          <td
+            style={{
+              padding: "12px 16px",
+              fontFamily: "Outfit, sans-serif",
+              fontSize: 13,
+              color: "#64748b",
+            }}
+          >
             {formatDate(row?.created_at || row?.createdAt)}
           </td>
-          <td className="px-4 py-3">
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}
-            >
+          <td style={{ padding: "12px 16px" }}>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>
               {status}
             </span>
           </td>
-          <td className="px-4 py-3 text-slate-700">
+          <td
+            style={{
+              padding: "12px 16px",
+              fontFamily: "Outfit, sans-serif",
+              fontSize: 13,
+              color: "#475569",
+            }}
+          >
             {commentText ? (
-              <div className="space-y-1">
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <p
                   className={`whitespace-pre-wrap ${isExpanded ? "" : "overflow-hidden"}`}
                   style={
@@ -338,7 +679,7 @@ export default function ApplicationStatus() {
                 >
                   {commentText}
                 </p>
-                {showCommentToggle ? (
+                {showCommentToggle && (
                   <button
                     type="button"
                     onClick={() =>
@@ -347,14 +688,24 @@ export default function ApplicationStatus() {
                         [row.id]: !prev[row.id],
                       }))
                     }
-                    className="text-xs font-semibold text-primary hover:text-primary/80"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#f59e0b",
+                      padding: 0,
+                      fontFamily: "Outfit, sans-serif",
+                      textAlign: "left",
+                    }}
                   >
                     {isExpanded ? "Read less" : "Read more"}
                   </button>
-                ) : null}
+                )}
               </div>
             ) : (
-              "-"
+              <span style={{ color: "#cbd5e1" }}>—</span>
             )}
           </td>
         </tr>
@@ -362,66 +713,205 @@ export default function ApplicationStatus() {
     });
   }
 
+  // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 20,
+        fontFamily: "Outfit, sans-serif",
+      }}
+    >
+      {/* ── Milestones card ──────────────────────────────────────────────────── */}
+      <section
+        style={{
+          borderRadius: 18,
+          border: "1.5px solid #e2e8f0",
+          background: "#fff",
+          padding: "24px",
+          boxShadow: "0 1px 4px 0 rgba(15,23,42,0.04)",
+        }}
+      >
+        {/* Section header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Your Milestones</h2>
-            <p className="text-sm text-slate-600">
-              Follow this tracker to know where you are stuck and what to do next.
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 17,
+                fontWeight: 700,
+                color: "#0f172a",
+                letterSpacing: "-0.02em",
+                fontFamily: "Outfit, sans-serif",
+              }}
+            >
+              Your Milestones
+            </h2>
+            <p
+              style={{
+                margin: "3px 0 0",
+                fontSize: 13,
+                color: "#94a3b8",
+                fontFamily: "Outfit, sans-serif",
+              }}
+            >
+              Follow this tracker to know where you are and what to do next.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-              Current Status: {milestoneFlow.currentStatus}
+
+          {/* Status chips */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span
+              style={{
+                background: "#f1f5f9",
+                color: "#475569",
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: "Outfit, sans-serif",
+                letterSpacing: "0.03em",
+                textTransform: "uppercase",
+                padding: "4px 10px",
+                borderRadius: 999,
+              }}
+            >
+              {milestoneFlow.currentStatus}
             </span>
             {milestoneFlow.isProfileOnHold ? (
-              <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
-                Profile On Hold
+              <span
+                style={{
+                  background: "#ffe4e6",
+                  color: "#be123c",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: "Outfit, sans-serif",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                }}
+              >
+                On Hold
               </span>
             ) : (
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                Profile Active
+              <span
+                style={{
+                  background: "#d1fae5",
+                  color: "#065f46",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  fontFamily: "Outfit, sans-serif",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                }}
+              >
+                Active
               </span>
             )}
           </div>
         </div>
 
-        <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-          <p className="text-sm font-semibold text-blue-900">{milestoneFlow.currentMessage}</p>
-          <p className="mt-1 text-xs text-blue-800">Next Step: {milestoneFlow.nextStep}</p>
-          {milestoneFlow.blockerReason ? (
-            <p className="mt-1 text-xs text-blue-700">Why blocked: {milestoneFlow.blockerReason}</p>
-          ) : null}
+        {/* Compact next-step hint bar (replaces large blue box) */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 10,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: 10,
+            padding: "10px 14px",
+            marginBottom: 22,
+          }}
+        >
+          <span style={{ fontSize: 16, lineHeight: 1.3, flexShrink: 0 }}>
+            ⚡
+          </span>
+          <div>
+            <p
+              style={{
+                margin: 0,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#1e293b",
+                fontFamily: "Outfit, sans-serif",
+              }}
+            >
+              Next step:{" "}
+              <span style={{ fontWeight: 400, color: "#475569" }}>
+                {milestoneFlow.nextStep}
+              </span>
+            </p>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4">
-          <div className="space-y-2">
-            {milestoneFlow.steps.map((step, index) => (
-              <div key={step.id}>
-                <MilestoneStep step={step} />
-                {index < milestoneFlow.steps.length - 1 ? (
-                  <div className="ml-4 flex h-8 items-center text-slate-400">
-                    <FiArrowDown className="h-4 w-4" />
-                    <span className="ml-2 text-[11px] font-medium uppercase tracking-wide">
-                      Flow continues
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
+        {/* Vertical stepper */}
+        <div style={{ padding: "0 2px" }}>
+          {milestoneFlow.steps.map((step, index) => (
+            <MilestoneStep
+              key={step.id}
+              step={step}
+              index={index}
+              isLast={index === milestoneFlow.steps.length - 1}
+              blockerReason={
+                step.isBlocker ? milestoneFlow.blockerReason : null
+              }
+            />
+          ))}
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
+      {/* ── Application status card ───────────────────────────────────────────── */}
+      <section
+        style={{
+          borderRadius: 18,
+          border: "1.5px solid #e2e8f0",
+          background: "#fff",
+          padding: "24px",
+          boxShadow: "0 1px 4px 0 rgba(15,23,42,0.04)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 18,
+          }}
+        >
           <div>
-            <h1 className="text-lg font-semibold text-slate-900">
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 17,
+                fontWeight: 700,
+                color: "#0f172a",
+                letterSpacing: "-0.02em",
+                fontFamily: "Outfit, sans-serif",
+              }}
+            >
               Application Status
             </h1>
-            <p className="text-sm text-slate-600">
+            <p
+              style={{
+                margin: "3px 0 0",
+                fontSize: 13,
+                color: "#94a3b8",
+                fontFamily: "Outfit, sans-serif",
+              }}
+            >
               Track your submitted applications and current progress.
             </p>
           </div>
@@ -431,29 +921,95 @@ export default function ApplicationStatus() {
             disabled={isLoading}
             aria-label="Refresh applications"
             title="Refresh"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-300 p-2 text-slate-700 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              border: "1.5px solid #e2e8f0",
+              background: "#fff",
+              cursor: isLoading ? "not-allowed" : "pointer",
+              opacity: isLoading ? 0.5 : 1,
+              color: "#64748b",
+              transition: "border-color 0.15s, color 0.15s",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoading) {
+                e.currentTarget.style.borderColor = "#f59e0b";
+                e.currentTarget.style.color = "#d97706";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#e2e8f0";
+              e.currentTarget.style.color = "#64748b";
+            }}
           >
             <FiRefreshCw
-              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              size={15}
+              style={
+                isLoading
+                  ? {
+                      animation: "spin 1s linear infinite",
+                    }
+                  : undefined
+              }
             />
           </button>
         </div>
 
-        <div className="mt-5 overflow-x-auto rounded-xl border border-slate-200">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Job Title</th>
-                <th className="px-4 py-3 font-semibold">Company</th>
-                <th className="px-4 py-3 font-semibold">Applied Date</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold">Comment</th>
+        {/* Table */}
+        <div
+          style={{
+            overflowX: "auto",
+            borderRadius: 12,
+            border: "1.5px solid #f1f5f9",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              minWidth: 580,
+              borderCollapse: "collapse",
+              fontSize: 13,
+              fontFamily: "Outfit, sans-serif",
+            }}
+          >
+            <thead>
+              <tr style={{ background: "#f8fafc" }}>
+                {["Job Title", "Company", "Applied Date", "Status", "Comment"].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      style={{
+                        padding: "10px 16px",
+                        textAlign: "left",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#94a3b8",
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        fontFamily: "Outfit, sans-serif",
+                        borderBottom: "1.5px solid #f1f5f9",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>{tableBodyContent}</tbody>
           </table>
         </div>
       </section>
+
+      {/* Spin keyframe injected once */}
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
