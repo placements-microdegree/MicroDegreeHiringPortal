@@ -15,6 +15,12 @@ function getClient(jwt) {
   return admin || getSupabaseUser(jwt);
 }
 
+function hasQuotaCreditAccess(profile) {
+  if (profile?.is_eligible === true) return false;
+  const quota = Number(profile?.application_quota ?? 0);
+  return Number.isFinite(quota) && quota > 0;
+}
+
 const APPLICATIONS_ADMIN_SELECT = `
   id,
   status,
@@ -341,7 +347,9 @@ async function createApplication({ payload, jwt }) {
     .maybeSingle();
   if (profileError) throw profileError;
 
-  if (opportunityType === "REAL_OPPORTUNITY") {
+  const quotaAccess = hasQuotaCreditAccess(profile);
+
+  if (opportunityType === "REAL_OPPORTUNITY" && !quotaAccess) {
     await assertCareerReadinessForRealOpportunity({
       studentId: payload.studentId,
       supabase,
@@ -362,7 +370,7 @@ async function createApplication({ payload, jwt }) {
   }
 
   let reservedQuota = null;
-  if (opportunityType !== "REAL_OPPORTUNITY") {
+  if (opportunityType !== "REAL_OPPORTUNITY" || quotaAccess) {
     const isEligibleForWindow = profile?.is_eligible === true;
     const eligibleUntil = profile?.eligible_until
       ? new Date(profile.eligible_until)
@@ -383,31 +391,31 @@ async function createApplication({ payload, jwt }) {
     if (isEligibleForWindow) {
       reservedQuota = null;
     } else {
-    const currentQuota = Number(profile?.application_quota ?? 0);
-    if (!Number.isFinite(currentQuota) || currentQuota <= 0) {
-      const err = new Error("Application quota exhausted");
-      err.status = 403;
-      throw err;
-    }
-    const { data: quotaUpdated, error: quotaUpdateError } = await supabase
-      .from("profiles")
-      .update({
-        application_quota: currentQuota - 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", payload.studentId)
-      .eq("application_quota", currentQuota)
-      .select("application_quota")
-      .maybeSingle();
-    if (quotaUpdateError) throw quotaUpdateError;
-    if (!quotaUpdated) {
-      const err = new Error(
-        "Application quota update conflict. Please try again.",
-      );
-      err.status = 409;
-      throw err;
-    }
-    reservedQuota = currentQuota;
+      const currentQuota = Number(profile?.application_quota ?? 0);
+      if (!Number.isFinite(currentQuota) || currentQuota <= 0) {
+        const err = new Error("Application quota exhausted");
+        err.status = 403;
+        throw err;
+      }
+      const { data: quotaUpdated, error: quotaUpdateError } = await supabase
+        .from("profiles")
+        .update({
+          application_quota: currentQuota - 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payload.studentId)
+        .eq("application_quota", currentQuota)
+        .select("application_quota")
+        .maybeSingle();
+      if (quotaUpdateError) throw quotaUpdateError;
+      if (!quotaUpdated) {
+        const err = new Error(
+          "Application quota update conflict. Please try again.",
+        );
+        err.status = 409;
+        throw err;
+      }
+      reservedQuota = currentQuota;
     }
   }
 
@@ -559,7 +567,17 @@ async function updateStudentApplication({
   const opportunityType =
     String(jobRow?.opportunity_type || "REAL_OPPORTUNITY").trim() ||
     "REAL_OPPORTUNITY";
-  if (opportunityType === "REAL_OPPORTUNITY") {
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("is_eligible, application_quota")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (profileError) throw profileError;
+
+  if (
+    opportunityType === "REAL_OPPORTUNITY" &&
+    !hasQuotaCreditAccess(profile)
+  ) {
     await assertCareerReadinessForRealOpportunity({ studentId, supabase });
   }
 
@@ -922,7 +940,9 @@ async function getStudentAnalytics({ studentId, jwt }) {
     .eq("status", "active")
     .gte("valid_till", today);
 
-  if (!readinessResult.evaluation.canGetOpportunities) {
+  const quotaAccess = hasQuotaCreditAccess(profile);
+
+  if (!readinessResult.evaluation.canGetOpportunities && !quotaAccess) {
     jobsCountQuery = jobsCountQuery.eq(
       "opportunity_type",
       "PRACTICE_OPPORTUNITY",

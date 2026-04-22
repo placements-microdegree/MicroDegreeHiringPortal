@@ -23,6 +23,34 @@ function buildObjectPath(userId, originalName) {
   return `${userId}/${name}`;
 }
 
+async function markResumeAsActive({ userId, resumeId, jwt }) {
+  if (!resumeId) return;
+
+  const payload = {
+    active_resume_id: resumeId,
+    updated_at: new Date().toISOString(),
+  };
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const primaryClient = supabaseAdmin || getSupabaseUser(jwt);
+
+  const { error } = await primaryClient
+    .from("profiles")
+    .update(payload)
+    .eq("id", userId);
+
+  if (!error) return;
+  if (!supabaseAdmin) throw error;
+
+  const fallbackClient = getSupabaseUser(jwt);
+  const { error: fallbackError } = await fallbackClient
+    .from("profiles")
+    .update(payload)
+    .eq("id", userId);
+
+  if (fallbackError) throw fallbackError;
+}
+
 async function uploadResume({ userId, jwt, file }) {
   if (!isPdfFile(file)) {
     const err = new Error("Only PDF resumes are allowed");
@@ -76,7 +104,14 @@ async function uploadResume({ userId, jwt, file }) {
     .select("*")
     .single();
 
-  if (!dbError) return row;
+  if (!dbError) {
+    await markResumeAsActive({
+      userId,
+      resumeId: row?.id,
+      jwt,
+    });
+    return row;
+  }
 
   // Fallback to service role insert (useful while RLS is not configured).
   const { data: fallbackRow, error: fallbackErr } = await storageClient
@@ -85,6 +120,11 @@ async function uploadResume({ userId, jwt, file }) {
     .select("*")
     .single();
   if (fallbackErr) throw fallbackErr;
+  await markResumeAsActive({
+    userId,
+    resumeId: fallbackRow?.id,
+    jwt,
+  });
   return fallbackRow;
 }
 

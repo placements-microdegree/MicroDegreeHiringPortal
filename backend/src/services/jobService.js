@@ -313,7 +313,13 @@ async function listJobs({ actor, includeClosed = false } = {}) {
         const readiness = await evaluateCareerReadinessByStudentId({
           studentId: actor.id,
         });
-        canViewRealOpportunities = readiness.evaluation.canGetOpportunities;
+        const remainingQuota = Number(readiness?.profile?.application_quota ?? 0);
+        const quotaAccess =
+          readiness?.profile?.is_eligible !== true &&
+          Number.isFinite(remainingQuota) &&
+          remainingQuota > 0;
+        canViewRealOpportunities =
+          readiness.evaluation.canGetOpportunities || quotaAccess;
       } catch {
         canViewRealOpportunities = false;
       }
