@@ -30,10 +30,34 @@ function parseAllowedOrigins() {
     process.env.FRONTEND_ORIGINS ||
     process.env.FRONTEND_ORIGIN ||
     "http://localhost:5173";
-  return raw
+  const configuredOrigins = raw
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+
+  const expandedOrigins = configuredOrigins.flatMap((origin) => {
+    try {
+      const url = new URL(origin);
+      const isLocalHost =
+        url.hostname === "localhost" || url.hostname === "127.0.0.1";
+      if (!isLocalHost) return [origin];
+
+      const hostVariants =
+        url.hostname === "localhost"
+          ? ["localhost", "127.0.0.1"]
+          : ["127.0.0.1", "localhost"];
+      const protocolVariants = ["http:", "https:"];
+      const port = url.port ? `:${url.port}` : "";
+
+      return protocolVariants.flatMap((protocol) =>
+        hostVariants.map((hostname) => `${protocol}//${hostname}${port}`),
+      );
+    } catch {
+      return [origin];
+    }
+  });
+
+  return [...new Set(expandedOrigins)];
 }
 
 const allowedOrigins = parseAllowedOrigins();

@@ -21,7 +21,12 @@ export default function CompleteProfile() {
       role: user?.role || p.role || ROLES.STUDENT,
       location: p.location || "",
       preferredLocation: p.preferredLocation || "",
-      skills: p.skills || [],
+      skills: Array.isArray(p.skills)
+        ? p.skills
+        : String(p.skills || "")
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
       experienceLevel: p.experienceLevel || "Fresher",
       experienceYears: p.experienceYears || "",
       currentCTC: p.currentCTC || "",
@@ -67,6 +72,9 @@ export default function CompleteProfile() {
     const nextErrors = {};
     if (!form.fullName?.trim()) nextErrors.fullName = "Full name is required";
     if (!form.phone?.trim()) nextErrors.phone = "Phone number is required";
+    if (!Array.isArray(form.skills) || form.skills.length === 0) {
+      nextErrors.skills = "At least one skill is required";
+    }
 
     if (Object.keys(nextErrors).length) {
       setFieldErrors(nextErrors);
@@ -155,6 +163,20 @@ export default function CompleteProfile() {
               value={form.preferredLocation}
               onChange={(e) => update({ preferredLocation: e.target.value })}
               placeholder="e.g. Bengaluru, Hyderabad"
+            />
+            <Input
+              label="Skills"
+              value={Array.isArray(form.skills) ? form.skills.join(", ") : ""}
+              error={fieldErrors.skills}
+              onChange={(e) =>
+                update({
+                  skills: e.target.value
+                    .split(",")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                })
+              }
+              placeholder="e.g. React, Node.js, SQL"
             />
             <Input
               label="Phone"
