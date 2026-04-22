@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
-import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 import Modal from "../common/Modal";
 import Button from "../common/Button";
 import { getStudentResumesForHR } from "../../services/applicationService";
@@ -89,6 +89,45 @@ function buildResumeUpdatesSnapshot(resumes = [], reasonDraftByResumeId = {}) {
   }));
 }
 
+function normalizeHistorySnapshotRows(rows = []) {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => ({
+      status: String(row?.status || "").trim(),
+      date: String(row?.date || "").trim(),
+    }))
+    .filter((row) => row.status || row.date)
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+function buildSupportSnapshot({
+  jobSearchStatus,
+  internalFlags,
+  internalNote,
+  editingInternalNoteId,
+  activeResumeId,
+  resumeOptions,
+  reasonDraftByResumeId,
+}) {
+  const normalizedResumeUpdates = buildResumeUpdatesSnapshot(
+    resumeOptions,
+    reasonDraftByResumeId,
+  ).sort((a, b) => String(a.id || "").localeCompare(String(b.id || "")));
+
+  const normalizedFlags = [...(Array.isArray(internalFlags) ? internalFlags : [])]
+    .map((flag) => String(flag || "").trim())
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+
+  return {
+    jobSearchStatus: String(jobSearchStatus || "PASSIVE").trim() || "PASSIVE",
+    internalFlags: normalizedFlags,
+    internalNote: String(internalNote || "").trim(),
+    editingInternalNoteId: String(editingInternalNoteId || "").trim(),
+    activeResumeId: String(activeResumeId || "").trim(),
+    resumeUpdates: normalizedResumeUpdates,
+  };
+}
+
 function getInternalFlagClasses(flag, selected) {
   const byFlag = {
     RED_FLAG: selected
@@ -158,7 +197,8 @@ export default function StudentProfileModal({
   const [reasonEditingByResumeId, setReasonEditingByResumeId] = useState({});
   const [resumesLoading, setResumesLoading] = useState(false);
   const [resumeLoadError, setResumeLoadError] = useState("");
-  const closeConfirmToastIdRef = useRef(null);
+  const [isDirtyCheckReady, setIsDirtyCheckReady] = useState(false);
+  const closeConfirmDialogOpenRef = useRef(false);
 
   const getResumeKey = (resumeId) => String(resumeId || "").trim();
 
@@ -217,6 +257,7 @@ export default function StudentProfileModal({
 
   useEffect(() => {
     if (!open || !student) return;
+    setIsDirtyCheckReady(false);
 
     const existingHistory = Array.isArray(student.cloudDriveHistory)
       ? student.cloudDriveHistory
@@ -242,8 +283,9 @@ export default function StudentProfileModal({
       normalized = [{ status: "", date: "" }];
     }
 
+    const normalizedHistory = normalizeHistorySnapshotRows(normalized);
     setHistoryRows(normalized);
-    setInitialHistorySnapshot(JSON.stringify(normalized));
+    setInitialHistorySnapshot(JSON.stringify(normalizedHistory));
     setIsAdding(false);
     setEditingIndex(null);
     setDraftRow({ status: "", date: "" });
@@ -269,7 +311,8 @@ export default function StudentProfileModal({
       activeResumeId: String(
         initialActiveResume?.id || student.activeResumeId || "",
       ).trim(),
-      resumeUpdates: buildResumeUpdatesSnapshot(initialResumes),
+      resumeOptions: initialResumes,
+      reasonDraftByResumeId: {},
     };
 
     setResumeOptions(initialResumes);
@@ -282,12 +325,9 @@ export default function StudentProfileModal({
     setEditingInternalNoteId(initialSupport.editingInternalNoteId);
     setActiveResumeId(initialSupport.activeResumeId);
     syncResumeFields(initialSupport.activeResumeId, initialResumes);
-    setInitialSupportSnapshot(JSON.stringify(initialSupport));
-
-    if (closeConfirmToastIdRef.current) {
-      toast.dismiss(closeConfirmToastIdRef.current);
-      closeConfirmToastIdRef.current = null;
-    }
+    setInitialSupportSnapshot(
+      JSON.stringify(buildSupportSnapshot(initialSupport)),
+    );
   }, [open, student]);
 
   useEffect(() => {
@@ -316,16 +356,19 @@ export default function StudentProfileModal({
         resetReasonEditorState(normalizedRows);
         syncResumeFields(nextActiveResumeId, normalizedRows);
         setInitialSupportSnapshot(
-          JSON.stringify({
-            jobSearchStatus: student.jobSearchStatus || "PASSIVE",
-            internalFlags: Array.isArray(student.internalFlags)
-              ? student.internalFlags
-              : [],
-            editingInternalNoteId: String(student.internalNotes?.[0]?.id || "").trim(),
-            internalNote: String(student.internalNotes?.[0]?.note || "").trim(),
-            activeResumeId: nextActiveResumeId || "",
-            resumeUpdates: buildResumeUpdatesSnapshot(normalizedRows),
-          }),
+          JSON.stringify(
+            buildSupportSnapshot({
+              jobSearchStatus: student.jobSearchStatus || "PASSIVE",
+              internalFlags: Array.isArray(student.internalFlags)
+                ? student.internalFlags
+                : [],
+              editingInternalNoteId: String(student.internalNotes?.[0]?.id || "").trim(),
+              internalNote: String(student.internalNotes?.[0]?.note || "").trim(),
+              activeResumeId: nextActiveResumeId || "",
+              resumeOptions: normalizedRows,
+              reasonDraftByResumeId: {},
+            }),
+          ),
         );
       } catch (error) {
         if (!active) return;
@@ -333,7 +376,10 @@ export default function StudentProfileModal({
           error?.message || "Failed to load latest student resumes",
         );
       } finally {
-        if (active) setResumesLoading(false);
+        if (active) {
+          setResumesLoading(false);
+          setIsDirtyCheckReady(true);
+        }
       }
     };
 
@@ -345,12 +391,11 @@ export default function StudentProfileModal({
   }, [open, student]);
 
   useEffect(() => {
-    return () => {
-      if (closeConfirmToastIdRef.current) {
-        toast.dismiss(closeConfirmToastIdRef.current);
-      }
-    };
-  }, []);
+    if (!open) {
+      setIsDirtyCheckReady(false);
+      closeConfirmDialogOpenRef.current = false;
+    }
+  }, [open]);
 
   const cloudDriveHistory = useMemo(() => {
     const byDate = new Map();
@@ -385,20 +430,26 @@ export default function StudentProfileModal({
   }, [isAdding, editingIndex, draftRow, historyRows]);
 
   const isDirty = useMemo(() => {
-    const currentSupportSnapshot = JSON.stringify({
-      jobSearchStatus,
-      internalFlags,
-      internalNote: String(internalNote || "").trim(),
-      editingInternalNoteId,
-      activeResumeId,
-      resumeUpdates: buildResumeUpdatesSnapshot(
+    if (!isDirtyCheckReady || resumesLoading) return false;
+
+    const currentHistorySnapshot = JSON.stringify(
+      normalizeHistorySnapshotRows(historyRows),
+    );
+
+    const currentSupportSnapshot = JSON.stringify(
+      buildSupportSnapshot({
+        jobSearchStatus,
+        internalFlags,
+        internalNote,
+        editingInternalNoteId,
+        activeResumeId,
         resumeOptions,
         reasonDraftByResumeId,
-      ),
-    });
+      }),
+    );
 
     return (
-      JSON.stringify(historyRows) !== initialHistorySnapshot ||
+      currentHistorySnapshot !== initialHistorySnapshot ||
       currentSupportSnapshot !== initialSupportSnapshot ||
       hasDraftChanges
     );
@@ -414,6 +465,8 @@ export default function StudentProfileModal({
     resumeOptions,
     reasonDraftByResumeId,
     initialSupportSnapshot,
+    isDirtyCheckReady,
+    resumesLoading,
   ]);
 
   const handleSave = () => {
@@ -421,9 +474,11 @@ export default function StudentProfileModal({
       resumeOptions,
       reasonDraftByResumeId,
     );
+    const normalizedActiveResumeId = String(activeResumeId || "").trim();
+    const hasActiveResume = Boolean(normalizedActiveResumeId);
     const activeResumeUpdate =
       resumeUpdates.find(
-        (resume) => resume.id === String(activeResumeId || "").trim(),
+        (resume) => resume.id === normalizedActiveResumeId,
       ) || null;
 
     onSave?.({
@@ -432,10 +487,14 @@ export default function StudentProfileModal({
       internalFlags,
       internalNote,
       internalNoteId: editingInternalNoteId || null,
-      activeResumeId,
-      activeResumeApprovalStatus,
+      activeResumeId: hasActiveResume ? normalizedActiveResumeId : null,
+      activeResumeApprovalStatus: hasActiveResume
+        ? activeResumeApprovalStatus
+        : null,
       activeResumeRejectionReason:
-        activeResumeUpdate?.rejection_reason ?? activeResumeRejectionReason,
+        hasActiveResume
+          ? activeResumeUpdate?.rejection_reason ?? activeResumeRejectionReason
+          : null,
       resumeUpdates,
     });
   };
@@ -475,60 +534,38 @@ export default function StudentProfileModal({
     setReasonEditingByResumeId((prev) => ({ ...prev, [key]: false }));
   };
 
-  const dismissCloseConfirmToast = () => {
-    if (closeConfirmToastIdRef.current) {
-      toast.dismiss(closeConfirmToastIdRef.current);
-      closeConfirmToastIdRef.current = null;
+  const showCloseConfirmDialog = async () => {
+    if (closeConfirmDialogOpenRef.current) return;
+    closeConfirmDialogOpenRef.current = true;
+
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Unsaved changes will be lost",
+      text: "Save changes, discard changes, or continue editing.",
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: "Save",
+      denyButtonText: "Discard",
+      cancelButtonText: "Continue Editing",
+      confirmButtonColor: "#2563eb",
+      denyButtonColor: "#64748b",
+      cancelButtonColor: "#64748b",
+      reverseButtons: true,
+      allowOutsideClick: true,
+      allowEscapeKey: true,
+      focusCancel: true,
+    });
+
+    closeConfirmDialogOpenRef.current = false;
+
+    if (result.isConfirmed) {
+      handleSave();
+      return;
     }
-  };
 
-  const showCloseConfirmToast = () => {
-    if (closeConfirmToastIdRef.current) return;
-
-    const toastId = toast.warn(
-      <div className="space-y-2">
-        <div className="text-sm font-semibold">Unsaved changes will be lost.</div>
-        <div className="text-xs text-slate-700">
-          Save changes, discard changes, or continue editing.
-        </div>
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              dismissCloseConfirmToast();
-              handleSave();
-            }}
-            className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700"
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              dismissCloseConfirmToast();
-              onClose?.();
-            }}
-            className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Discard
-          </button>
-          <button
-            type="button"
-            onClick={dismissCloseConfirmToast}
-            className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            Continue Editing
-          </button>
-        </div>
-      </div>,
-      {
-        autoClose: false,
-        closeOnClick: false,
-        draggable: false,
-      },
-    );
-
-    closeConfirmToastIdRef.current = toastId;
+    if (result.isDenied) {
+      onClose?.();
+    }
   };
 
   const attemptClose = () => {
@@ -536,7 +573,7 @@ export default function StudentProfileModal({
       onClose?.();
       return;
     }
-    showCloseConfirmToast();
+    void showCloseConfirmDialog();
   };
 
   const removeHistoryRow = (index) => {

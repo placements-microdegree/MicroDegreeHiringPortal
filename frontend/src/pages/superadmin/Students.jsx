@@ -216,66 +216,83 @@ export default function Students() {
 
   const mapped = useMemo(
     () =>
-      rows.map((r) => ({
-        id: r.id,
-        fullName: r.full_name || r.fullName,
-        email: r.email,
-        location: r.location,
-        preferredLocation: r.preferred_location || r.preferredLocation || "",
-        phone: r.phone,
-        isEligible: r.is_eligible || r.isEligible,
-        eligibleUntil: r.eligible_until || r.eligibleUntil,
-        resumeUrl:
-          r.recent_application_resume_url ||
-          r.resume_url ||
-          r.resumeUrl ||
-          null,
-        currentCtc:
-          r.recent_application_current_ctc ??
-          r.current_ctc ??
-          r.currentCtc ??
-          null,
-        expectedCtc:
-          r.recent_application_expected_ctc ??
-          r.expected_ctc ??
-          r.expectedCtc ??
-          null,
-        totalExperience:
-          r.recent_application_total_experience ??
-          r.experience_years ??
-          r.experienceYears ??
-          r.total_experience ??
-          r.totalExperience ??
-          null,
-        cloudDriveStatus:
-          r.cloud_drive_status ??
-          r.cloudDriveStatus ??
-          null,
-        driveClearedDate:
-          r.drive_cleared_date ??
-          r.driveClearedDate ??
-          null,
-        driveClearedStatus:
-          r.drive_cleared_status ??
-          r.driveClearedStatus ??
-          [],
-        cloudDriveHistory:
-          r.cloud_drive_status_history ??
-          r.cloudDriveStatusHistory ??
-          [],
-        jobSearchStatus:
-          r.job_search_status ?? r.jobSearchStatus ?? "PASSIVE",
-        internalFlags: r.internal_flags ?? r.internalFlags ?? [],
-        activeResumeId: r.active_resume_id ?? r.activeResumeId ?? "",
-        resumesMeta: r.resumes_meta ?? r.resumesMeta ?? [],
-        internalNotes: r.internal_notes ?? r.internalNotes ?? [],
-        skills: r.skills ?? [],
-        experienceLevel: r.experience_level || r.experienceLevel || null,
-        updatedAt: r.updated_at || r.updatedAt || null,
-        recentApplicationAt:
-          r.recent_application_created_at || r.recentApplicationCreatedAt || null,
-        lastActiveAt: r.last_active_at || r.lastActiveAt || null,
-      })),
+      rows.map((r) => {
+        const resumesMeta = Array.isArray(r.resumes_meta)
+          ? r.resumes_meta
+          : Array.isArray(r.resumesMeta)
+            ? r.resumesMeta
+            : [];
+        const activeResume = resumesMeta.find(
+          (resume) =>
+            String(resume?.id || "") ===
+            String(r.active_resume_id || r.activeResumeId || ""),
+        );
+        const latestResume = resumesMeta[0] || null;
+        const latestResumeUrl =
+          activeResume?.file_url || latestResume?.file_url || null;
+
+        return {
+          id: r.id,
+          fullName: r.full_name || r.fullName,
+          email: r.email,
+          location: r.location,
+          preferredLocation: r.preferred_location || r.preferredLocation || "",
+          phone: r.phone,
+          isEligible: r.is_eligible || r.isEligible,
+          eligibleUntil: r.eligible_until || r.eligibleUntil,
+          resumeUrl:
+            latestResumeUrl ||
+            r.recent_application_resume_url ||
+            r.resume_url ||
+            r.resumeUrl ||
+            null,
+          currentCtc:
+            r.recent_application_current_ctc ??
+            r.current_ctc ??
+            r.currentCtc ??
+            null,
+          expectedCtc:
+            r.recent_application_expected_ctc ??
+            r.expected_ctc ??
+            r.expectedCtc ??
+            null,
+          totalExperience:
+            r.recent_application_total_experience ??
+            r.experience_years ??
+            r.experienceYears ??
+            r.total_experience ??
+            r.totalExperience ??
+            null,
+          cloudDriveStatus:
+            r.cloud_drive_status ??
+            r.cloudDriveStatus ??
+            null,
+          driveClearedDate:
+            r.drive_cleared_date ??
+            r.driveClearedDate ??
+            null,
+          driveClearedStatus:
+            r.drive_cleared_status ??
+            r.driveClearedStatus ??
+            [],
+          cloudDriveHistory:
+            r.cloud_drive_status_history ??
+            r.cloudDriveStatusHistory ??
+            [],
+          jobSearchStatus:
+            r.job_search_status ?? r.jobSearchStatus ?? "PASSIVE",
+          internalFlags: r.internal_flags ?? r.internalFlags ?? [],
+          activeResumeId: r.active_resume_id ?? r.activeResumeId ?? "",
+          resumesMeta,
+          internalNotes: r.internal_notes ?? r.internalNotes ?? [],
+          skills: r.skills ?? [],
+          experienceLevel: r.experience_level || r.experienceLevel || null,
+          updatedAt: r.updated_at || r.updatedAt || null,
+          recentApplicationAt:
+            r.recent_application_created_at || r.recentApplicationCreatedAt || null,
+          lastActiveAt: r.last_active_at || r.lastActiveAt || null,
+        };
+      }),
     [rows],
   );
 

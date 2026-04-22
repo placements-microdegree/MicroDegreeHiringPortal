@@ -109,7 +109,7 @@ async function fetchResumeMetaByStudentIds({ supabase, studentIds }) {
       supabase
         .from("resumes")
         .select(
-          "id, user_id, file_name, approval_status, rejection_reason, approved_at, created_at",
+          "id, user_id, file_name, file_url, approval_status, rejection_reason, approved_at, created_at",
         )
         .in("user_id", batch)
         .order("created_at", { ascending: false }),
@@ -122,7 +122,7 @@ async function fetchResumeMetaByStudentIds({ supabase, studentIds }) {
       batches.map((batch) =>
         supabase
           .from("resumes")
-          .select("id, user_id, file_name, created_at")
+          .select("id, user_id, file_name, file_url, created_at")
           .in("user_id", batch)
           .order("created_at", { ascending: false }),
       ),
@@ -141,6 +141,7 @@ async function fetchResumeMetaByStudentIds({ supabase, studentIds }) {
       id: row.id,
       user_id: row.user_id,
       file_name: row.file_name,
+      file_url: row.file_url || null,
       approval_status: row.approval_status || "PENDING",
       rejection_reason: row.rejection_reason || null,
       approved_at: row.approved_at || null,
@@ -403,6 +404,7 @@ async function listStudentsWithLatestApplication() {
         list.push({
           id: row.id,
           file_name: row.file_name,
+          file_url: row.file_url || null,
           approval_status: row.approval_status || "PENDING",
           rejection_reason: row.rejection_reason || null,
           approved_at: row.approved_at || null,
@@ -455,6 +457,13 @@ async function listStudentsWithLatestApplication() {
 
   return students.map((student) => {
     const latest = latestByStudentId.get(student.id) || null;
+    const resumeRows = resumesByStudentId.get(student.id) || [];
+    const activeResume = resumeRows.find(
+      (resume) => String(resume?.id || "") === String(student?.active_resume_id || ""),
+    );
+    const latestUploadedResume = resumeRows[0] || null;
+    const preferredResumeUrl =
+      activeResume?.file_url || latestUploadedResume?.file_url || null;
 
     return {
       ...student,
@@ -468,7 +477,10 @@ async function listStudentsWithLatestApplication() {
         student?.total_experience ??
         null,
       recent_application_resume_url:
-        latest?.selected_resume_url ?? student?.resume_url ?? null,
+        preferredResumeUrl ??
+        latest?.selected_resume_url ??
+        student?.resume_url ??
+        null,
       recent_application_created_at: latest?.created_at ?? null,
       last_active_at: latestActivityByStudentId.get(student.id) || null,
       job_search_status: student?.job_search_status || "PASSIVE",
