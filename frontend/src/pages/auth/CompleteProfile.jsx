@@ -8,6 +8,13 @@ import { isStudentProfileComplete } from "../../utils/profileChecks";
 import { uploadProfilePhoto } from "../../services/profileService";
 import { showError } from "../../utils/alerts";
 
+function parseSkillsFromText(value) {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function CompleteProfile() {
   const navigate = useNavigate();
   const { user, profile, updateProfile } = useAuth();
@@ -36,12 +43,16 @@ export default function CompleteProfile() {
   }, [profile, user]);
 
   const [form, setForm] = useState(initial);
+  const [skillsText, setSkillsText] = useState(
+    Array.isArray(initial.skills) ? initial.skills.join(", ") : "",
+  );
   const [saving, setSaving] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     setForm(initial);
+    setSkillsText(Array.isArray(initial.skills) ? initial.skills.join(", ") : "");
   }, [initial]);
 
   const update = (patch) => {
@@ -69,10 +80,12 @@ export default function CompleteProfile() {
     e.preventDefault();
     setFieldErrors({});
 
+    const parsedSkills = parseSkillsFromText(skillsText);
+
     const nextErrors = {};
     if (!form.fullName?.trim()) nextErrors.fullName = "Full name is required";
     if (!form.phone?.trim()) nextErrors.phone = "Phone number is required";
-    if (!Array.isArray(form.skills) || form.skills.length === 0) {
+    if (parsedSkills.length === 0) {
       nextErrors.skills = "At least one skill is required";
     }
 
@@ -83,7 +96,10 @@ export default function CompleteProfile() {
 
     setSaving(true);
     try {
-      const saved = await updateProfile(form);
+      const saved = await updateProfile({
+        ...form,
+        skills: parsedSkills,
+      });
       const complete = isStudentProfileComplete(saved, { role: saved.role });
       navigate(
         saved.role === ROLES.ADMIN || complete
@@ -166,16 +182,10 @@ export default function CompleteProfile() {
             />
             <Input
               label="Skills"
-              value={Array.isArray(form.skills) ? form.skills.join(", ") : ""}
+              value={skillsText}
               error={fieldErrors.skills}
-              onChange={(e) =>
-                update({
-                  skills: e.target.value
-                    .split(",")
-                    .map((item) => item.trim())
-                    .filter(Boolean),
-                })
-              }
+              onChange={(e) => setSkillsText(e.target.value)}
+              onBlur={() => update({ skills: parseSkillsFromText(skillsText) })}
               placeholder="e.g. React, Node.js, SQL"
             />
             <Input
