@@ -177,6 +177,20 @@ async function listResumesByUserWithSignedUrls({
   return enriched;
 }
 
+async function isResumeReferencedByApplications({ supabaseAdmin, resumeUrl }) {
+  const normalizedUrl = String(resumeUrl || "").trim();
+  if (!normalizedUrl) return false;
+
+  const { data, error } = await supabaseAdmin
+    .from("applications")
+    .select("id")
+    .eq("selected_resume_url", normalizedUrl)
+    .limit(1);
+
+  if (error) throw error;
+  return Array.isArray(data) && data.length > 0;
+}
+
 async function deleteResume({ resumeId }) {
   const supabaseAdmin = getSupabaseAdmin();
   if (!supabaseAdmin || !isServiceRoleConfigured) {
@@ -196,9 +210,18 @@ async function deleteResume({ resumeId }) {
   if (fetchErr) throw fetchErr;
   if (!row) return true;
 
-  // Delete storage object
-  if (row.storage_path) {
-    await supabaseAdmin.storage.from(BUCKET).remove([row.storage_path]);
+  const resumeUsedByAnyApplication = await isResumeReferencedByApplications({
+    supabaseAdmin,
+    resumeUrl: row.file_url,
+  });
+
+  // Keep storage object if the resume URL is already used in any application.
+  // This preserves historical resume links for HR/admin views.
+  if (row.storage_path && !resumeUsedByAnyApplication) {
+    const { error: storageDeleteErr } = await supabaseAdmin.storage
+      .from(BUCKET)
+      .remove([row.storage_path]);
+    if (storageDeleteErr) throw storageDeleteErr;
   }
 
   const { error: delErr } = await supabaseAdmin
