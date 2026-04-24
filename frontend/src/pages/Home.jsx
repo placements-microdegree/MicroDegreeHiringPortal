@@ -10,6 +10,7 @@ import {
   FiCheckCircle,
   FiChevronRight,
   FiCloud,
+  FiExternalLink,
   FiFileText,
   FiLayers,
   FiMenu,
@@ -25,6 +26,8 @@ import {
   FiMapPin,
   FiRadio,
 } from "react-icons/fi";
+import { useAuth } from "../context/authStore";
+import { listPublicActiveExternalJobs } from "../services/externalJobService";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -282,6 +285,106 @@ function Badge({ children, color = "blue" }) {
   );
 }
 
+function postedAgoLabel(createdAt) {
+  const t = Date.parse(createdAt || "");
+  if (!Number.isFinite(t)) return "Recently";
+  const days = Math.floor((Date.now() - t) / 86_400_000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  return `${days} days ago`;
+}
+
+function JobCard({ job }) {
+  const ageHours = job?.created_at
+    ? Math.max(0, (Date.now() - Date.parse(job.created_at)) / 3_600_000)
+    : Number.POSITIVE_INFINITY;
+  const isFresh = Number.isFinite(ageHours) && ageHours <= 48;
+  const experience = String(job?.experience || "").trim() || "NA";
+
+  return (
+    <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-300 hover:shadow-2xl">
+      <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-700" />
+      <div className="flex flex-1 flex-col gap-4 p-6">
+        <div className="flex items-center justify-between gap-3">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
+              isFresh
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-slate-200 bg-slate-50 text-slate-600"
+            }`}
+          >
+            <FiCalendar className="h-3 w-3" />
+            {postedAgoLabel(job?.created_at)}
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-600">
+            <FiBriefcase className="h-3 w-3" />
+            Open Role
+          </span>
+        </div>
+
+        <div>
+          <h3
+            className="line-clamp-2 text-lg font-bold text-slate-900"
+            title={job?.job_role || "Open Position"}
+          >
+            {job?.job_role || "Open Position"}
+          </h3>
+          <p
+            className="mt-1 truncate text-sm font-semibold text-slate-600"
+            title={job?.company || "Company"}
+          >
+            {job?.company || "Company"}
+          </p>
+        </div>
+
+        <div className="grid gap-2 text-sm text-slate-600">
+          <p className="inline-flex items-center gap-2">
+            <FiMapPin className="h-3.5 w-3.5 text-blue-500" />
+            <span className="truncate">{job?.location || "Location not specified"}</span>
+          </p>
+          <p className="inline-flex items-center gap-2">
+            <FiBriefcase className="h-3.5 w-3.5 text-violet-500" />
+            <span>Experience: {experience}</span>
+          </p>
+        </div>
+
+        <a
+          href={job?.apply_link || "#"}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-500/20 transition-all duration-200 hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-500/30 group-hover:gap-3"
+        >
+          Apply Now
+          <FiExternalLink className="h-4 w-4" />
+        </a>
+      </div>
+    </article>
+  );
+}
+
+function JobCardSkeleton() {
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="h-1.5 w-full bg-slate-200" />
+      <div className="flex flex-1 flex-col gap-4 p-6">
+        <div className="flex justify-between">
+          <div className="h-5 w-20 animate-pulse rounded-full bg-slate-200" />
+          <div className="h-5 w-16 animate-pulse rounded-full bg-slate-200" />
+        </div>
+        <div>
+          <div className="h-5 w-3/4 animate-pulse rounded bg-slate-200" />
+          <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-slate-100" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-2/3 animate-pulse rounded bg-slate-100" />
+          <div className="h-3 w-1/2 animate-pulse rounded bg-slate-100" />
+        </div>
+        <div className="mt-auto h-10 w-full animate-pulse rounded-xl bg-slate-200" />
+      </div>
+    </div>
+  );
+}
+
 function FeatureCard({ feature }) {
   const Icon = feature.icon;
   return (
@@ -450,7 +553,7 @@ const NAV_LINKS = [
   ["Home", "#home"],
   ["Features", "#features"],
   ["How It Works", "#how-it-works"],
-  
+  ["Jobs", "#jobs"],
   // ["Career Paths", "#proof"], // hidden while the proof/career-paths section is disabled
 ];
 
@@ -458,6 +561,9 @@ const NAV_LINKS = [
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user } = useAuth();
+  const [jobs, setJobs] = useState([]);
+  const [jobsStatus, setJobsStatus] = useState("loading"); // "loading" | "ok" | "error"
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -467,6 +573,30 @@ export default function Home() {
       document.body.style.overflow = prev;
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setJobsStatus("loading");
+    listPublicActiveExternalJobs()
+      .then((data) => {
+        if (cancelled) return;
+        const sorted = [...(data || [])].sort((a, b) => {
+          const at = Date.parse(a?.created_at || "") || 0;
+          const bt = Date.parse(b?.created_at || "") || 0;
+          return bt - at;
+        });
+        setJobs(sorted.slice(0, 3));
+        setJobsStatus("ok");
+      })
+      .catch(() => {
+        if (!cancelled) setJobsStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const viewAllJobsPath = user ? "/student/external-jobs" : "/login";
 
   const scrollToTop = (e) => {
     e?.preventDefault();
@@ -490,9 +620,24 @@ export default function Home() {
             aria-label="Back to top"
           >
             <img
-              src="https://www.microdegree.work/static/media/MicroDegree%20Pink.5777a8ffd9ff3026b011.png"
+              src="/MicroDegree%20Pink.5777a8ffd9ff3026b011.png"
               alt="MicroDegree"
+              loading="eager"
+              decoding="async"
+              referrerPolicy="no-referrer"
               className="h-8 w-auto object-contain sm:h-9"
+              onError={(e) => {
+                // Fallback chain: local Logo.png, then remote URL.
+                const step = e.currentTarget.dataset.fallback || "0";
+                if (step === "0") {
+                  e.currentTarget.dataset.fallback = "1";
+                  e.currentTarget.src = "/Logo.png";
+                } else if (step === "1") {
+                  e.currentTarget.dataset.fallback = "2";
+                  e.currentTarget.src =
+                    "https://www.microdegree.work/static/media/MicroDegree%20Pink.5777a8ffd9ff3026b011.png";
+                }
+              }}
             />
           </Link>
 
@@ -748,6 +893,78 @@ export default function Home() {
             </ActionLink>
           </Reveal>
         </div>
+      </section>
+
+      {/* ── JOBS ─────────────────────────────────────────────────────────────── */}
+      <section
+        id="jobs"
+        className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8"
+      >
+        <Reveal className="flex flex-col items-center gap-4 text-center">
+          <Badge color="blue">Live Openings</Badge>
+          <h2 className="max-w-3xl text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
+            Recent jobs from{" "}
+            <span className="text-blue-600">our hiring partners</span>
+          </h2>
+          <p className="mt-2 max-w-2xl text-base text-slate-600 sm:text-lg">
+            Updated daily. Browse opportunities curated by the MicroDegree
+            team across product, cloud, data, and quality engineering roles.
+          </p>
+        </Reveal>
+
+        <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {jobsStatus === "loading" &&
+            Array.from({ length: 3 }).map((_, i) => (
+              <Reveal key={`sk-${i}`} delay={i * 80}>
+                <JobCardSkeleton />
+              </Reveal>
+            ))}
+
+          {jobsStatus === "ok" && jobs.length > 0 &&
+            jobs.map((job, i) => (
+              <Reveal key={job.id || i} delay={i * 80}>
+                <JobCard job={job} />
+              </Reveal>
+            ))}
+
+          {jobsStatus === "ok" && jobs.length === 0 && (
+            <Reveal className="col-span-full">
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center">
+                <FiBriefcase className="mx-auto h-8 w-8 text-slate-400" />
+                <p className="mt-3 text-base font-semibold text-slate-700">
+                  No active openings right now
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  New roles are posted every day. Check back soon.
+                </p>
+              </div>
+            </Reveal>
+          )}
+
+          {jobsStatus === "error" && (
+            <Reveal className="col-span-full">
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center">
+                <p className="text-sm font-semibold text-amber-800">
+                  Couldn't load the latest openings.
+                </p>
+                <p className="mt-1 text-sm text-amber-700">
+                  Try the full jobs board for the up-to-date list.
+                </p>
+              </div>
+            </Reveal>
+          )}
+        </div>
+
+        <Reveal className="mt-12 flex justify-center">
+          <ActionLink
+            to={viewAllJobsPath}
+            variant="blue"
+            className="text-base px-8 py-4"
+          >
+            View All Jobs
+            <FiArrowRight className="h-5 w-5" />
+          </ActionLink>
+        </Reveal>
       </section>
 
       {/* ── DEEPER FEATURES HIGHLIGHT ────────────────────────────────────────── */}
