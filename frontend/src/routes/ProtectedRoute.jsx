@@ -16,7 +16,7 @@ export default function ProtectedRoute({ allowedRoles }) {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/home" replace />;
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     if (user.role === ROLES.SUPER_ADMIN) {
