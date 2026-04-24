@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import Footer from "../components/common/Footer";
 import {
   FiArrowRight,
@@ -207,45 +208,106 @@ const READINESS_ITEMS = [
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
-function useReveal({ threshold = 0.15, rootMargin = "0px 0px -40px 0px" } = {}) {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setVisible(true);
-      return;
-    }
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisible(true);
-            obs.disconnect();
-          }
-        });
-      },
-      { threshold, rootMargin },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold, rootMargin]);
-  return { ref, visible };
-}
+// Framer Motion shared variants — slide up + fade in with a spring for a premium feel.
+const SPRING = { type: "spring", stiffness: 100, damping: 20 };
 
-function Reveal({ children, delay = 0, className = "", as: Tag = "div" }) {
-  const { ref, visible } = useReveal();
+const fadeInVariants = {
+  hidden: { y: 40, opacity: 0 },
+  show: { y: 0, opacity: 1, transition: SPRING },
+};
+
+const staggerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.2 } },
+};
+
+const inViewProps = {
+  initial: "hidden",
+  whileInView: "show",
+  viewport: { once: true, amount: 0.2 },
+};
+
+const immediateProps = {
+  initial: "hidden",
+  animate: "show",
+};
+
+/**
+ * FadeIn — single element that slides up + fades in.
+ * Use `immediate` for above-the-fold elements (Hero) so they animate on mount,
+ * not on scroll.
+ */
+function FadeIn({
+  children,
+  className = "",
+  delay = 0,
+  immediate = false,
+  as = "div",
+}) {
+  const MotionTag = motion[as] || motion.div;
+  const trigger = immediate ? immediateProps : inViewProps;
   return (
-    <Tag
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transform-gpu transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none ${
-        visible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-      } ${className}`}
+    <MotionTag
+      variants={fadeInVariants}
+      transition={{ ...SPRING, delay }}
+      className={className}
+      {...trigger}
     >
       {children}
-    </Tag>
+    </MotionTag>
+  );
+}
+
+/**
+ * StaggerGroup — wraps a list. Children using <StaggerItem> reveal one-by-one.
+ */
+function StaggerGroup({
+  children,
+  className = "",
+  immediate = false,
+  as = "div",
+  staggerChildren = 0.2,
+}) {
+  const MotionTag = motion[as] || motion.div;
+  const variants = {
+    hidden: {},
+    show: { transition: { staggerChildren } },
+  };
+  const trigger = immediate ? immediateProps : inViewProps;
+  return (
+    <MotionTag variants={variants} className={className} {...trigger}>
+      {children}
+    </MotionTag>
+  );
+}
+
+/**
+ * StaggerItem — single child of <StaggerGroup>. Inherits trigger from parent
+ * and animates with the shared fade-in variants.
+ */
+function StaggerItem({ children, className = "", as = "div" }) {
+  const MotionTag = motion[as] || motion.div;
+  return (
+    <MotionTag variants={fadeInVariants} className={className}>
+      {children}
+    </MotionTag>
+  );
+}
+
+// Backwards-compatibility alias so existing <Reveal> usages keep working.
+// Behaves like FadeIn — accepts `delay` (in ms for legacy call sites) and `immediate`.
+function Reveal({ children, className = "", delay = 0, immediate = false, as = "div" }) {
+  // Existing call sites pass delay in ms (e.g. delay={150}); convert to seconds.
+  const delaySeconds = delay > 5 ? delay / 1000 : delay;
+  return (
+    <FadeIn
+      className={className}
+      delay={delaySeconds}
+      immediate={immediate}
+      as={as}
+    >
+      {children}
+    </FadeIn>
   );
 }
 
@@ -731,8 +793,8 @@ export default function Home() {
         <div className="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(rgba(15,23,42,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.8)_1px,transparent_1px)] [background-size:72px_72px] pointer-events-none" />
 
         <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 px-4 py-16 sm:gap-16 sm:px-6 sm:py-20 lg:grid-cols-2 lg:px-8 lg:py-28">
-          {/* Left */}
-          <Reveal>
+          {/* Left — animates immediately on mount */}
+          <FadeIn immediate>
             <Badge color="blue">Built for student success</Badge>
 
             <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-6xl lg:text-7xl">
@@ -775,12 +837,12 @@ export default function Home() {
                 </span>
               ))}
             </div>
-          </Reveal>
+          </FadeIn>
 
-          {/* Right */}
-          <Reveal delay={150}>
+          {/* Right — animates immediately, slightly after the left */}
+          <FadeIn immediate delay={0.15}>
             <HeroVisual />
-          </Reveal>
+          </FadeIn>
         </div>
       </section>
 
@@ -815,7 +877,7 @@ export default function Home() {
 
       {/* ── FEATURES ─────────────────────────────────────────────────────────── */}
       <section id="features" className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-        <Reveal className="flex flex-col items-center gap-4 text-center">
+        <FadeIn className="flex flex-col items-center gap-4 text-center">
           <Badge color="violet">Platform Features</Badge>
           <h2 className="max-w-3xl text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl md:text-5xl">
             Everything you need to go from student to{" "}
@@ -825,15 +887,15 @@ export default function Home() {
             Every feature is designed around one goal: helping you get placed
             with clarity, structure, and real preparation behind you.
           </p>
-        </Reveal>
+        </FadeIn>
 
-        <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {STUDENT_FEATURES.map((f, i) => (
-            <Reveal key={f.title} delay={i * 80}>
+        <StaggerGroup className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {STUDENT_FEATURES.map((f) => (
+            <StaggerItem key={f.title}>
               <FeatureCard feature={f} />
-            </Reveal>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerGroup>
       </section>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────────── */}
@@ -855,14 +917,14 @@ export default function Home() {
             </p>
           </Reveal>
 
-          <div className="relative mt-16 grid gap-6 lg:grid-cols-3">
+          <StaggerGroup className="relative mt-16 grid gap-6 lg:grid-cols-3">
             {/* Connector line */}
             <div className="absolute left-[calc(16.666%+2rem)] right-[calc(16.666%+2rem)] top-11 hidden h-px bg-gradient-to-r from-blue-300 via-emerald-300 to-violet-300 lg:block" />
 
-            {JOURNEY_STEPS.map((step, i) => {
+            {JOURNEY_STEPS.map((step) => {
               const Icon = step.icon;
               return (
-                <Reveal key={step.step} delay={i * 120}>
+                <StaggerItem key={step.step}>
                   <article className="group relative rounded-3xl border border-slate-200 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl">
                     <div className="flex items-center justify-between">
                       <div
@@ -881,10 +943,10 @@ export default function Home() {
                       {step.description}
                     </p>
                   </article>
-                </Reveal>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerGroup>
 
           <Reveal className="mt-12 flex justify-center">
             <ActionLink to="/signup" variant="blue" className="text-base px-8 py-4">
@@ -912,23 +974,23 @@ export default function Home() {
           </p>
         </Reveal>
 
-        <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <StaggerGroup className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {jobsStatus === "loading" &&
             Array.from({ length: 3 }).map((_, i) => (
-              <Reveal key={`sk-${i}`} delay={i * 80}>
+              <StaggerItem key={`sk-${i}`}>
                 <JobCardSkeleton />
-              </Reveal>
+              </StaggerItem>
             ))}
 
           {jobsStatus === "ok" && jobs.length > 0 &&
             jobs.map((job, i) => (
-              <Reveal key={job.id || i} delay={i * 80}>
+              <StaggerItem key={job.id || i}>
                 <JobCard job={job} />
-              </Reveal>
+              </StaggerItem>
             ))}
 
           {jobsStatus === "ok" && jobs.length === 0 && (
-            <Reveal className="col-span-full">
+            <StaggerItem className="col-span-full">
               <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center">
                 <FiBriefcase className="mx-auto h-8 w-8 text-slate-400" />
                 <p className="mt-3 text-base font-semibold text-slate-700">
@@ -938,11 +1000,11 @@ export default function Home() {
                   New roles are posted every day. Check back soon.
                 </p>
               </div>
-            </Reveal>
+            </StaggerItem>
           )}
 
           {jobsStatus === "error" && (
-            <Reveal className="col-span-full">
+            <StaggerItem className="col-span-full">
               <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-center">
                 <p className="text-sm font-semibold text-amber-800">
                   Couldn't load the latest openings.
@@ -951,9 +1013,9 @@ export default function Home() {
                   Try the full jobs board for the up-to-date list.
                 </p>
               </div>
-            </Reveal>
+            </StaggerItem>
           )}
-        </div>
+        </StaggerGroup>
 
         <Reveal className="mt-12 flex justify-center">
           <ActionLink
