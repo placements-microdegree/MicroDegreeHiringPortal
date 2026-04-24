@@ -8,6 +8,7 @@ import Login from "../pages/auth/Login";
 import Signup from "../pages/auth/Signup";
 import CompleteProfile from "../pages/auth/CompleteProfile";
 import ForgotPasswordOtp from "../pages/auth/ForgotPasswordOtp";
+import Home from "../pages/Home";
 
 import StudentDashboard from "../pages/student/StudentDashboard";
 import JobListings from "../pages/student/JobListings";
@@ -48,7 +49,7 @@ import Footer from "../components/common/Footer";
 function HomeRedirect() {
   const { user, loading } = useAuth();
   if (loading) return <PageOpeningShimmer />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/home" replace />;
   if (user.role === ROLES.SUPER_ADMIN)
     return <Navigate to="/superadmin/dashboard" replace />;
   if (user.role === ROLES.ADMIN)
@@ -97,6 +98,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
+      <Route path="/home" element={<Home />} />
       <Route path="/login" element={<AuthRedirect />} />
       <Route path="/signup" element={<SignupRedirect />} />
       <Route path="/forgot-password" element={<ForgotPasswordOtp />} />
