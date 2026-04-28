@@ -9,6 +9,7 @@ import {
   FiX,
   FiExternalLink,
   FiRefreshCw,
+  FiDownload,
 } from "react-icons/fi";
 import * as XLSX from "xlsx";
 import {
@@ -557,6 +558,14 @@ export default function PostExternalJob() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href="/JobTemplate.xlsx"
+            download="JobTemplate.xlsx"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            <FiDownload className="h-4 w-4" />
+            Excel Template Download
+          </a>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
             {isUploading ? "Uploading..." : "Upload CSV/XLS"}
             <input
