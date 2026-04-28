@@ -4,7 +4,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/home)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/home)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/login)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(git -C c:/Users/Rajath/Desktop/MicroDegreeHiringPortal show 1ca0d5c -- frontend/package.json)"
     ]
   }
 }

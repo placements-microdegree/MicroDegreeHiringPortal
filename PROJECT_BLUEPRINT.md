@@ -9,7 +9,7 @@
 - **Target users (Super Admins):** oversee platform health, manage HR admins, curate students, inspect analytics, run checker tools.
 
 ## 2. Tech Stack
-- **Frontend:** React 19, React Router 7, Vite 7, Tailwind CSS 4, React Icons, React Toastify, SweetAlert2, Recharts, XLSX, jsPDF.
+- **Frontend:** React 19, React Router 7, Vite 7, Tailwind CSS 4, Framer Motion 12, React Icons, React Toastify, SweetAlert2, Recharts, XLSX, jsPDF.
 - **Backend:** Node.js, Express 5, CommonJS modules, Multer, Nodemailer, pdf-parse.
 - **Database / auth / storage:** Supabase Postgres + Auth + Storage (`resumes` bucket).
 - **Integrations:** Google OAuth via Supabase PKCE flow.
@@ -51,7 +51,11 @@
 - **State management:** global auth/profile state lives in `AuthProvider`.
 - **State management:** everything else uses local component/page state.
 - **State management:** no Redux/Zustand; service calls are direct.
-- **Route groups (Public):** `/login`, `/signup`, `/forgot-password`, `/jobs` (public external jobs), `/email-subscription`.
+- **Route groups (Public):** `/home` (public landing page), `/login`, `/signup`, `/forgot-password`, `/jobs` (public external jobs), `/email-subscription`.
+- **Public landing page (`/home`, `frontend/src/pages/Home.jsx`):** marketing surface for unauthenticated visitors; root path `/` uses `HomeRedirect`, which sends signed-out users to `/home` and signed-in users to their role dashboard (`/student/dashboard`, `/admin/dashboard`, or `/superadmin/dashboard`).
+- **Public landing page sections:** sticky logo nav with hash links and a mobile drawer; hero with a sample readiness dashboard visual; stats strip (`PROOF_POINTS`); features grid (`STUDENT_FEATURES`); 3-step "How It Works" journey; a live "Recent jobs" rail that fetches the top 3 active external jobs via `listPublicActiveExternalJobs` (with skeleton, empty, and error states); a Readiness Engine highlight; a disabled proof/career-paths section gated by an `if (false &&)` flag; final CTA; shared `Footer`.
+- **Public landing page motion / assets:** Framer Motion drives reusable `FadeIn`, `StaggerGroup`, `StaggerItem`, and a backwards-compatible `Reveal` alias (delay accepts ms or seconds); above-the-fold hero animates on mount, the rest on scroll. The nav logo loads `/MicroDegree Pink.5777a8ffd9ff3026b011.png` with a fallback chain to `/Logo.png` and then a remote MicroDegree URL.
+- **Public landing page CTAs:** "View All Jobs" routes to `/student/external-jobs` for signed-in users and `/login` otherwise (via `useAuth`); the logo click smooth-scrolls to top respecting `prefers-reduced-motion`.
 - **Route groups (Student):** `/student/dashboard`, `/student/jobs`, `/student/external-jobs`, `/student/daily-sessions`, `/student/applications`, `/student/cloud-drive`, referral pages, guide/help.
 - **Route groups (Admin):** dashboard, post JD, manage applications, students, favourites, playlists, cloud drive admin, daily session setting, external jobs, referred data, placement pipeline pages.
 - **Route groups (Super admin):** dashboard, manage HR admins, students, favourites/playlists, jobs, applications, checker, external-job analytics, visit analytics, resume-builder analytics.
