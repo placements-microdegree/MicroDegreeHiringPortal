@@ -153,6 +153,7 @@ const rounds = [
 const driveStatusClassMap = {
   Registered: "bg-slate-100 text-slate-700",
   "MCQ Screening Test cleared": "bg-amber-100 text-amber-700",
+  "MCQ Screening Test Rejected": "bg-rose-100 text-rose-700",
   "Practical Online Task Round": "bg-blue-100 text-blue-700",
   "Practical Online Task Round Cleared": "bg-emerald-100 text-emerald-700",
   "Practical Online Task Round Rejected": "bg-rose-100 text-rose-700",

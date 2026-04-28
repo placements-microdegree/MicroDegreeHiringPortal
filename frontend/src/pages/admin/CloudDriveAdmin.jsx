@@ -13,6 +13,7 @@ import {
 const HR_STATUS_OPTIONS = [
   "Registered",
   "MCQ Screening Test cleared",
+  "MCQ Screening Test Rejected",
   // "Practical Online Task Round",
   "Practical Online Task Round Cleared",
   "Practical Online Task Round Rejected",
